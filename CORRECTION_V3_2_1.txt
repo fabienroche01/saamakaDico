@@ -1,0 +1,13 @@
+SAAMAKA DICO — TESTEURS 3.2.1
+
+Correction apportée :
+- les lignes avec traduction vide sont ignorées dans la validation guidée ;
+- les erreurs Excel telles que #NAME?, #N/A ou N/A sont ignorées ;
+- le bouton « Passer au mot suivant » ouvre désormais uniquement une fiche valide ;
+- le compteur affiche uniquement les entrées réellement utilisables.
+
+Le problème observé venait d'une ligne de la base contenant :
+Français : #NAME?
+Saamaka : vide
+
+Cette ligne n'est plus proposée aux testeurs.

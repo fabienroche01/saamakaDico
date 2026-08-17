@@ -1,0 +1,36 @@
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+**/build/
+build/
+
+# Configuration locale du PC
+local.properties
+
+# Fichiers de signature Android - NE JAMAIS envoyer
+*.jks
+*.keystore
+keystore.properties
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Logs et fichiers temporaires
+*.log
+*.tmp
+
+# APK / App Bundle générés
+*.apk
+*.aab
+
+# Native build
+.externalNativeBuild/
+.cxx/
+
+# Captures Android Studio
+captures/
