@@ -295,6 +295,56 @@ class DictionaryDatabase(private val context: Context) {
         }
     }
 
+    private fun normalizeFrenchWordForTranslation(word: String): String {
+        val clean = word
+            .trim()
+            .lowercase()
+            .trim(',', '.', ';', ':', '!', '?', '\'', '"')
+
+        return when (clean) {
+            "vais", "vas", "va", "allons", "allez", "vont",
+            "allais", "allait", "allaient",
+            "irai", "iras", "ira", "irons", "irez", "iront" -> "aller"
+
+            "suis", "es", "est", "sommes", "êtes", "sont",
+            "étais", "était", "étions", "étiez", "étaient",
+            "serai", "seras", "sera", "serons", "serez", "seront" -> "être"
+
+            "ai", "as", "a", "avons", "avez", "ont",
+            "avais", "avait", "avions", "aviez", "avaient",
+            "aurai", "auras", "aura", "aurons", "aurez", "auront" -> "avoir"
+
+            "fais", "fait", "faisons", "faites", "font",
+            "faisais", "faisait", "faisaient",
+            "ferai", "feras", "fera", "ferons", "ferez", "feront" -> "faire"
+
+            "veux", "veut", "voulons", "voulez", "veulent",
+            "voulais", "voulait", "voulaient",
+            "voudrais", "voudrait" -> "vouloir"
+
+            "peux", "peut", "pouvons", "pouvez", "peuvent",
+            "pouvais", "pouvait", "pouvaient",
+            "pourrai", "pourras", "pourra", "pourront" -> "pouvoir"
+
+            "viens", "vient", "venons", "venez", "viennent",
+            "venais", "venait", "venaient",
+            "viendrai", "viendras", "viendra", "viendront" -> "venir"
+
+            "prends", "prend", "prenons", "prenez", "prennent",
+            "prenais", "prenait", "prenaient",
+            "prendrai", "prendras", "prendra", "prendront" -> "prendre"
+
+            "dors", "dort", "dormons", "dormez", "dorment",
+            "dormais", "dormait", "dormaient",
+            "dormirai", "dormiras", "dormira", "dormiront" -> "dormir"
+
+            "mange", "manges", "mangeons", "mangez", "mangent",
+            "mangeais", "mangeait", "mangeaient",
+            "mangerai", "mangeras", "mangera", "mangeront" -> "manger"
+
+            else -> clean
+        }
+    }
     fun translatePhrase(
         text: String,
         frenchToSaamaka: Boolean
@@ -324,6 +374,13 @@ class DictionaryDatabase(private val context: Context) {
         val words = textForTranslation
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() }
+            .map { word ->
+                if (frenchToSaamaka) {
+                    normalizeFrenchWordForTranslation(word)
+                } else {
+                    word
+                }
+            }
 
         if (words.isEmpty()) {
             return null
