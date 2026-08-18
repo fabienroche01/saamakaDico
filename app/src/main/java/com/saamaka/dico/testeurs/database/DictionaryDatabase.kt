@@ -392,6 +392,12 @@ class DictionaryDatabase(private val context: Context) {
 
         while (index < words.size) {
 
+            if (frenchToSaamaka && words[index] == "aller"
+                && index +1 < words.size) {
+                translatedParts += "[futur proche]"
+                index++
+                continue
+            }
             var foundTranslation: String? = null
             var consumedWords = 0
 
