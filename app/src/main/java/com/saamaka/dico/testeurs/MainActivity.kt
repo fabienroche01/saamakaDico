@@ -721,7 +721,9 @@ private fun TesterApp() {
                                     database.missionByCategory(
                                         category = selectedMissionCategory,
                                         limit = 50
-                                    )
+                                    ).sortedBy {
+                                        it.french.trim().contains(" ")
+                                    }
                                 }
                             }
 
