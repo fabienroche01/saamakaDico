@@ -139,10 +139,10 @@ fun TranslateScreen(
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = remainingTrials > 0,
+                            enabled = accessLevel != AccessLevel.FREE_ACCOUNT || remainingTrials > 0,
                             onClick = {
-                                if (remainingTrials > 0) {
-                                    showTranslator = true
+                                if (accessLevel != AccessLevel.FREE_ACCOUNT || remainingTrials > 0) {
+                                   showTranslator = true
                                 }
                             }
                         ) {
@@ -227,7 +227,9 @@ fun TranslateScreen(
                 }
             }
         }
-        if (showTranslator) {
+        if (showTranslator && (accessLevel != AccessLevel.FREE_ACCOUNT ||
+                remainingTrials > 0)
+        ) {
 
             Spacer(Modifier.height(20.dp))
 
