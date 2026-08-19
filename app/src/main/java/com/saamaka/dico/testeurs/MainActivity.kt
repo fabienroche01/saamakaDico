@@ -53,6 +53,7 @@ import java.io.File
 import com.saamaka.dico.testeurs.ui.TranslateScreen
 import androidx.compose.runtime.LaunchedEffect
 
+
 private val LightColors = lightColorScheme(
     primary = Color(0xFF6B4BAE),
     onPrimary = Color.White,
@@ -286,9 +287,11 @@ private fun TesterApp() {
                                 },
                                 fontWeight = FontWeight.Bold
                             )
+                            val context = LocalContext.current
+                            val versionName = context.packageManager.getPackageInfo(context.packageName,0).versionName
 
                             Text(
-                                text = "$total entrées — version 3.7.0-beta1",
+                                text = "$total entrées — version $versionName",
                                 style = MaterialTheme.typography.labelMedium
                             )
 
@@ -721,7 +724,9 @@ private fun TesterApp() {
                                     database.missionByCategory(
                                         category = selectedMissionCategory,
                                         limit = 50
-                                    )
+                                    ).sortedBy {
+                                        it.french.trim().contains(" ")
+                                    }
                                 }
                             }
 

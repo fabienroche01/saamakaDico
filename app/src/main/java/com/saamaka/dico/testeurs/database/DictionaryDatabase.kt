@@ -15,9 +15,13 @@ class DictionaryDatabase(private val context: Context) {
         return text
             .replace(Regex("\\([^)]*\\)"), "")
             .replace(Regex("\\{[^}]*\\}"), "")
-            .replace(Regex("\\[[^]]*\\]"), "")
+            .replace(Regex("\\[[^\\]]*\\]"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
+            .split("/")
+            .first()
+            .trim()
+
     }
 
     private fun openDatabase(): SQLiteDatabase {
@@ -275,7 +279,13 @@ class DictionaryDatabase(private val context: Context) {
 
         val normalizedTerm = normalizeForSearch(term)
 
-        val exact = results.firstOrNull { entry ->
+        val exact = results.sortedWith (
+            compareByDescending<DictionaryEntry> {
+                it.valide == "O" }
+                .thenBy { it.valide == "D"  }
+                .thenBy { it.french.contains(" ") }
+        )
+            .firstOrNull { entry ->
 
             val source = if (frenchToSaamaka) {
                 normalizeForSearch(entry.french)
@@ -310,7 +320,7 @@ class DictionaryDatabase(private val context: Context) {
             "étais", "était", "étions", "étiez", "étaient",
             "serai", "seras", "sera", "serons", "serez", "seront" -> "être"
 
-            "ai", "as", "a", "avons", "avez", "ont",
+            "ai", "as", "avons", "avez", "ont",
             "avais", "avait", "avions", "aviez", "avaient",
             "aurai", "auras", "aura", "aurons", "aurez", "auront" -> "avoir"
 
@@ -343,8 +353,9 @@ class DictionaryDatabase(private val context: Context) {
             "mangerai", "mangeras", "mangera", "mangeront" -> "manger"
 
             else -> clean
+            }
         }
-    }
+
     fun translatePhrase(
         text: String,
         frenchToSaamaka: Boolean
@@ -392,6 +403,14 @@ class DictionaryDatabase(private val context: Context) {
 
         while (index < words.size) {
 
+            if (frenchToSaamaka && words[index] == "aller"
+                && index +1 < words.size) {
+                translatedParts += "o"
+                index++
+                continue
+            }
+
+
             var foundTranslation: String? = null
             var consumedWords = 0
 
@@ -428,8 +447,11 @@ class DictionaryDatabase(private val context: Context) {
             }
         }
 
-        val missingParts = translatedParts
-            .filter { it.startsWith("[") && it.endsWith("]") }
+        val missingParts = translatedParts.filter {
+            it.startsWith("[") && it.endsWith("]") &&
+            it.removeSurrounding("[","]").lowercase() !in
+            setOf("à","a","le","la","les","un","une","de","du","des","au","aux")
+        }
 
         val missingInfo = if (missingParts.isNotEmpty()) {
             "\n\n🔎 À rechercher : " +
@@ -441,8 +463,7 @@ class DictionaryDatabase(private val context: Context) {
         }
 
         return "⚠️ Traduction approximative — à vérifier :\n" +
-                translatedParts.joinToString(" ") +
-                missingInfo
+                cleanTranslationForDisplay(translatedParts.joinToString(" ")) + missingInfo
     }
     fun findByIds(ids: Set<Int>): List<DictionaryEntry> {
         if (ids.isEmpty()) {
