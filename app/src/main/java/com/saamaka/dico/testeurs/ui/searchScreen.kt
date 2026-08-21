@@ -88,52 +88,84 @@ fun SearchScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AppLanguage.entries.forEach { language ->
 
-                val selected = selectedLanguage == language
+            AppLanguage.entries
+                .chunked(2)
+                .forEach { rowLanguages ->
 
-                FilterChip(
-                    selected = selected,
-                    onClick = {
-                        onLanguageChange(language)
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
 
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
+                        rowLanguages.forEach { language ->
 
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = selected,
-                        borderColor = MaterialTheme.colorScheme.outline.copy(
-                            alpha = 0.35f
-                        ),
-                        selectedBorderColor = MaterialTheme.colorScheme.primary
-                    ),
+                            val selected =
+                                selectedLanguage == language
 
-                    label = {
-                        Text(
-                            text = language.label,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            fontWeight = if (selected) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.Medium
-                            }
-                        )
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    onLanguageChange(language)
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(14.dp),
+
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor =
+                                        MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor =
+                                        MaterialTheme.colorScheme.onPrimary,
+                                    containerColor =
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor =
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+
+                                border =
+                                    FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = selected,
+                                        borderColor =
+                                            MaterialTheme.colorScheme.outline.copy(
+                                                alpha = 0.35f
+                                            ),
+                                        selectedBorderColor =
+                                            MaterialTheme.colorScheme.primary
+                                    ),
+
+                                label = {
+                                    Text(
+                                        text = when (language) {
+                                            AppLanguage.FRENCH -> "🇫🇷 Français"
+                                            AppLanguage.SAAMAKA -> "🇸🇷 Saamaka"
+                                            AppLanguage.ENGLISH -> "🇬🇧 English"
+                                            AppLanguage.DUTCH -> "🇳🇱 Nederlands"
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        fontWeight =
+                                            if (selected) {
+                                                FontWeight.Bold
+                                            } else {
+                                                FontWeight.Medium
+                                            }
+                                    )
+                                }
+                            )
+                        }
+
+                        if (rowLanguages.size == 1) {
+                            Spacer(
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                )
-            }
+                }
         }
 
         // -------------------------------------------------
@@ -266,8 +298,15 @@ fun SearchScreen(
                             AppLanguage.FRENCH -> entry.french
                             AppLanguage.ENGLISH -> entry.english
                             AppLanguage.DUTCH -> entry.dutch
+                            AppLanguage.SAAMAKA -> entry.saamaka
                         }
 
+                        val translationText = when (selectedLanguage) {
+                            AppLanguage.FRENCH -> entry.saamaka
+                            AppLanguage.SAAMAKA -> entry.french
+                            AppLanguage.ENGLISH -> entry.saamaka
+                            AppLanguage.DUTCH -> entry.saamaka
+                        }
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -301,8 +340,12 @@ fun SearchScreen(
                                     Spacer(Modifier.height(4.dp))
 
                                     Text(
-                                        text = entry.saamaka.ifBlank {
-                                            "Saamaka : à compléter"
+                                        text = translationText.ifBlank {
+                                            if (selectedLanguage == AppLanguage.SAAMAKA) {
+                                                "Français : à compléter"
+                                            } else {
+                                                "Saamaka : à compléter"
+                                            }
                                         },
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.primary

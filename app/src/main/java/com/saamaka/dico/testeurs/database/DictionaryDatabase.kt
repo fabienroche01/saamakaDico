@@ -24,6 +24,42 @@ class DictionaryDatabase(private val context: Context) {
 
     }
 
+    private fun detectMissingFrenchExpression(
+        words: List<String>,
+        index: Int
+    ): Pair<String, Int>? {
+
+        val remaining = words.drop(index)
+
+        fun matches(vararg parts: String): Boolean {
+            if (remaining.size < parts.size) return false
+
+            return parts.indices.all { i ->
+                normalizeForSearch(remaining[i]) ==
+                        normalizeForSearch(parts[i])
+            }
+        }
+
+        return when {
+            matches("il", "n'y", "a", "pas") ->
+                "il n'y a pas" to 4
+
+            matches("il", "n'existe", "pas") ->
+                "il n'existe pas" to 3
+
+            matches("il", "y", "a") ->
+                "il y a" to 3
+
+            matches("ne", "plus") ->
+                "ne plus" to 2
+
+            matches("ne", "pas") ->
+                "ne pas" to 2
+
+            else -> null
+        }
+    }
+
     private fun openDatabase(): SQLiteDatabase {
         val destination = context.getDatabasePath(databaseName)
 
@@ -129,6 +165,7 @@ class DictionaryDatabase(private val context: Context) {
         val sourceColumn = when (languageCode) {
             "en" -> "english"
             "nl" -> "nederlands"
+            "srm" -> "saamaka"
             else -> "francais"
         }
 
@@ -153,16 +190,16 @@ class DictionaryDatabase(private val context: Context) {
                   OR $sourceColumn LIKE ? COLLATE NOCASE
               )
             ORDER BY
-              CASE
-                  WHEN saamaka = ? COLLATE NOCASE
-                    OR $sourceColumn = ? COLLATE NOCASE THEN 0
-                  WHEN saamaka LIKE ? COLLATE NOCASE
-                    OR $sourceColumn LIKE ? COLLATE NOCASE THEN 1
-                  ELSE 2
-              END,
-              $sourceColumn COLLATE NOCASE
-            LIMIT ?
-            """.trimIndent(),
+  CASE
+      WHEN saamaka = ? COLLATE NOCASE
+        OR $sourceColumn = ? COLLATE NOCASE THEN 0
+      WHEN saamaka LIKE ? COLLATE NOCASE
+        OR $sourceColumn LIKE ? COLLATE NOCASE THEN 1
+      ELSE 2
+  END,
+  $sourceColumn COLLATE NOCASE
+LIMIT ?
+""".trimIndent(),
                 arrayOf(
                     contains,
                     contains,
@@ -214,7 +251,9 @@ class DictionaryDatabase(private val context: Context) {
                 val sourceText = when (languageCode) {
                     "en" -> entry.english
                     "nl" -> entry.dutch
+                    "srm" -> entry.saamaka
                     else -> entry.french
+
                 }
 
                 normalizeForSearch(sourceText) +
@@ -226,6 +265,7 @@ class DictionaryDatabase(private val context: Context) {
                     val sourceText = when (languageCode) {
                         "en" -> entry.english
                         "nl" -> entry.dutch
+                        "srm" -> entry.saamaka
                         else -> entry.french
                     }
 
@@ -236,20 +276,100 @@ class DictionaryDatabase(private val context: Context) {
                         normalizeForSearch(entry.saamaka)
 
                     when {
+
+                        // 1. Entrée exactement identique
                         normalizedSource == normalizedQuery ||
                                 normalizedSaamaka == normalizedQuery -> 0
 
-                        normalizedSource.startsWith(normalizedQuery) ||
-                                normalizedSaamaka.startsWith(normalizedQuery) -> 1
+                        // 2. Le terme existe comme mot séparé
+                        normalizedSource
+                            .split(Regex("\\s+"))
+                            .contains(normalizedQuery) ||
+                                normalizedSaamaka
+                                    .split(Regex("\\s+"))
+                                    .contains(normalizedQuery) -> 1
 
+                        // 3. L'expression commence par le terme
+                        normalizedSource.startsWith("$normalizedQuery ") ||
+                                normalizedSaamaka.startsWith("$normalizedQuery ") -> 2
+
+                        // 4. Correspondance partielle classique
                         normalizedSource.contains(normalizedQuery) ||
-                                normalizedSaamaka.contains(normalizedQuery) -> 2
+                                normalizedSaamaka.contains(normalizedQuery) -> 3
 
-                        else -> 3
+                        else -> 4
                     }
                 }
             )
             .take(limit)
+    }
+
+    private fun translateExactAlternatives(
+        text: String,
+        frenchToSaamaka: Boolean
+    ): List<String> {
+
+        val term = text.trim()
+
+        if (term.isBlank()) {
+            return emptyList()
+        }
+
+        val languageCode =
+            if (frenchToSaamaka) {
+                "fr"
+            } else {
+                "srm"
+            }
+
+        val normalizedTerm = normalizeForSearch(term)
+
+        return search(
+            query = term,
+            languageCode = languageCode,
+            limit = 100
+        )
+            .filter { entry ->
+
+                val source =
+                    if (frenchToSaamaka) {
+                        normalizeForSearch(entry.french)
+                    } else {
+                        normalizeForSearch(entry.saamaka)
+                    }
+
+                source == normalizedTerm
+            }
+            .sortedWith(
+                compareByDescending<DictionaryEntry> {
+                    it.valide.equals(
+                        "O",
+                        ignoreCase = true
+                    )
+                }
+                    .thenBy {
+                        it.valide.equals(
+                            "D",
+                            ignoreCase = true
+                        )
+                    }
+            )
+            .mapNotNull { entry ->
+
+                val translation =
+                    if (frenchToSaamaka) {
+                        entry.saamaka
+                    } else {
+                        entry.french
+                    }
+
+                translation
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+            }
+            .distinctBy {
+                normalizeForSearch(it)
+            }
     }
 
     fun translateExactPhrase(
@@ -263,38 +383,48 @@ class DictionaryDatabase(private val context: Context) {
             return null
         }
 
-        val results = if (frenchToSaamaka) {
-            search(
-                query = term,
-                languageCode = "fr",
-                limit = 20
-            )
-        } else {
-            search(
-                query = term,
-                languageCode = "fr",
-                limit = 20
-            )
-        }
+        val languageCode =
+            if (frenchToSaamaka) {
+                "fr"
+            } else {
+                "srm"
+            }
+
+        val results = search(
+            query = term,
+            languageCode = languageCode,
+            limit = 100
+        )
 
         val normalizedTerm = normalizeForSearch(term)
 
-        val exact = results.sortedWith (
-            compareByDescending<DictionaryEntry> {
-                it.valide == "O" }
-                .thenBy { it.valide == "D"  }
-                .thenBy { it.french.contains(" ") }
-        )
+        val exact = results
+            .sortedWith(
+                compareByDescending<DictionaryEntry> {
+                    it.valide.equals("O", ignoreCase = true)
+                }
+                    .thenBy {
+                        it.valide.equals("D", ignoreCase = true)
+                    }
+                    .thenBy {
+                        if (frenchToSaamaka) {
+                            it.french.contains(" ")
+                        } else {
+                            it.saamaka.contains(" ")
+                        }
+                    }
+            )
             .firstOrNull { entry ->
 
-            val source = if (frenchToSaamaka) {
-                normalizeForSearch(entry.french)
-            } else {
-                normalizeForSearch(entry.saamaka)
-            }
+                val source =
+                    if (frenchToSaamaka) {
+                        normalizeForSearch(entry.french)
+                    } else {
+                        normalizeForSearch(entry.saamaka)
+                    }
 
-            source == normalizedTerm
-        }
+                source == normalizedTerm
+            }
 
         return exact?.let { entry ->
             if (frenchToSaamaka) {
@@ -305,6 +435,114 @@ class DictionaryDatabase(private val context: Context) {
         }
     }
 
+    private fun prepareFrenchTextForTranslation(text: String): String {
+        return text
+            .lowercase()
+            .replace('’', '\'')
+            .replace(Regex("\\bj'"), "je ")
+            .replace(Regex("\\bm'"), "me ")
+            .replace(Regex("\\bt'"), "te ")
+            .replace(Regex("\\bs'"), "se ")
+            .replace(Regex("\\bc'"), "ce ")
+            .replace(Regex("\\bn'"), "ne ")
+            .replace(Regex("\\bd'"), "de ")
+            .replace(Regex("\\bl'"), "le ")
+            .replace(Regex("\\bqu'"), "que ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun frenchNegativeSubjectToSaamaka(
+        subject: String
+    ): String? {
+
+        return when (normalizeForSearch(subject)) {
+
+            // 1SG
+            "je" -> "ma"
+
+            // 2SG
+            "tu" -> "ja"
+
+            // 3SG
+            "il", "elle" -> "an"
+
+            // 1PL
+            "nous" -> "wa"
+
+            // 2PL et 3PL :
+            // non ajoutés car la forme négative
+            // n'est pas donnée dans notre source.
+            else -> null
+        }
+    }
+
+    private fun translateConfirmedNegativePattern(
+        text: String
+    ): String? {
+
+        val prepared = prepareFrenchTextForTranslation(text)
+
+        val words = prepared
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.size < 4) {
+            return null
+        }
+
+        val negativeSubject =
+            frenchNegativeSubjectToSaamaka(words[0])
+                ?: return null
+
+        // Structure :
+        // je ne dors pas
+        // tu ne manges pas
+        // il ne vient pas
+        if (normalizeForSearch(words[1]) != "ne") {
+            return null
+        }
+
+        val pasIndex = words.indexOfFirst { word ->
+            normalizeForSearch(word) == "pas"
+        }
+
+        if (pasIndex != 3) {
+            return null
+        }
+
+        val frenchVerb = words[2]
+
+        val normalizedVerb =
+            normalizeFrenchWordForTranslation(frenchVerb)
+
+        // Cas confirmé de ɗɛ
+        if (normalizedVerb == "être") {
+
+            return "$negativeSubject ɗɛ"
+        }
+
+        val alternatives =
+            translateExactAlternatives(
+                text = normalizedVerb,
+                frenchToSaamaka = true
+            )
+
+        // Une seule traduction attestée :
+        // on peut construire la négation.
+        if (alternatives.size == 1) {
+
+            return "$negativeSubject ${
+                cleanTranslationForDisplay(
+                    alternatives.first()
+                )
+            }"
+        }
+
+        // Plusieurs sens ou aucun :
+        // on ne choisit pas à la place du locuteur.
+        return null
+    }
     private fun normalizeFrenchWordForTranslation(word: String): String {
         val clean = word
             .trim()
@@ -312,6 +550,7 @@ class DictionaryDatabase(private val context: Context) {
             .trim(',', '.', ';', ':', '!', '?', '\'', '"')
 
         return when (clean) {
+            "j'", "j’" -> "je"
             "vais", "vas", "va", "allons", "allez", "vont",
             "allais", "allait", "allaient",
             "irai", "iras", "ira", "irons", "irez", "iront" -> "aller"
@@ -352,6 +591,10 @@ class DictionaryDatabase(private val context: Context) {
             "mangeais", "mangeait", "mangeaient",
             "mangerai", "mangeras", "mangera", "mangeront" -> "manger"
 
+            "aime", "aimes", "aimons", "aimez", "aiment",
+            "aimais", "aimait", "aimions", "aimiez", "aimaient",
+            "aimerai", "aimeras", "aimera", "aimerons", "aimerez", "aimeront" -> "aimer"
+
             else -> clean
             }
         }
@@ -361,109 +604,298 @@ class DictionaryDatabase(private val context: Context) {
         frenchToSaamaka: Boolean
     ): String? {
 
-        val cleanText = text.trim()
+        val cleanText = text
+            .trim()
+            .replace(Regex("\\s+"), " ")
 
         if (cleanText.isBlank()) {
             return null
         }
 
-        // 1. Priorité absolue : phrase/expression exacte
+        if (frenchToSaamaka) {
+
+            val confirmedNegative =
+                translateConfirmedNegativePattern(
+                    cleanText
+                )
+
+            if (!confirmedNegative.isNullOrBlank()) {
+
+                return "✅ Construction grammaticale attestée :\n" +
+                        confirmedNegative
+            }
+        }
+
+        if (frenchToSaamaka) {
+
+            val normalizedSentence =
+                normalizeForSearch(
+                    prepareFrenchTextForTranslation(
+                        cleanText
+                    )
+                )
+
+            if (
+                normalizedSentence == "c est" ||
+                normalizedSentence == "ce est"
+            ) {
+                return "✅ Construction grammaticale attestée :\nɗa"
+            }
+
+            if (
+                normalizedSentence == "ce n est pas" ||
+                normalizedSentence == "ce ne est pas" ||
+                normalizedSentence == "c est pas" ||
+                normalizedSentence == "ce est pas"
+            ) {
+                return "✅ Construction grammaticale attestée :\nna"
+            }
+        }
+
+        // -------------------------------------------------
+        // 1. PRIORITÉ ABSOLUE : PHRASE EXACTE ATTESTÉE
+        // -------------------------------------------------
+
         val exact = translateExactPhrase(
             text = cleanText,
             frenchToSaamaka = frenchToSaamaka
         )
 
         if (!exact.isNullOrBlank()) {
-            return "✅ Traduction attestée dans le dictionnaire :\n$exact"
+            return "✅ Traduction attestée dans le dictionnaire :\n" +
+                    cleanTranslationForDisplay(exact)
         }
 
-        val textForTranslation = cleanText
-            .replace(Regex("[{}()]"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-        // 2. Sinon traduction approximative
-        val words = textForTranslation
-            .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
-            .map { word ->
-                if (frenchToSaamaka) {
-                    normalizeFrenchWordForTranslation(word)
-                } else {
-                    word
-                }
+        // -------------------------------------------------
+        // 2. NETTOYAGE LÉGER
+        // -------------------------------------------------
+
+        val textForTranslation =
+            if (frenchToSaamaka) {
+                prepareFrenchTextForTranslation(cleanText)
+                    .replace(Regex("[{}()]"), " ")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+            } else {
+                cleanText
+                    .replace(Regex("[{}()]"), " ")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
             }
 
-        if (words.isEmpty()) {
+        val originalWords = textForTranslation
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (originalWords.isEmpty()) {
             return null
         }
 
+        // Version normalisée utilisée seulement comme solution de repli.
+        // On conserve toujours la forme originale pour rechercher
+        // d'abord les expressions réellement attestées.
+        val normalizedWords = originalWords.map { word ->
+            if (frenchToSaamaka) {
+                normalizeFrenchWordForTranslation(word)
+            } else {
+                word
+            }
+        }
+
         val translatedParts = mutableListOf<String>()
+        val missingWords = mutableListOf<String>()
 
         var index = 0
 
-        while (index < words.size) {
+        // -------------------------------------------------
+        // 3. RECHERCHE DES EXPRESSIONS LES PLUS LONGUES
+        // -------------------------------------------------
 
-            if (frenchToSaamaka && words[index] == "aller"
-                && index +1 < words.size) {
-                translatedParts += "o"
-                index++
-                continue
+        while (index < originalWords.size) {
+
+            if (frenchToSaamaka) {
+
+                val missingExpression =
+                    detectMissingFrenchExpression(
+                        originalWords,
+                        index
+                    )
+
+                if (missingExpression != null) {
+
+                    val expression = missingExpression.first
+                    val consumed = missingExpression.second
+
+                    val exactExpression =
+                        translateExactPhrase(
+                            text = expression,
+                            frenchToSaamaka = true
+                        )
+
+                    if (!exactExpression.isNullOrBlank()) {
+                        translatedParts +=
+                            cleanTranslationForDisplay(
+                                exactExpression
+                            )
+                    } else {
+                        translatedParts += "[$expression]"
+                        missingWords += expression
+                    }
+
+                    index += consumed
+                    continue
+                }
             }
-
-
             var foundTranslation: String? = null
             var consumedWords = 0
 
-            // On essaie d'abord les expressions les plus longues
-            val maxChunk = minOf(8, words.size - index)
+            val maxChunk = minOf(
+                8,
+                originalWords.size - index
+            )
 
             for (size in maxChunk downTo 1) {
 
-                val part = words
+                // A. Forme réellement écrite par l'utilisateur
+                val originalPart = originalWords
                     .subList(index, index + size)
                     .joinToString(" ")
 
-                val translated = translateExactPhrase(
-                    text = part,
+                var translated = translateExactPhrase(
+                    text = originalPart,
                     frenchToSaamaka = frenchToSaamaka
                 )
 
+                // B. Si rien n'est trouvé en FR :
+                // essai avec la forme française normalisée
+                // B. Si rien n'est trouvé en FR :
+// essai avec la forme française normalisée
+                if (
+                    translated.isNullOrBlank() &&
+                    frenchToSaamaka
+                ) {
+
+                    val normalizedPart = normalizedWords
+                        .subList(index, index + size)
+                        .joinToString(" ")
+
+                    if (
+                        !normalizedPart.equals(
+                            originalPart,
+                            ignoreCase = true
+                        )
+                    ) {
+
+                        val alternatives = translateExactAlternatives(
+                            text = normalizedPart,
+                            frenchToSaamaka = true
+                        )
+
+                        when {
+                            alternatives.size == 1 -> {
+                                translated = alternatives.first()
+                            }
+
+                            alternatives.size > 1 -> {
+                                translatedParts +=
+                                    "[$normalizedPart : plusieurs traductions]"
+
+                                missingWords +=
+                                    "$normalizedPart → " +
+                                            alternatives.joinToString(" / ")
+
+                                index += size
+                                consumedWords = -1
+                                break
+                            }
+                        }
+                    }
+                }
                 if (!translated.isNullOrBlank()) {
-                    foundTranslation = translated
+
+                    foundTranslation =
+                        cleanTranslationForDisplay(translated)
+
                     consumedWords = size
                     break
                 }
             }
 
-            if (foundTranslation != null) {
-                translatedParts += cleanTranslationForDisplay(foundTranslation)
-                index += consumedWords
-            } else {
-                // Mot non trouvé : on le conserve pour ne pas inventer
-                val missingWord = words[index]
+            // -------------------------------------------------
+            // 4. TRADUCTION TROUVÉE OU MOT INCONNU
+            // -------------------------------------------------
+            if (consumedWords == -1) {
+                continue
+            }
 
-                translatedParts += "[$missingWord]"
+            if (foundTranslation != null) {
+
+                translatedParts += foundTranslation
+                index += consumedWords
+
+            } else {
+
+                val originalWord = originalWords[index]
+
+                val displayWord =
+                    if (frenchToSaamaka) {
+                        normalizedWords[index]
+                    } else {
+                        originalWord
+                    }
+
+                translatedParts += "[$displayWord]"
+
+                val normalizedMissing = displayWord.lowercase()
+
+                if (
+                    normalizedMissing !in setOf(
+                        "à",
+                        "a",
+                        "le",
+                        "la",
+                        "les",
+                        "un",
+                        "une",
+                        "de",
+                        "du",
+                        "des",
+                        "au",
+                        "aux"
+                    )
+                ) {
+                    missingWords += displayWord
+                }
+
                 index++
             }
         }
 
-        val missingParts = translatedParts.filter {
-            it.startsWith("[") && it.endsWith("]") &&
-            it.removeSurrounding("[","]").lowercase() !in
-            setOf("à","a","le","la","les","un","une","de","du","des","au","aux")
-        }
+        // -------------------------------------------------
+        // 5. CONSTRUCTION DU RÉSULTAT
+        // -------------------------------------------------
 
-        val missingInfo = if (missingParts.isNotEmpty()) {
-            "\n\n🔎 À rechercher : " +
-                    missingParts.joinToString(", ") {
-                        it.removePrefix("[").removeSuffix("]")
-                    }
-        } else {
-            ""
-        }
+        val translatedText =
+            cleanTranslationForDisplay(
+                translatedParts.joinToString(" ")
+            )
+
+        val missingInfo =
+            if (missingWords.isNotEmpty()) {
+
+                val uniqueMissing = missingWords
+                    .distinctBy { it.lowercase() }
+
+                "\n\n🔎 À rechercher : " +
+                        uniqueMissing.joinToString(", ")
+
+            } else {
+                ""
+            }
 
         return "⚠️ Traduction approximative — à vérifier :\n" +
-                cleanTranslationForDisplay(translatedParts.joinToString(" ")) + missingInfo
+                translatedText +
+                missingInfo
     }
     fun findByIds(ids: Set<Int>): List<DictionaryEntry> {
         if (ids.isEmpty()) {

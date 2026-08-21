@@ -5,6 +5,7 @@ enum class AppLanguage(
     val label: String
 ) {
     FRENCH("fr", "Français"),
+    SAAMAKA("srm", "Saamaka"),
     ENGLISH("en", "English"),
     DUTCH("nl", "Nederlands")
 }

@@ -1558,6 +1558,7 @@ private fun EntryList(
 
                         val sourceText = when (selectedLanguage) {
                             AppLanguage.FRENCH -> entry.french
+                            AppLanguage.SAAMAKA -> entry.saamaka
                             AppLanguage.ENGLISH -> entry.english
                             AppLanguage.DUTCH -> entry.dutch
                         }
@@ -1660,13 +1661,28 @@ private fun DetailScreen(
         AppLanguage.FRENCH -> "Français"
         AppLanguage.ENGLISH -> "English"
         AppLanguage.DUTCH -> "Nederlands"
+        AppLanguage.SAAMAKA -> "Saamaka"
     }
 
     val sourceText = when (selectedLanguage) {
         AppLanguage.FRENCH -> entry.french
+        AppLanguage.SAAMAKA -> entry.saamaka
         AppLanguage.ENGLISH -> entry.english
         AppLanguage.DUTCH -> entry.dutch
     }
+    val translationLabel =
+        if (selectedLanguage == AppLanguage.SAAMAKA) {
+            "Français"
+        } else {
+            "Saamaka"
+        }
+
+    val translationText =
+        if (selectedLanguage == AppLanguage.SAAMAKA) {
+            entry.french
+        } else {
+            entry.saamaka
+        }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -1733,7 +1749,7 @@ private fun DetailScreen(
                         color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
                         Text(
-                            text = "Saamaka",
+                            text = translationLabel,
                             modifier = Modifier.padding(
                                 horizontal = 10.dp,
                                 vertical = 4.dp
@@ -1747,7 +1763,7 @@ private fun DetailScreen(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = entry.saamaka,
+                        translationText,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

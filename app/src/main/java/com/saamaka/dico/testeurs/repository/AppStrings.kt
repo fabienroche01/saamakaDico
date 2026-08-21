@@ -367,5 +367,6 @@ fun stringsFor(language: AppLanguage): AppStrings {
         AppLanguage.FRENCH -> stringsFor(UiLanguage.FRENCH)
         AppLanguage.ENGLISH -> stringsFor(UiLanguage.ENGLISH)
         AppLanguage.DUTCH -> stringsFor(UiLanguage.DUTCH)
+        AppLanguage.SAAMAKA -> stringsFor(UiLanguage.SAAMAKA)
     }
 }
