@@ -53,17 +53,35 @@ import com.saamaka.dico.testeurs.UiLanguage
 import java.io.File
 import com.saamaka.dico.testeurs.ui.TranslateScreen
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.NavigationBarItemDefaults
 
 
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF6B4BAE),
+    primary = Color(0xFF0F5A3C),          // vert forêt principal
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE9DFFF),
-    onPrimaryContainer = Color(0xFF27144F),
-    background = Color(0xFFFFF8FC),
-    surface = Color(0xFFFFF8FC),
-    surfaceVariant = Color(0xFFF1EAF3)
+
+    primaryContainer = Color(0xFFDCEBDD), // vert très clair
+    onPrimaryContainer = Color(0xFF123528),
+
+    secondary = Color(0xFFC99A2E),        // touche dorée
+    onSecondary = Color(0xFF2B2108),
+
+    secondaryContainer = Color(0xFFF7EAC2),
+    onSecondaryContainer = Color(0xFF3C2D06),
+
+    background = Color(0xFFFFFBF3),       // crème très clair
+    onBackground = Color(0xFF1F2B24),
+
+    surface = Color(0xFFFFFBF3),
+    onSurface = Color(0xFF1F2B24),
+
+    surfaceVariant = Color(0xFFF3EDE2),
+    onSurfaceVariant = Color(0xFF4C554F),
+
+    outline = Color(0xFF8B948E)
 )
 
 private val DarkColors = darkColorScheme(
@@ -427,7 +445,23 @@ private fun TesterApp() {
         },
         bottomBar = {
             if (selectedEntry == null && correctionEntry == null) {
-                NavigationBar {
+
+                NavigationBar(
+                    containerColor = Color(0xFFFFFBF3),
+                    contentColor = Color(0xFF234437)
+                ) {
+
+                    val navigationItemColors =
+                        NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF0F5A3C),
+                            selectedTextColor = Color(0xFF0F5A3C),
+
+                            // Pastille derrière l'onglet actif
+                            indicatorColor = Color(0xFFDCEBDD),
+
+                            unselectedIconColor = Color(0xFF5C675F),
+                            unselectedTextColor = Color(0xFF5C675F)
+                        )
 
                     // Recherche : tout le monde
                     NavigationBarItem(
@@ -435,6 +469,7 @@ private fun TesterApp() {
                         onClick = {
                             activeTab = MainTab.SEARCH
                         },
+                        colors = navigationItemColors,
                         icon = {
                             Icon(
                                 Icons.Default.Search,
@@ -452,8 +487,11 @@ private fun TesterApp() {
                         onClick = {
                             activeTab = MainTab.TRANSLATE
                         },
+                        colors = navigationItemColors,
                         icon = {
-                            Text("✨")
+                            Text(
+                                text = "✨"
+                            )
                         },
                         label = {
                             Text(appStrings.translate)
@@ -467,6 +505,7 @@ private fun TesterApp() {
                             onClick = {
                                 activeTab = MainTab.MISSION
                             },
+                            colors = navigationItemColors,
                             icon = {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
@@ -486,6 +525,7 @@ private fun TesterApp() {
                             activeTab = MainTab.FAVORITES
                             refreshFavorites()
                         },
+                        colors = navigationItemColors,
                         icon = {
                             Icon(
                                 Icons.Default.Favorite,
@@ -504,6 +544,7 @@ private fun TesterApp() {
                             activeTab = MainTab.HISTORY
                             refreshHistory()
                         },
+                        colors = navigationItemColors,
                         icon = {
                             Icon(
                                 Icons.Default.History,
@@ -522,6 +563,7 @@ private fun TesterApp() {
                             onClick = {
                                 activeTab = MainTab.CORRECTIONS
                             },
+                            colors = navigationItemColors,
                             icon = {
                                 Icon(
                                     Icons.Default.Settings,
@@ -536,7 +578,7 @@ private fun TesterApp() {
                 }
             }
         }
-    ) { padding ->
+        ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -736,51 +778,73 @@ private fun TesterApp() {
 
                                 item {
 
-                                    Text(
-                                        text = "Mission de $testerName",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(
-                                        modifier = Modifier.height(8.dp)
-                                    )
-
-                                    Box {
-
-                                        Button(
-                                            onClick = {
-                                                expandedCategory = true
-                                            }
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(20.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(18.dp)
                                         ) {
+
                                             Text(
-                                                if (selectedMissionCategory.isBlank()) {
-                                                    "Choisir une catégorie"
-                                                } else {
-                                                    "Catégorie : $selectedMissionCategory"
-                                                }
+                                                text = "Mission de $testerName",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontWeight = FontWeight.Bold
                                             )
-                                        }
 
-                                        DropdownMenu(
-                                            expanded = expandedCategory,
-                                            onDismissRequest = {
-                                                expandedCategory = false
-                                            }
-                                        ) {
+                                            Spacer(
+                                                modifier = Modifier.height(4.dp)
+                                            )
 
-                                            categories.forEach { category ->
+                                            Text(
+                                                text = "Valide, corrige et complète les mots de ta mission.",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
 
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text(category)
-                                                    },
+                                            Spacer(
+                                                modifier = Modifier.height(14.dp)
+                                            )
+
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+
+                                                Button(
+                                                    modifier = Modifier.fillMaxWidth(),
                                                     onClick = {
-                                                        selectedMissionCategory = category
-                                                        assignmentStore.selectCategory(category)
+                                                        expandedCategory = true
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        if (selectedMissionCategory.isBlank()) {
+                                                            "Choisir une catégorie"
+                                                        } else {
+                                                            "Catégorie : $selectedMissionCategory"
+                                                        }
+                                                    )
+                                                }
+
+                                                DropdownMenu(
+                                                    expanded = expandedCategory,
+                                                    onDismissRequest = {
                                                         expandedCategory = false
                                                     }
-                                                )
+                                                ) {
+
+                                                    categories.forEach { category ->
+
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Text(category)
+                                                            },
+                                                            onClick = {
+                                                                selectedMissionCategory = category
+                                                                assignmentStore.selectCategory(category)
+                                                                expandedCategory = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -800,16 +864,74 @@ private fun TesterApp() {
                                         it.saamaka.isBlank()
                                     }
 
-                                    Text(
-                                        text = "${missionEntries.size} mots dans cette mission"
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
 
-                                    Text(
-                                        text = "⚠️ $doubtfulCount douteux • ⬜ $newCount nouveaux"
-                                    )
+                                        Card(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(12.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${missionEntries.size}",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+
+                                                Text(
+                                                    text = "Mots",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
+
+                                        Card(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(12.dp)
+                                            ) {
+                                                Text(
+                                                    text = "$doubtfulCount",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+
+                                                Text(
+                                                    text = "Douteux",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
+
+                                        Card(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(16.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(12.dp)
+                                            ) {
+                                                Text(
+                                                    text = "$newCount",
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+
+                                                Text(
+                                                    text = "À compléter",
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
+                                    }
 
                                     Spacer(
-                                        modifier = Modifier.height(12.dp)
+                                        modifier = Modifier.height(14.dp)
                                     )
                                 }
 
@@ -818,49 +940,76 @@ private fun TesterApp() {
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(vertical = 6.dp)
+                                            .padding(vertical = 5.dp)
                                             .clickable {
                                                 openEntry(entry)
-                                            }
+                                            },
+                                        shape = RoundedCornerShape(16.dp)
                                     ) {
 
-                                        Column(
-                                            modifier = Modifier.padding(12.dp)
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
 
-                                            Text(
-                                                text = entry.french,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                            Column(
+                                                modifier = Modifier.weight(1f)
+                                            ) {
 
-                                            Text(
-                                                text = if (entry.saamaka.isBlank()) {
-                                                    "Saamaka : À compléter"
-                                                } else {
-                                                    "Saamaka : ${entry.saamaka}"
-                                                }
-                                            )
+                                                Text(
+                                                    text = entry.french,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold
+                                                )
 
-                                            Text(
-                                                text = when {
+                                                Spacer(
+                                                    modifier = Modifier.height(4.dp)
+                                                )
 
-                                                    entry.valide.equals(
-                                                        "D",
-                                                        ignoreCase = true
-                                                    ) -> "⚠️ Douteux"
+                                                Text(
+                                                    text = if (entry.saamaka.isBlank()) {
+                                                        "Saamaka : à compléter"
+                                                    } else {
+                                                        "Saamaka : ${entry.saamaka}"
+                                                    },
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
 
-                                                    entry.saamaka.isBlank() ->
-                                                        "❓ Traduction manquante"
+                                                Spacer(
+                                                    modifier = Modifier.height(6.dp)
+                                                )
 
-                                                    entry.valide.isBlank() ->
-                                                        "⬜ Nouveau"
+                                                Text(
+                                                    text = when {
 
-                                                    else ->
-                                                        "✅ Déjà validé"
-                                                }
+                                                        entry.valide.equals(
+                                                            "D",
+                                                            ignoreCase = true
+                                                        ) -> "⚠️ Douteux"
+
+                                                        entry.saamaka.isBlank() ->
+                                                            "❓ Traduction manquante"
+
+                                                        entry.valide.isBlank() ->
+                                                            "⬜ Nouveau"
+
+                                                        else ->
+                                                            "✅ Déjà validé"
+                                                    },
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            }
+
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = null
                                             )
                                         }
                                     }
+
                                 }
                             }
                         }
@@ -1004,15 +1153,17 @@ private fun TesterNameSetupScreen(
 
         Button(
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
             enabled = name.trim().isNotEmpty(),
             onClick = {
                 onSave(name.trim())
             }
-        ) {
+        ){
             Text(strings.continueText)
         }
     }
 }
+
 @Composable
 private fun SavedScreen(
     title: String,
@@ -1020,10 +1171,39 @@ private fun SavedScreen(
     entries: List<DictionaryEntry>,
     onOpen: (DictionaryEntry) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Spacer(Modifier.height(16.dp))
-        Text(title, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        Spacer(Modifier.height(14.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Mes favoris",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Spacer(Modifier.height(3.dp))
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         EntryList(
             entries = entries,
             selectedLanguage = selectedLanguage,
@@ -1032,6 +1212,7 @@ private fun SavedScreen(
     }
 }
 
+
 @Composable
 private fun HistoryScreen(
     entries: List<DictionaryEntry>,
@@ -1039,20 +1220,62 @@ private fun HistoryScreen(
     onClear: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Spacer(Modifier.height(8.dp))
-        Row(
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        Spacer(Modifier.height(14.dp))
+
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Text(
-                if (entries.isEmpty()) "Historique vide" else "${entries.size} mot(s) récent(s)",
-                fontWeight = FontWeight.Bold
-            )
-            TextButton(onClick = onClear, enabled = entries.isNotEmpty()) {
-                Text("Tout effacer")
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Historique",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+
+                    Spacer(Modifier.height(3.dp))
+
+                    Text(
+                        text = if (entries.isEmpty()) {
+                            "Aucun mot consulté récemment"
+                        } else {
+                            "${entries.size} mot(s) récent(s)"
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                TextButton(
+                    onClick = onClear,
+                    enabled = entries.isNotEmpty()
+                ) {
+                    Text(
+                        text = "Tout effacer",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
+
+        Spacer(Modifier.height(12.dp))
+
         EntryList(
             entries = entries,
             selectedLanguage = selectedLanguage,
@@ -1060,6 +1283,8 @@ private fun HistoryScreen(
         )
     }
 }
+
+
 @Composable
 private fun CorrectionsScreen(
     testerName: String,
@@ -1074,68 +1299,115 @@ private fun CorrectionsScreen(
     validatedReviewCount: Int,
     correctedReviewCount: Int
 ) {
-    var name by remember(testerName) {
-        mutableStateOf(testerName)
-    }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+
         item {
-            Spacer(Modifier.height(16.dp))
+
+            Spacer(Modifier.height(14.dp))
 
             Text(
-                "Espace corrections",
+                text = "Espace corrections",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
             Text(
-                "Chaque correcteur peut proposer des modifications sans recevoir de lot attribué."
+                text = "Valide, corrige et exporte ton travail de testeur.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(14.dp))
 
+            // Identité V13 verrouillée
             OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                    onTesterNameChange(it)
-                },
+                value = testerName,
+                onValueChange = { },
                 modifier = Modifier.fillMaxWidth(),
                 label = {
-                    Text("Nom du correcteur")
+                    Text("Testeur")
                 },
-                singleLine = true
+                supportingText = {
+                    Text("Identité enregistrée et protégée")
+                },
+                singleLine = true,
+                readOnly = true,
+                shape = RoundedCornerShape(14.dp)
             )
 
             Spacer(Modifier.height(14.dp))
 
-            Card(
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
+
                 Column(
-                    modifier = Modifier.padding(18.dp)
+                    modifier = Modifier.padding(16.dp)
                 ) {
+
                     Text(
-                        "Résumé global",
+                        text = "Résumé du travail",
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    Text("Mots dans le dictionnaire : $total")
-                    Text("Validations O : $validatedReviewCount")
-                    Text("Corrections : $correctedReviewCount")
-                    Text("Actions enregistrées : $correctionCount")
-                    Text("Validations locales : $validatedCount")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$total",
+                            label = "Mots"
+                        )
+
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$validatedReviewCount",
+                            label = "Validations"
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$correctedReviewCount",
+                            label = "Corrections"
+                        )
+
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$correctionCount",
+                            label = "Actions"
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        text = "$validatedCount validation(s) locale(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
 
@@ -1143,6 +1415,7 @@ private fun CorrectionsScreen(
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 enabled = correctionCount > 0,
                 onClick = onExportCorrections
             ) {
@@ -1153,13 +1426,14 @@ private fun CorrectionsScreen(
 
                 Spacer(Modifier.width(8.dp))
 
-                Text("Exporter les validations et corrections")
+                Text("Exporter mon travail")
             }
 
             Spacer(Modifier.height(8.dp))
 
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 onClick = onClearCorrections
             ) {
                 Text("Effacer les corrections locales")
@@ -1169,27 +1443,83 @@ private fun CorrectionsScreen(
 
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 onClick = onClearValidations
             ) {
                 Text("Effacer les validations locales")
             }
 
+            Spacer(Modifier.height(18.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+
+                    Text(
+                        text = "Consignes",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text("• ${strings.instructionSearch}")
+                    Spacer(Modifier.height(4.dp))
+
+                    Text("• ${strings.instructionValidate}")
+                    Spacer(Modifier.height(4.dp))
+
+                    Text("• ${strings.instructionCorrect}")
+                    Spacer(Modifier.height(4.dp))
+
+                    Text("• ${strings.instructionExport}")
+                }
+            }
+
             Spacer(Modifier.height(20.dp))
-
-            Text(
-                "Consignes",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(strings.instructionSearch)
-            Text(strings.instructionValidate)
-            Text(strings.instructionCorrect)
-            Text(strings.instructionExport)
         }
     }
 }
 
+
+@Composable
+private fun StatCard(
+    modifier: Modifier = Modifier,
+    value: String,
+    label: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(
+            alpha = 0.75f
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 private fun EntryList(
@@ -1358,53 +1688,106 @@ private fun DetailScreen(
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(22.dp)
+                    modifier = Modifier.padding(20.dp)
                 ) {
-                    Text(
-                        sourceLabel,
-                        style = MaterialTheme.typography.labelLarge
-                    )
 
-                    Text(
-                        sourceText,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-                    HorizontalDivider()
-                    Spacer(Modifier.height(16.dp))
-
-                    Text(
-                        "Saamaka",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-
-                    Text(
-                        entry.saamaka,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Text(
-                        strings.pronunciationSaamaka,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = if (testerName.isBlank()) {
-                            "${strings.speaker} : ${strings.notSpecified}"
-                        } else {
-                            "${strings.speaker} : $testerName"
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    // Langue source
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = sourceLabel,
+                            modifier = Modifier.padding(
+                                horizontal = 10.dp,
+                                vertical = 4.dp
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
 
                     Spacer(Modifier.height(8.dp))
 
+                    Text(
+                        text = sourceText,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(
+                            alpha = 0.25f
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Saamaka
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = "Saamaka",
+                            modifier = Modifier.padding(
+                                horizontal = 10.dp,
+                                vertical = 4.dp
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        text = entry.saamaka,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Prononciation
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+
+                        Column(
+                            modifier = Modifier.padding(14.dp)
+                        ) {
+
+                            Text(
+                                text = strings.pronunciationSaamaka,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            Spacer(Modifier.height(3.dp))
+
+                            Text(
+                                text = if (testerName.isBlank()) {
+                                    "${strings.speaker} : ${strings.notSpecified}"
+                                } else {
+                                    "${strings.speaker} : $testerName"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
                     if (accessLevel == AccessLevel.TESTER) {
                         if (!isRecording) {
                             Button(
@@ -1504,11 +1887,13 @@ private fun DetailScreen(
 
                     OutlinedButton(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
                         onClick = onNext
                     ) {
                         Icon(
                             Icons.Default.SkipNext,
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(Modifier.width(8.dp))
@@ -1516,10 +1901,11 @@ private fun DetailScreen(
                         Text(strings.nextWord)
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Button(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
                         onClick = {
                             favorite = !favorite
                             onFavoriteChange(favorite)
@@ -1545,19 +1931,22 @@ private fun DetailScreen(
                         )
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = onCopy
                         ) {
                             Icon(
                                 Icons.Default.ContentCopy,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
 
                             Spacer(Modifier.width(6.dp))
@@ -1567,11 +1956,13 @@ private fun DetailScreen(
 
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = onShare
                         ) {
                             Icon(
                                 Icons.Default.Share,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
 
                             Spacer(Modifier.width(6.dp))
@@ -1580,55 +1971,76 @@ private fun DetailScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(18.dp))
 
                     if (accessLevel == AccessLevel.TESTER) {
-                    Text(
-                        strings.linguisticValidation,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
 
-                    Text(
-                        strings.validationExplanation,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            enabled = !isValidated,
-                            onClick = onValidate
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surface
                         ) {
-                            Text(
-                                if (isValidated) {
-                                    strings.validatedO
-                                } else {
-                                    strings.validateO
+
+                            Column(
+                                modifier = Modifier.padding(14.dp)
+                            ) {
+
+                                Text(
+                                    text = strings.linguisticValidation,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                Text(
+                                    text = strings.validationExplanation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+
+                                    Button(
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(14.dp),
+                                        enabled = !isValidated,
+                                        onClick = onValidate
+                                    ) {
+                                        Text(
+                                            if (isValidated) {
+                                                strings.validatedO
+                                            } else {
+                                                strings.validateO
+                                            }
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(14.dp),
+                                        onClick = onCorrection
+                                    ) {
+                                        Text(strings.correct)
+                                    }
                                 }
-                            )
+                            }
                         }
-
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = onCorrection
-                        ) {
-                            Text(strings.correct)
-                        }
-                    }
 
                         // Fin des outils réservés aux testeurs
+                    }
                     }
                 }
             }
         }
     }
-}
+
 @Composable
 private fun CorrectionForm(
     entry: DictionaryEntry,
@@ -1642,50 +2054,108 @@ private fun CorrectionForm(
     var saamakaProposed by remember { mutableStateOf(entry.saamaka) }
     var comment by remember { mutableStateOf("") }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         item {
-            Spacer(Modifier.height(10.dp))
 
+            Spacer(Modifier.height(14.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Proposer une correction",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        text = "Modifie uniquement les éléments qui doivent être corrigés.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Identité du testeur : affichée mais protégée
             OutlinedTextField(
                 value = testerName,
-                onValueChange = { testerName = it },
+                onValueChange = { },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(strings.correctorName) },
-                singleLine = true
+                label = {
+                    Text(strings.correctorName)
+                },
+                supportingText = {
+                    Text("Identité du testeur enregistrée")
+                },
+                readOnly = true,
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
             )
 
             Spacer(Modifier.height(10.dp))
 
             OutlinedTextField(
                 value = frenchProposed,
-                onValueChange = { frenchProposed = it },
+                onValueChange = {
+                    frenchProposed = it
+                },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(strings.proposedFrench) },
+                label = {
+                    Text(strings.proposedFrench)
+                },
+                shape = RoundedCornerShape(14.dp)
             )
 
             Spacer(Modifier.height(10.dp))
 
             OutlinedTextField(
                 value = saamakaProposed,
-                onValueChange = { saamakaProposed = it },
+                onValueChange = {
+                    saamakaProposed = it
+                },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(strings.proposedSaamaka) },
+                label = {
+                    Text(strings.proposedSaamaka)
+                },
+                shape = RoundedCornerShape(14.dp)
             )
 
             Spacer(Modifier.height(10.dp))
 
             OutlinedTextField(
                 value = comment,
-                onValueChange = { comment = it },
+                onValueChange = {
+                    comment = it
+                },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(strings.commentExplanation) },
-                minLines = 3
+                label = {
+                    Text(strings.commentExplanation)
+                },
+                placeholder = {
+                    Text("Explique brièvement la correction si nécessaire")
+                },
+                minLines = 3,
+                shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 enabled = testerName.isNotBlank(),
                 onClick = {
                     onSave(
@@ -1710,12 +2180,13 @@ private fun CorrectionForm(
 
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 onClick = onCancel
             ) {
                 Text(strings.cancel)
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(80.dp))
         }
     }
 }

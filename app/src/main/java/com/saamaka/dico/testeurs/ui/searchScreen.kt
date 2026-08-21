@@ -18,6 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AppStrings
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
 
 @Composable
 fun SearchScreen(
@@ -88,13 +94,43 @@ fun SearchScreen(
         ) {
             AppLanguage.entries.forEach { language ->
 
+                val selected = selectedLanguage == language
+
                 FilterChip(
-                    selected = selectedLanguage == language,
+                    selected = selected,
                     onClick = {
                         onLanguageChange(language)
                     },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selected,
+                        borderColor = MaterialTheme.colorScheme.outline.copy(
+                            alpha = 0.35f
+                        ),
+                        selectedBorderColor = MaterialTheme.colorScheme.primary
+                    ),
+
                     label = {
-                        Text(language.label)
+                        Text(
+                            text = language.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = if (selected) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.Medium
+                            }
+                        )
                     }
                 )
             }
@@ -111,20 +147,39 @@ fun SearchScreen(
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            shape = RoundedCornerShape(18.dp),
+
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(
+                    alpha = 0.55f
+                ),
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            ),
+
             placeholder = {
-                Text(strings.searchPlaceholder)
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Rechercher"
+                Text(
+                    text = strings.searchPlaceholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
+
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Rechercher",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    IconButton(onClick = onClear) {
+                    IconButton(
+                        onClick = onClear
+                    ) {
                         Icon(
-                            Icons.Default.Clear,
+                            imageVector = Icons.Default.Clear,
                             contentDescription = "Effacer"
                         )
                     }
@@ -141,33 +196,65 @@ fun SearchScreen(
         when {
 
             query.isBlank() -> {
+
+                Spacer(Modifier.height(8.dp))
+
                 Text(
-                    strings.startSearching,
-                    fontWeight = FontWeight.SemiBold
+                    text = strings.startSearching,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             entries.isEmpty() -> {
-                Text(
-                    status.ifBlank {
-                        strings.noResult
-                    },
-                    fontWeight = FontWeight.SemiBold
-                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Text(
+                        text = status.ifBlank {
+                            strings.noResult
+                        },
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             else -> {
 
-                Text(
-                    "${entries.size} ${strings.results}",
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
 
-                Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "${entries.size} ${strings.results}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = selectedLanguage.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
 
                     items(
@@ -175,55 +262,82 @@ fun SearchScreen(
                         key = { it.id }
                     ) { entry ->
 
+                        val sourceText = when (selectedLanguage) {
+                            AppLanguage.FRENCH -> entry.french
+                            AppLanguage.ENGLISH -> entry.english
+                            AppLanguage.DUTCH -> entry.dutch
+                        }
+
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
                                     onOpen(entry)
                                 },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor =
                                     MaterialTheme.colorScheme.surfaceVariant
                             )
                         ) {
 
-                            Column(
-                                Modifier.padding(14.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(15.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val sourceText = when (selectedLanguage) {
-                                    AppLanguage.FRENCH -> entry.french
-                                    AppLanguage.ENGLISH -> entry.english
-                                    AppLanguage.DUTCH -> entry.dutch
-                                }
 
-                                Text(
-                                    sourceText,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                Spacer(
-                                    Modifier.height(4.dp)
-                                )
-
-                                Text(
-                                    entry.saamaka,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-
-                                if (isValidated(entry.id)) {
-
-                                    Spacer(
-                                        Modifier.height(6.dp)
-                                    )
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
 
                                     Text(
-                                        "✅ ${strings.verified}",
-                                        style =
-                                            MaterialTheme.typography.bodySmall
+                                        text = sourceText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
+
+                                    Spacer(Modifier.height(4.dp))
+
+                                    Text(
+                                        text = entry.saamaka.ifBlank {
+                                            "Saamaka : à compléter"
+                                        },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    if (isValidated(entry.id)) {
+
+                                        Spacer(Modifier.height(7.dp))
+
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color =
+                                                MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = "✓ ${strings.verified}",
+                                                modifier = Modifier.padding(
+                                                    horizontal = 9.dp,
+                                                    vertical = 4.dp
+                                                ),
+                                                style =
+                                                    MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color =
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
                                 }
+
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }

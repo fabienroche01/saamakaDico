@@ -11,6 +11,8 @@ import com.saamaka.dico.testeurs.AccessLevel
 import com.saamaka.dico.testeurs.AppStrings
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 
 @Composable
 fun TranslateScreen(
@@ -24,53 +26,97 @@ fun TranslateScreen(
     var sourceText by remember { mutableStateOf("") }
     var translationResult by remember { mutableStateOf("") }
     var frenchToSaamaka by remember { mutableStateOf(true) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp)
+            .padding(
+                start = 20.dp,
+                top = 20.dp,
+                end = 20.dp,
+                bottom = 120.dp
+            )
     ) {
-        Text(
-            text = "✨ ${strings.translate}",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
 
-        Spacer(Modifier.height(10.dp))
+        // -------------------------------------------------
+        // EN-TÊTE
+        // -------------------------------------------------
 
-        Text(
-            text = "Traduisez des phrases et des textes complets entre le Français et le Saamaka. Les mots et expressions du dictionnaire restent gratuits.",
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp)
+            ) {
 
-        Spacer(Modifier.height(20.dp))
+                Text(
+                    text = "✨ ${strings.translate}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = "Français ↔ Saamaka",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = "Traduisez des phrases et des textes complets. Les mots et expressions du dictionnaire restent gratuits.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        // -------------------------------------------------
+        // ACCÈS
+        // -------------------------------------------------
 
         when (accessLevel) {
 
             AccessLevel.GUEST -> {
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
+
                         Text(
                             text = "🔒 Créez votre compte gratuitement",
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "🎁 Créez votre compte et profitez de 3 traductions de phrases/Texte complètes offertes."
+                            text = "🎁 Profitez de 3 traductions de phrases ou textes complets offertes."
                         )
 
                         Spacer(Modifier.height(14.dp))
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = {
                                 // Compte réel plus tard
                             }
@@ -80,31 +126,37 @@ fun TranslateScreen(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
+
                         Text(
                             text = "👑 Saamaka Premium",
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
 
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "Traductions illimitées, textes plus longs, apprentissage, quiz et autres fonctions avancées."
+                            text = "Traductions illimitées, textes plus longs, apprentissage, quiz et fonctions avancées."
                         )
 
                         Spacer(Modifier.height(14.dp))
 
                         OutlinedButton(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = {
                                 // Écran Premium plus tard
                             }
@@ -116,15 +168,20 @@ fun TranslateScreen(
             }
 
             AccessLevel.FREE_ACCOUNT -> {
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
+
                         Text(
-                            text = "🎁 $remainingTrials phrase(s) complète(s) restante(s)",
+                            text = "🎁 $remainingTrials traduction(s) restante(s)",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -139,10 +196,11 @@ fun TranslateScreen(
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = accessLevel != AccessLevel.FREE_ACCOUNT || remainingTrials > 0,
+                            shape = RoundedCornerShape(14.dp),
+                            enabled = remainingTrials > 0,
                             onClick = {
-                                if (accessLevel != AccessLevel.FREE_ACCOUNT || remainingTrials > 0) {
-                                   showTranslator = true
+                                if (remainingTrials > 0) {
+                                    showTranslator = true
                                 }
                             }
                         ) {
@@ -151,22 +209,28 @@ fun TranslateScreen(
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = "👑 Premium : traductions illimitées",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
 
             AccessLevel.PREMIUM -> {
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
+
                         Text(
                             text = "👑 Premium",
                             fontWeight = FontWeight.Bold,
@@ -183,6 +247,7 @@ fun TranslateScreen(
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = {
                                 showTranslator = true
                             }
@@ -194,17 +259,23 @@ fun TranslateScreen(
             }
 
             AccessLevel.TESTER -> {
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
+
                         Text(
                             text = "🧪 Mode testeur",
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(Modifier.height(8.dp))
@@ -217,6 +288,7 @@ fun TranslateScreen(
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
                             onClick = {
                                 showTranslator = true
                             }
@@ -227,51 +299,98 @@ fun TranslateScreen(
                 }
             }
         }
-        if (showTranslator && (accessLevel != AccessLevel.FREE_ACCOUNT ||
-                remainingTrials > 0)
+
+        // -------------------------------------------------
+        // TRADUCTEUR
+        // -------------------------------------------------
+
+        if (
+            showTranslator &&
+            (
+                    accessLevel != AccessLevel.FREE_ACCOUNT ||
+                            remainingTrials > 0
+                    )
         ) {
 
             Spacer(Modifier.height(20.dp))
 
-            HorizontalDivider()
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(
+                    alpha = 0.25f
+                )
+            )
 
             Spacer(Modifier.height(20.dp))
 
             Text(
                 text = "✨ Traduire une phrase",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(Modifier.height(12.dp))
 
+            // Sens de traduction
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        frenchToSaamaka = true
-                        translationResult = ""
+
+                val frSelected = frenchToSaamaka
+
+                if (frSelected) {
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = {
+                            frenchToSaamaka = true
+                            translationResult = ""
+                        }
+                    ) {
+                        Text("🇫🇷 → 🇸🇷")
                     }
-                ) {
-                    Text("🇫🇷 Français → 🇸🇷 Saamaka")
+                } else {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = {
+                            frenchToSaamaka = true
+                            translationResult = ""
+                        }
+                    ) {
+                        Text("🇫🇷 → 🇸🇷")
+                    }
                 }
 
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        frenchToSaamaka = false
-                        translationResult = ""
+                if (!frSelected) {
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = {
+                            frenchToSaamaka = false
+                            translationResult = ""
+                        }
+                    ) {
+                        Text("🇸🇷 → 🇫🇷")
                     }
-                ) {
-                    Text("🇸🇷 Saamaka → 🇫🇷 Français")
+                } else {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = {
+                            frenchToSaamaka = false
+                            translationResult = ""
+                        }
+                    ) {
+                        Text("🇸🇷 → 🇫🇷")
+                    }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
+            // Zone de saisie
             OutlinedTextField(
                 value = sourceText,
                 onValueChange = {
@@ -279,6 +398,7 @@ fun TranslateScreen(
                     translationResult = ""
                 },
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
                 label = {
                     Text(
                         if (frenchToSaamaka) {
@@ -291,21 +411,35 @@ fun TranslateScreen(
                 placeholder = {
                     Text("Écrivez votre phrase ici…")
                 },
-                minLines = 3
+                minLines = 4,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor =
+                        MaterialTheme.colorScheme.outline.copy(
+                            alpha = 0.5f
+                        ),
+                    focusedContainerColor =
+                        MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor =
+                        MaterialTheme.colorScheme.surface
+                )
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 enabled = sourceText.isNotBlank(),
                 onClick = {
+
                     val result = onTranslate(
                         sourceText,
                         frenchToSaamaka
                     )
 
                     if (!result.isNullOrBlank()) {
+
                         translationResult = result
 
                         if (
@@ -320,12 +454,17 @@ fun TranslateScreen(
                 Text("✨ Traduire")
             }
 
+            // -------------------------------------------------
+            // RÉSULTAT
+            // -------------------------------------------------
+
             if (translationResult.isNotBlank()) {
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
 
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
                     onClick = {
                         sourceText = ""
                         translationResult = ""
@@ -338,33 +477,52 @@ fun TranslateScreen(
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
+
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
-                        Text(
-                            text = if (frenchToSaamaka) {
-                                "🇸🇷 Résultat Saamaka"
-                            } else {
-                                "🇫🇷 Résultat français"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
 
-                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+
+                            Text(
+                                text = if (frenchToSaamaka) {
+                                    "🇸🇷 Résultat Saamaka"
+                                } else {
+                                    "🇫🇷 Résultat français"
+                                },
+                                modifier = Modifier.padding(
+                                    horizontal = 10.dp,
+                                    vertical = 4.dp
+                                ),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(Modifier.height(12.dp))
 
                         Text(
                             text = translationResult,
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color =
+                                MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
             }
         }
 
+        Spacer(Modifier.height(24.dp))
     }
-
-
-
 }
+
