@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import java.util.zip.ZipFile
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -52,6 +53,7 @@ import com.saamaka.dico.testeurs.UiLanguage
 import java.io.File
 import com.saamaka.dico.testeurs.ui.TranslateScreen
 import androidx.compose.runtime.LaunchedEffect
+
 
 
 private val LightColors = lightColorScheme(
@@ -254,7 +256,7 @@ private fun TesterApp() {
             onSave = { name ->
 
                 correctionStore.setTesterName(name)
-                testerName = name
+                testerName = correctionStore.testerName()
 
                 when {
                     name.equals("Fucia", ignoreCase = true) -> {
@@ -917,10 +919,20 @@ private fun TesterApp() {
                                 exportText = exportText
                             )
 
+                            val exportHistoryStore = ExportHistoryStore(context)
+
+                            exportHistoryStore.markCreated(
+                                testerName = testerName,
+                                file = zipFile
+                            )
+
                             shareFile(
                                 context = context,
                                 file = zipFile,
-                                subject = "Travail testeur Saamaka Dico"
+                                subject = "Travail testeur Saamaka Dico",
+                                testerName = testerName,
+                                exportHistoryStore = exportHistoryStore
+
                             )
                         },
                         onClearCorrections = {
@@ -1268,27 +1280,25 @@ private fun DetailScreen(
 ) {
     val context = LocalContext.current
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) {
-            Toast.makeText(
-                context,
-                "Permission microphone refusée",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    var favorite by remember(entry.id, initiallyFavorite) {
+    var favorite by remember(
+        entry.id,
+        initiallyFavorite
+    ) {
         mutableStateOf(initiallyFavorite)
     }
 
+    // Toujours faux à l'ouverture d'une nouvelle fiche.
+    // Il passe à true uniquement après appui sur
+    // "Enregistrer la prononciation".
     var isRecording by remember(entry.id) {
         mutableStateOf(false)
     }
 
-    var hasAudio by remember(entry.id, testerName) {
+    // Vérifie si un audio existe déjà pour ce mot et ce testeur.
+    var hasAudio by remember(
+        entry.id,
+        testerName
+    ) {
         mutableStateOf(
             audioStore.hasAudio(
                 entry.id,
@@ -1296,6 +1306,22 @@ private fun DetailScreen(
             )
         )
     }
+
+    // Gestion de la permission micro :
+    // on conserve ici le comportement V12.
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+
+            if (!granted) {
+                Toast.makeText(
+                    context,
+                    "Permission microphone refusée",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     val hasOfficialAudio = remember(entry.id) {
         audioStore.hasOfficialAudio(entry.id)
@@ -1729,16 +1755,89 @@ private fun shareEntry(
     )
 }
 
+private fun isValidTesterExportZip(file: File): Boolean {
+    return try {
+        ZipFile(file).use { zip ->
+
+            val exportEntry = zip.getEntry("export.txt")
+                ?: return false
+
+            if (exportEntry.isDirectory) {
+                return false
+            }
+
+            val exportContent = zip.getInputStream(exportEntry)
+                .bufferedReader(Charsets.UTF_8)
+                .use { it.readText() }
+
+            if (exportContent.isBlank()) {
+                return false
+            }
+
+            true
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
 private fun shareFile(
     context: Context,
     file: File,
-    subject: String
+    subject: String,
+    testerName: String,
+    exportHistoryStore: ExportHistoryStore
 ) {
-    val uri = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        file
-    )
+
+    if (!file.exists()) {
+        Toast.makeText(
+            context,
+            "Export introuvable. Veuillez recréer l'envoi.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    if (!file.isFile || file.length() <= 0L) {
+        Toast.makeText(
+            context,
+            "Export invalide ou vide. Envoi annulé.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    if (!file.name.endsWith(".zip", ignoreCase = true)) {
+        Toast.makeText(
+            context,
+            "Le fichier d'export n'est pas un ZIP valide.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    if (!isValidTesterExportZip(file)) {
+        Toast.makeText(
+            context,
+            "L'export est incomplet ou corrompu. Envoi annulé.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    val uri = try {
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            "Impossible de préparer le fichier pour le partage.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
 
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "application/zip"
@@ -1747,13 +1846,47 @@ private fun shareFile(
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    context.startActivity(
-        Intent.createChooser(
-            intent,
-            "Partager le travail du testeur"
+    if (exportHistoryStore.hasSameExportAlreadyBeenShared(file)) {
+        Toast.makeText(
+            context,
+            "Ce contenu a déjà été ouvert pour partage. Nouvelle tentative autorisée.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    // Ouverture du partage Android
+    try {
+        context.startActivity(
+            Intent.createChooser(
+                intent,
+                "Partager le travail du testeur"
+            )
         )
-    )
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            "Impossible d'ouvrir le partage.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
+    // Journalisation séparée :
+    // un problème d'historique ne doit pas empêcher le partage.
+    try {
+        exportHistoryStore.markShareLaunched(
+            testerName = testerName,
+            file = file
+        )
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            "Partage ouvert, mais l'historique local n'a pas pu être enregistré.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
 }
+
 private fun shareText(
     context: Context,
     subject: String,
@@ -1765,6 +1898,7 @@ private fun shareText(
         putExtra(Intent.EXTRA_SUBJECT, subject)
         putExtra(Intent.EXTRA_TEXT, text)
     }
+
 
     context.startActivity(
         Intent.createChooser(intent, chooserTitle)

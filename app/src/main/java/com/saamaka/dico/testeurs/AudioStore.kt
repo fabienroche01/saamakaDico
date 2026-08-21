@@ -10,6 +10,8 @@ import java.util.zip.ZipOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.widget.Toast
+
 class AudioStore(
     private val context: Context
 ) {
@@ -189,21 +191,77 @@ class AudioStore(
         val file = audioFile(entryId, testerName)
 
         if (!file.exists()) {
+            Toast.makeText(
+                context,
+                "Audio introuvable : ${file.name}",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
 
-        player?.release()
+        if (file.length() <= 0L) {
+            Toast.makeText(
+                context,
+                "Audio vide : ${file.name}",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
 
-        player = MediaPlayer().apply {
-            setDataSource(file.absolutePath)
+        try {
+            player?.release()
+            player = null
 
-            setOnCompletionListener {
-                it.release()
-                player = null
+            val newPlayer = MediaPlayer()
+
+            newPlayer.setDataSource(file.absolutePath)
+
+            newPlayer.setOnPreparedListener { mediaPlayer ->
+                Toast.makeText(
+                    context,
+                    "Lecture de la prononciation",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                mediaPlayer.start()
             }
 
-            prepare()
-            start()
+            newPlayer.setOnCompletionListener { mediaPlayer ->
+                mediaPlayer.release()
+
+                if (player === mediaPlayer) {
+                    player = null
+                }
+            }
+
+            newPlayer.setOnErrorListener { mediaPlayer, what, extra ->
+                mediaPlayer.release()
+
+                if (player === mediaPlayer) {
+                    player = null
+                }
+
+                Toast.makeText(
+                    context,
+                    "Erreur audio ($what / $extra)",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                true
+            }
+
+            player = newPlayer
+            newPlayer.prepareAsync()
+
+        } catch (e: Exception) {
+            player?.release()
+            player = null
+
+            Toast.makeText(
+                context,
+                "Impossible de lire l'audio : ${e.message ?: "erreur inconnue"}",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -217,13 +275,19 @@ class AudioStore(
             .replace("[^A-Za-z0-9_-]".toRegex(), "_")
             .ifBlank { "testeur" }
 
+        require(exportText.isNotBlank()) {
+            "Impossible de créer l'export : aucune donnée à exporter."
+        }
+
         val exportDir = File(
             context.cacheDir,
             "exports"
         )
 
-        if (!exportDir.exists()) {
-            exportDir.mkdirs()
+        if (!exportDir.exists() && !exportDir.mkdirs()) {
+            throw IllegalStateException(
+                "Impossible de créer le dossier d'export."
+            )
         }
 
         val dateTime = SimpleDateFormat(
@@ -231,53 +295,111 @@ class AudioStore(
             Locale.ROOT
         ).format(Date())
 
-        val zipFile = File(
+        // On conserve le format de nom V12.
+        // Si un fichier du même nom existe déjà, on évite de l'écraser.
+        var zipFile = File(
             exportDir,
             "SaamakaDico_${safeName}_${dateTime}.zip"
         )
 
-        ZipOutputStream(
-            FileOutputStream(zipFile)
-        ).use { zip ->
+        var counter = 2
 
-            // 1. Validations + corrections + résumé audio
-            zip.putNextEntry(
-                ZipEntry("export.txt")
+        while (zipFile.exists()) {
+            zipFile = File(
+                exportDir,
+                "SaamakaDico_${safeName}_${dateTime}_$counter.zip"
             )
-
-            zip.write(
-                exportText.toByteArray(Charsets.UTF_8)
-            )
-
-            zip.closeEntry()
-
-            // 2. Fichiers audio du testeur
-            val testerSuffix = "_${safeName}.m4a"
-
-            listAudioFiles()
-                .filter { file ->
-                    file.name.endsWith(
-                        testerSuffix,
-                        ignoreCase = true
-                    )
-                }
-                .forEach { audioFile ->
-
-                    zip.putNextEntry(
-                        ZipEntry(
-                            "audio/${audioFile.name}"
-                        )
-                    )
-
-                    audioFile.inputStream().use { input ->
-                        input.copyTo(zip)
-                    }
-
-                    zip.closeEntry()
-                }
+            counter++
         }
 
-        return zipFile
+        // Le ZIP est d'abord créé sous forme temporaire.
+        // Il ne devient partageable qu'une fois complètement terminé.
+        val tempFile = File(
+            exportDir,
+            "${zipFile.name}.tmp"
+        )
+
+        if (tempFile.exists()) {
+            tempFile.delete()
+        }
+
+        try {
+
+            ZipOutputStream(
+                FileOutputStream(tempFile)
+            ).use { zip ->
+
+                // 1. Validations + corrections + résumé audio
+                zip.putNextEntry(
+                    ZipEntry("export.txt")
+                )
+
+                zip.write(
+                    exportText.toByteArray(Charsets.UTF_8)
+                )
+
+                zip.closeEntry()
+
+                // 2. Fichiers audio du testeur
+                val testerSuffix = "_${safeName}.m4a"
+
+                listAudioFiles()
+                    .filter { file ->
+                        file.isFile &&
+                                file.length() > 0L &&
+                                file.name.endsWith(
+                                    testerSuffix,
+                                    ignoreCase = true
+                                )
+                    }
+                    .forEach { audioFile ->
+
+                        zip.putNextEntry(
+                            ZipEntry(
+                                "audio/${audioFile.name}"
+                            )
+                        )
+
+                        audioFile.inputStream().use { input ->
+                            input.copyTo(zip)
+                        }
+
+                        zip.closeEntry()
+                    }
+            }
+
+            // Sécurité minimale avant validation
+            if (!tempFile.exists() || tempFile.length() <= 0L) {
+                throw IllegalStateException(
+                    "Le fichier ZIP généré est vide."
+                )
+            }
+
+            // Seulement maintenant on crée le fichier final.
+            if (!tempFile.renameTo(zipFile)) {
+
+                tempFile.copyTo(
+                    target = zipFile,
+                    overwrite = false
+                )
+
+                tempFile.delete()
+            }
+
+            if (!zipFile.exists() || zipFile.length() <= 0L) {
+                throw IllegalStateException(
+                    "L'export ZIP n'a pas pu être finalisé."
+                )
+            }
+
+            return zipFile
+
+        } catch (e: Exception) {
+
+            tempFile.delete()
+
+            throw e
+        }
     }
     fun stopPlayback() {
         player?.release()

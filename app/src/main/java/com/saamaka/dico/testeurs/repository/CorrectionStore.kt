@@ -53,7 +53,26 @@ class CorrectionStore(context: Context) {
         preferences.getString(KEY_TESTER_NAME, "").orEmpty()
 
     fun setTesterName(name: String) {
-        preferences.edit().putString(KEY_TESTER_NAME, name.trim()).apply()
+        val newName = name.trim()
+
+        if (newName.isBlank()) {
+            return
+        }
+
+        val existingName = preferences
+            .getString(KEY_TESTER_NAME, "")
+            ?.trim()
+            .orEmpty()
+
+        // V13 : l'identité du testeur est enregistrée une seule fois.
+        // Un nom déjà présent ne peut pas être remplacé silencieusement.
+        if (existingName.isNotBlank()) {
+            return
+        }
+
+        preferences.edit()
+            .putString(KEY_TESTER_NAME, newName)
+            .apply()
     }
 
     fun exportText(): String {
