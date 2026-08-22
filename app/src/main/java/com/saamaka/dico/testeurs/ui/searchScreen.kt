@@ -40,40 +40,280 @@ fun SearchScreen(
     isValidated: (Int) -> Boolean,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    onOpen: (DictionaryEntry) -> Unit
+    onOpen: (DictionaryEntry) -> Unit,
+    onTranslateClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onCategoriesClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(26.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Column(Modifier.padding(18.dp)) {
+            Column(
+                modifier = Modifier.padding(22.dp)
+            ) {
+
                 Text(
-                    strings.dictionaryTitle,
+                    text = "SAAMAKA DICO",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 Text(
-                    "$total ${strings.wordsAvailable}",
-                    fontWeight = FontWeight.SemiBold
+                    text = "Découvrir • Comprendre • Préserver",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.90f)
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(3.dp))
 
-                Text("✅ $officiallyValidated ${strings.officiallyValidated}")
-                Text("🟡 $toReview ${strings.toReview}")
-                Text("⚪ $waiting ${strings.waiting}")
+                Text(
+                    text = "Notre langue, notre patrimoine",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f)
+                )
+
+                Spacer(Modifier.height(18.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+                ) {
+                    Text(
+                        text = "📚 $total mots et expressions disponibles",
+                        modifier = Modifier.padding(
+                            horizontal = 14.dp,
+                            vertical = 10.dp
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(18.dp),
+
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(
+                    alpha = 0.55f
+                ),
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            ),
+
+            placeholder = {
+                Text(
+                    text = strings.searchPlaceholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Rechercher",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClear
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Effacer"
+                        )
+                    }
+                }
+            }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = "Accès rapide",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        // La barre de recherche reste juste en dessous
+                    },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "🌿",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "Mot du jour",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Découvrir",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        onTranslateClick()
+                    },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "✨",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "Traduire",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Une phrase",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        onFavoritesClick()
+                    },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "♡",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "Favoris",
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Mes mots",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        onCategoriesClick()
+                    },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "◷",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        text = "Catégories",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+
+                    Text(
+                        text = "Explorer",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
 
         // -------------------------------------------------
         // CHOIX DE LA LANGUE
@@ -171,53 +411,6 @@ fun SearchScreen(
         // -------------------------------------------------
         // RECHERCHE
         // -------------------------------------------------
-
-        Spacer(Modifier.height(14.dp))
-
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(18.dp),
-
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(
-                    alpha = 0.55f
-                ),
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
-            ),
-
-            placeholder = {
-                Text(
-                    text = strings.searchPlaceholder,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Rechercher",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(
-                        onClick = onClear
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Effacer"
-                        )
-                    }
-                }
-            }
-        )
 
         Spacer(Modifier.height(10.dp))
 

@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
 enum class MainTab {
     SEARCH,
     TRANSLATE,
+    CATEGORIES,
     MISSION,
     FAVORITES,
     HISTORY,
@@ -712,6 +713,16 @@ private fun TesterApp() {
                         )
                     }
 
+                    MainTab.CATEGORIES -> {
+                        CategoriesScreen(
+                            database = database,
+                            onBack = {
+                                activeTab = MainTab.SEARCH
+                            },
+                            onOpen = ::openEntry
+                        )
+                    }
+
                     MainTab.SEARCH -> SearchScreen(
                         total = total,
                         officiallyValidated = 76,
@@ -734,7 +745,21 @@ private fun TesterApp() {
                             status = "Commence à écrire pour rechercher"
                         },
                         strings = appStrings,
-                        onOpen = ::openEntry)
+                        onOpen = ::openEntry,
+                        onTranslateClick = {
+                            activeTab = MainTab.TRANSLATE
+                        },
+                        onFavoritesClick = {
+                            activeTab = MainTab.FAVORITES
+                        },
+                        onCategoriesClick = {
+                            activeTab = MainTab.CATEGORIES
+                        },
+                        onHistoryClick = {
+                            activeTab = MainTab.HISTORY
+                        }
+
+                    )
 
                     MainTab.MISSION -> {
 
@@ -842,6 +867,7 @@ private fun TesterApp() {
                                                                 assignmentStore.selectCategory(category)
                                                                 expandedCategory = false
                                                             }
+
                                                         )
                                                     }
                                                 }
@@ -2132,7 +2158,265 @@ private fun DetailScreen(
     }
 
 @Composable
+private fun CategoriesScreen(
+    database: DictionaryDatabase,
+    onBack: () -> Unit,
+    onOpen: (DictionaryEntry) -> Unit
+) {
+
+    var selectedCategory by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val categories = remember {
+        database.categories()
+    }
+
+    val allEntries = remember {
+        database.allEntries()
+    }
+
+    // ============================================
+    // LISTE DES MOTS D'UNE CATÉGORIE
+    // ============================================
+
+    if (selectedCategory != null) {
+
+        val category = selectedCategory!!
+
+        val categoryEntries = remember(category) {
+            allEntries
+                .filter { entry ->
+                    entry.categorie
+                        ?.trim()
+                        ?.equals(
+                            category,
+                            ignoreCase = true
+                        ) == true
+                }
+                .sortedBy {
+                    it.french.lowercase()
+                }
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
+            item {
+
+                Spacer(Modifier.height(10.dp))
+
+                TextButton(
+                    onClick = {
+                        selectedCategory = null
+                    }
+                ) {
+                    Text("← Catégories")
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = category,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "${categoryEntries.size} mot(s)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(12.dp))
+            }
+
+            items(categoryEntries) { entry ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onOpen(entry)
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 16.dp,
+                                vertical = 13.dp
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+
+                            Text(
+                                text = entry.french,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+
+                            if (entry.saamaka.isNotBlank()) {
+
+                                Spacer(Modifier.height(3.dp))
+
+                                Text(
+                                    text = entry.saamaka,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "›",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(100.dp))
+            }
+        }
+
+        return
+    }
+
+
+    // ============================================
+    // LISTE DES CATÉGORIES
+    // ============================================
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+
+        item {
+
+            Spacer(Modifier.height(10.dp))
+
+            TextButton(
+                onClick = onBack
+            ) {
+                Text("← Retour")
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = "Catégories",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = "Explore le vocabulaire par thème",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(14.dp))
+        }
+
+        items(categories) { category ->
+
+            val count = allEntries.count { entry ->
+                entry.categorie
+                    ?.trim()
+                    ?.equals(
+                        category,
+                        ignoreCase = true
+                    ) == true
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selectedCategory = category
+                    },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = 16.dp,
+                            vertical = 14.dp
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "📚",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            text = "$count mot(s)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color =
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Text(
+                        text = "›",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(100.dp))
+        }
+    }
+}
+
+@Composable
 private fun CorrectionForm(
+
     entry: DictionaryEntry,
     defaultTesterName: String,
     strings: AppStrings,
