@@ -1708,98 +1708,134 @@ private fun DetailScreen(
                 ) {
 
                     // Langue source
+
+
                     Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.primaryContainer
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        Text(
-                            text = sourceLabel,
-                            modifier = Modifier.padding(
-                                horizontal = 10.dp,
-                                vertical = 4.dp
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Column(
+                            modifier = Modifier.padding(20.dp)
+                        ) {
+
+                            // LANGUE SOURCE
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = sourceLabel,
+                                    modifier = Modifier.padding(
+                                        horizontal = 10.dp,
+                                        vertical = 4.dp
+                                    ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                text = sourceText,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Spacer(Modifier.height(16.dp))
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outline.copy(
+                                    alpha = 0.20f
+                                )
+                            )
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // LANGUE TRADUITE
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = translationLabel,
+                                    modifier = Modifier.padding(
+                                        horizontal = 10.dp,
+                                        vertical = 4.dp
+                                    ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                text = translationText,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
-                    Spacer(Modifier.height(8.dp))
 
-                    Text(
-                        text = sourceText,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outline.copy(
-                            alpha = 0.25f
-                        )
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Saamaka
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text(
-                            text = translationLabel,
-                            modifier = Modifier.padding(
-                                horizontal = 10.dp,
-                                vertical = 4.dp
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        translationText,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
 
                     Spacer(Modifier.height(20.dp))
 
                     // Prononciation
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surface
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(
+                            alpha = 0.55f
+                        )
                     ) {
-
                         Column(
-                            modifier = Modifier.padding(14.dp)
+                            modifier = Modifier.padding(16.dp)
                         ) {
 
-                            Text(
-                                text = strings.pronunciationSaamaka,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
 
-                            Spacer(Modifier.height(3.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Text(
+                                        text = "🎙",
+                                        modifier = Modifier.padding(8.dp),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
 
-                            Text(
-                                text = if (testerName.isBlank()) {
-                                    "${strings.speaker} : ${strings.notSpecified}"
-                                } else {
-                                    "${strings.speaker} : $testerName"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                Spacer(Modifier.width(10.dp))
+
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+
+                                    Text(
+                                        text = strings.pronunciationSaamaka,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    Spacer(Modifier.height(2.dp))
+
+                                    Text(
+                                        text = "Locuteur : $testerName",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -1838,11 +1874,17 @@ private fun DetailScreen(
                                     }
                                 }
                             ) {
-                                Text(strings.recordPronunciation)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(strings.recordPronunciation)
+                                }
                             }
                         } else {
                             Button(
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
                                 onClick = {
                                     audioStore.stopRecording()
                                     isRecording = false
@@ -1868,6 +1910,7 @@ private fun DetailScreen(
 
                             OutlinedButton(
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
                                 onClick = {
                                     audioStore.playAudio(
                                         entry.id,
@@ -1875,7 +1918,13 @@ private fun DetailScreen(
                                     )
                                 }
                             ) {
-                                Text(strings.listen)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("▶")
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(strings.listen.replace("▶", "").trim())
+                                }
                             }
 
                             Spacer(Modifier.height(8.dp))
@@ -1883,6 +1932,7 @@ private fun DetailScreen(
 
                         OutlinedButton(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
                             onClick = {
                                 audioStore.stopPlayback()
 
@@ -1894,7 +1944,13 @@ private fun DetailScreen(
                                 hasAudio = false
                             }
                         ) {
-                            Text(strings.deleteRedo)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("↻")
+                                Spacer(Modifier.width(8.dp))
+                                Text(strings.deleteRedo)
+                            }
                         }
                     }
 
@@ -1991,24 +2047,41 @@ private fun DetailScreen(
 
                     if (accessLevel == AccessLevel.TESTER) {
 
+                        Spacer(Modifier.height(14.dp))
+
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surface
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(
+                                alpha = 0.45f
+                            )
                         ) {
-
                             Column(
-                                modifier = Modifier.padding(14.dp)
+                                modifier = Modifier.padding(16.dp)
                             ) {
 
-                                Text(
-                                    text = strings.linguisticValidation,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
 
-                                Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = "✓",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Text(
+                                        text = strings.linguisticValidation,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(Modifier.height(6.dp))
 
                                 Text(
                                     text = strings.validationExplanation,
@@ -2016,16 +2089,16 @@ private fun DetailScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
-                                Spacer(Modifier.height(12.dp))
+                                Spacer(Modifier.height(14.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
 
                                     Button(
                                         modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         enabled = !isValidated,
                                         onClick = onValidate
                                     ) {
@@ -2040,7 +2113,7 @@ private fun DetailScreen(
 
                                     OutlinedButton(
                                         modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(16.dp),
                                         onClick = onCorrection
                                     ) {
                                         Text(strings.correct)
@@ -2051,6 +2124,7 @@ private fun DetailScreen(
 
                         // Fin des outils réservés aux testeurs
                     }
+                    Spacer(Modifier.height(18.dp))
                     }
                 }
             }

@@ -543,6 +543,218 @@ LIMIT ?
         // on ne choisit pas à la place du locuteur.
         return null
     }
+
+    private fun frenchSubjectToSaamaka(
+        subject: String
+    ): String? {
+
+        return when (normalizeForSearch(subject)) {
+            "je" -> "mi"
+            "tu" -> "i"
+            "il", "elle" -> "a"
+            "nous" -> "u"
+            "vous" -> "unu"
+            "ils", "elles" -> "de"
+            else -> null
+        }
+    }
+
+    private fun isFrenchFutureSimpleForm(
+        word: String
+    ): Boolean {
+
+        val clean = word
+            .trim()
+            .lowercase()
+            .trim(',', '.', ';', ':', '!', '?', '\'', '"')
+
+        return clean.endsWith("rai") ||
+                clean.endsWith("ras") ||
+                clean.endsWith("ra") ||
+                clean.endsWith("rons") ||
+                clean.endsWith("rez") ||
+                clean.endsWith("ront")
+    }
+
+    private fun translateConfirmedInaccompliPattern(
+        text: String
+    ): String? {
+
+        val prepared = prepareFrenchTextForTranslation(text)
+
+        val words = prepared
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.size < 2) {
+            return null
+        }
+
+        val subject =
+            frenchSubjectToSaamaka(words[0])
+                ?: return null
+
+        // On traite d'abord les phrases simples :
+        // je marche
+        // tu dors
+        // il mange
+        val frenchVerb = words[1]
+
+        val infinitive =
+            normalizeFrenchWordForTranslation(
+                frenchVerb
+            )
+
+        // Si aucune normalisation n'a eu lieu,
+        // on peut quand même essayer la forme telle quelle
+        val alternatives =
+            translateExactAlternatives(
+                text = infinitive,
+                frenchToSaamaka = true
+            )
+
+        if (alternatives.size != 1) {
+            return null
+        }
+
+        val verb =
+            cleanTranslationForDisplay(
+                alternatives.first()
+            )
+
+        return "$subject ta $verb"
+    }
+
+    private fun translateConfirmedFuturePattern(
+        text: String
+    ): String? {
+
+        val prepared = prepareFrenchTextForTranslation(text)
+
+        val words = prepared
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        // Pour V14.7 on commence volontairement
+        // avec : sujet + verbe au futur
+        if (words.size != 2) {
+            return null
+        }
+
+        val subject = frenchSubjectToSaamaka(
+            words[0]
+        ) ?: return null
+
+        val frenchFutureVerb = words[1]
+
+        if (!isFrenchFutureSimpleForm(frenchFutureVerb)) {
+            return null
+        }
+
+        val infinitive =
+            normalizeFrenchWordForTranslation(
+                frenchFutureVerb
+            )
+
+        // Cas spécial déjà attesté :
+        // être -> ɗɛ
+        if (infinitive == "être") {
+            return "$subject o ɗɛ"
+        }
+
+        // Si la normalisation n'a même pas réussi
+        // à retrouver l'infinitif, on ne devine rien.
+        if (
+            normalizeForSearch(infinitive) ==
+            normalizeForSearch(frenchFutureVerb)
+        ) {
+            return null
+        }
+
+        val alternatives =
+            translateExactAlternatives(
+                text = infinitive,
+                frenchToSaamaka = true
+            )
+
+        // Une seule traduction attestée :
+        // sujet + o + verbe
+        if (alternatives.size == 1) {
+
+            val verb =
+                cleanTranslationForDisplay(
+                    alternatives.first()
+                )
+
+            return "$subject o $verb"
+        }
+
+        // 0 ou plusieurs traductions :
+        // pas de choix automatique
+        return null
+    }
+
+    private fun translateConfirmedNearFuturePattern(
+        text: String
+    ): String? {
+
+        val prepared = prepareFrenchTextForTranslation(text)
+
+        val words = prepared
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        // Exemple : je vais dormir
+        if (words.size != 3) {
+            return null
+        }
+
+        val subject =
+            frenchSubjectToSaamaka(words[0])
+                ?: return null
+
+        val allerForm =
+            normalizeFrenchWordForTranslation(words[1])
+
+        // Le deuxième mot doit réellement être une forme de "aller"
+        if (
+            normalizeForSearch(allerForm) !=
+            normalizeForSearch("aller")
+        ) {
+            return null
+        }
+
+        val infinitive =
+            normalizeFrenchWordForTranslation(words[2])
+
+        // Être : cas attesté
+        if (
+            normalizeForSearch(infinitive) ==
+            normalizeForSearch("être")
+        ) {
+            return "$subject o ɗɛ"
+        }
+
+        val alternatives =
+            translateExactAlternatives(
+                text = infinitive,
+                frenchToSaamaka = true
+            )
+
+        // On ne choisit automatiquement
+        // que s'il existe une seule traduction
+        if (alternatives.size != 1) {
+            return null
+        }
+
+        val verb =
+            cleanTranslationForDisplay(
+                alternatives.first()
+            )
+
+        return "$subject o $verb"
+    }
+
     private fun normalizeFrenchWordForTranslation(word: String): String {
         val clean = word
             .trim()
@@ -599,6 +811,514 @@ LIMIT ?
             }
         }
 
+    private fun saamakaNegativeSubjectToFrench(
+        subject: String
+    ): String? {
+
+        return when (normalizeForSearch(subject)) {
+            "ma" -> "je"
+            "ja" -> "tu"
+            "an" -> "il/elle"
+            "wa" -> "nous"
+
+            // Pas de forme ajoutée pour 2PL / 3PL :
+            // elles n'étaient pas indiquées dans la source fournie.
+            else -> null
+        }
+    }
+
+    private fun conjugateFrenchPresent(
+        subject: String,
+        infinitive: String
+    ): String? {
+
+        val verb = normalizeForSearch(infinitive)
+
+        return when (verb) {
+
+            "etre" -> when (subject) {
+                "je" -> "suis"
+                "tu" -> "es"
+                "il/elle" -> "est"
+                "nous" -> "sommes"
+                else -> null
+            }
+
+            "avoir" -> when (subject) {
+                "je" -> "ai"
+                "tu" -> "as"
+                "il/elle" -> "a"
+                "nous" -> "avons"
+                else -> null
+            }
+
+            "aller" -> when (subject) {
+                "je" -> "vais"
+                "tu" -> "vas"
+                "il/elle" -> "va"
+                "nous" -> "allons"
+                else -> null
+            }
+
+            "venir" -> when (subject) {
+                "je" -> "viens"
+                "tu" -> "viens"
+                "il/elle" -> "vient"
+                "nous" -> "venons"
+                else -> null
+            }
+
+            "dormir" -> when (subject) {
+                "je" -> "dors"
+                "tu" -> "dors"
+                "il/elle" -> "dort"
+                "nous" -> "dormons"
+                else -> null
+            }
+
+            "prendre" -> when (subject) {
+                "je" -> "prends"
+                "tu" -> "prends"
+                "il/elle" -> "prend"
+                "nous" -> "prenons"
+                else -> null
+            }
+
+            "faire" -> when (subject) {
+                "je" -> "fais"
+                "tu" -> "fais"
+                "il/elle" -> "fait"
+                "nous" -> "faisons"
+                else -> null
+            }
+
+            "vouloir" -> when (subject) {
+                "je" -> "veux"
+                "tu" -> "veux"
+                "il/elle" -> "veut"
+                "nous" -> "voulons"
+                else -> null
+            }
+
+            "pouvoir" -> when (subject) {
+                "je" -> "peux"
+                "tu" -> "peux"
+                "il/elle" -> "peut"
+                "nous" -> "pouvons"
+                else -> null
+            }
+
+            else -> {
+
+                // Verbes réguliers en -er
+                if (verb.endsWith("er") && verb.length > 2) {
+
+                    val stem = infinitive.dropLast(2)
+
+                    when (subject) {
+                        "je" -> stem + "e"
+                        "tu" -> stem + "es"
+                        "il/elle" -> stem + "e"
+                        "nous" -> stem + "ons"
+                        else -> null
+                    }
+
+                } else {
+                    null
+                }
+            }
+        }
+    }
+
+
+    private fun saamakaSubjectToFrench(
+        subject: String
+    ): String? {
+
+        return when (normalizeForSearch(subject)) {
+            "mi" -> "je"
+            "i" -> "tu"
+            "a" -> "il/elle"
+            "u" -> "nous"
+            "unu" -> "vous"
+            "de" -> "ils/elles"
+            else -> null
+        }
+    }
+
+    private fun translateConfirmedSaamakaGrammarToFrench(
+        text: String
+    ): String? {
+
+        val cleanText = text
+            .trim()
+            .replace(Regex("\\s+"), " ")
+
+        val words = cleanText
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.size < 3) {
+            return null
+        }
+
+        // -------------------------------------------------
+        // 1. TROUVER LE MARQUEUR GRAMMATICAL o / ta
+        // -------------------------------------------------
+
+        val markerIndex = words.indexOfFirst { word ->
+            val normalized = normalizeForSearch(word)
+            normalized == "o" || normalized == "ta"
+        }
+
+        if (markerIndex <= 0 || markerIndex >= words.lastIndex) {
+            return null
+        }
+
+        val marker =
+            normalizeForSearch(words[markerIndex])
+
+        // -------------------------------------------------
+        // 2. SUJET
+        // -------------------------------------------------
+
+        val saamakaSubject =
+            words.subList(0, markerIndex)
+                .joinToString(" ")
+
+        val frenchSubject =
+            if (markerIndex == 1) {
+
+                saamakaSubjectToFrench(words[0])
+
+            } else {
+
+                confirmedSaamakaNominalToFrench(
+                    saamakaSubject
+                ) ?: translateExactPhrase(
+                    text = saamakaSubject,
+                    frenchToSaamaka = false
+                )
+
+            } ?: return null
+
+        // -------------------------------------------------
+        // 3. VERBE
+        // -------------------------------------------------
+
+        val saamakaVerb =
+            words[markerIndex + 1]
+
+        val frenchAlternatives =
+            translateExactAlternatives(
+                text = saamakaVerb,
+                frenchToSaamaka = false
+            )
+
+        val frenchVerb =
+            confirmedSaamakaVerbToFrench(
+                saamakaVerb
+            ) ?: run {
+
+                val frenchAlternatives =
+                    translateExactAlternatives(
+                        text = saamakaVerb,
+                        frenchToSaamaka = false
+                    )
+
+                frenchAlternatives.firstOrNull { candidate ->
+
+                    val cleanCandidate =
+                        normalizeForSearch(candidate)
+
+                    cleanCandidate.endsWith("er") ||
+                            cleanCandidate.endsWith("ir") ||
+                            cleanCandidate.endsWith("re")
+
+                }
+
+            } ?: return null
+
+
+
+        // -------------------------------------------------
+        // 4. COMPLÉMENT ÉVENTUEL
+        // -------------------------------------------------
+
+        val saamakaObject =
+            if (markerIndex + 2 < words.size) {
+                words.subList(
+                    markerIndex + 2,
+                    words.size
+                ).joinToString(" ")
+            } else {
+                ""
+            }
+
+val frenchObject =
+    if (saamakaObject.isNotBlank()) {
+
+        confirmedSaamakaNominalToFrench(
+            saamakaObject
+        ) ?: translateExactPhrase(
+            text = saamakaObject,
+            frenchToSaamaka = false
+        ) ?: saamakaObject
+
+    } else {
+        ""
+    }
+
+        // -------------------------------------------------
+        // 5. CONSTRUCTION FRANÇAISE
+        // -------------------------------------------------
+
+        return when (marker) {
+
+            // FUTUR
+            "o" -> {
+
+                val future =
+                    conjugateFrenchFuture(
+                        subject = frenchSubject,
+                        infinitive = frenchVerb
+                    )
+
+                if (!future.isNullOrBlank()) {
+
+                    if (frenchObject.isNotBlank()) {
+                        "$future $frenchObject"
+                    } else {
+                        future
+                    }
+
+                } else {
+
+                    // Sujet nominal :
+                    // on ne tente pas de conjugaison automatique complexe
+                    if (frenchObject.isNotBlank()) {
+                        "$frenchSubject va $frenchVerb $frenchObject"
+                    } else {
+                        "$frenchSubject va $frenchVerb"
+                    }
+                }
+            }
+
+            // INACCOMPLI
+            "ta" -> {
+
+                // Sujet pronominal :
+                // on peut essayer de conjuguer
+                val present =
+                    conjugateFrenchPresent(
+                        subject = frenchSubject,
+                        infinitive = frenchVerb
+                    )
+
+                if (!present.isNullOrBlank()) {
+
+                    val base =
+                        "$frenchSubject $present"
+
+                    if (frenchObject.isNotBlank()) {
+                        "$base $frenchObject"
+                    } else {
+                        base
+                    }
+
+                } else {
+
+                    // Sujet nominal :
+                    // on garde une formulation sûre
+                    val base =
+                        "$frenchSubject est en train de $frenchVerb"
+
+                    if (frenchObject.isNotBlank()) {
+                        "$base $frenchObject"
+                    } else {
+                        base
+                    }
+                }
+            }
+
+            else -> null
+        }
+    }
+
+    private fun translateConfirmedNegativeInaccompliToFrench(
+        text: String
+    ): String? {
+
+        val words = text
+            .trim()
+            .replace(Regex("\\s+"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.size < 3) {
+            return null
+        }
+
+        // -----------------------------------------
+        // CAS 1 : pronom négatif + ta + verbe
+        // ex. ja ta wooko
+        // -----------------------------------------
+
+        if (
+            normalizeForSearch(words[1]) == "ta"
+        ) {
+
+            val subject =
+                saamakaNegativeSubjectToFrench(
+                    words[0]
+                )
+
+            if (subject != null) {
+
+                val saamakaVerb = words[2]
+
+                val frenchVerb =
+                    confirmedSaamakaVerbToFrench(
+                        saamakaVerb
+                    ) ?: return null
+
+                val conjugated =
+                    conjugateFrenchPresent(
+                        subject = subject,
+                        infinitive = frenchVerb
+                    ) ?: return null
+
+                return when (subject) {
+                    "je" -> "je ne $conjugated pas"
+                    "tu" -> "tu ne $conjugated pas"
+                    "il/elle" -> "il/elle ne $conjugated pas"
+                    "nous" -> "nous ne $conjugated pas"
+                    else -> null
+                }
+            }
+        }
+
+        // -----------------------------------------
+        // CAS 2 : sujet nominal + an + ta + verbe
+        // ex. Tjuba an ta kai
+        // -----------------------------------------
+
+        val anIndex =
+            words.indexOfFirst {
+                normalizeForSearch(it) == "an"
+            }
+
+        if (
+            anIndex > 0 &&
+            anIndex + 2 < words.size &&
+            normalizeForSearch(words[anIndex + 1]) == "ta"
+        ) {
+
+            val saamakaSubject =
+                words.subList(0, anIndex)
+                    .joinToString(" ")
+
+            val saamakaVerb =
+                words[anIndex + 2]
+
+            // Cas explicitement attesté dans la source
+            if (
+                normalizeForSearch(saamakaSubject) == "tjuba" &&
+                normalizeForSearch(saamakaVerb) == "kai"
+            ) {
+                return "il ne pleut pas"
+            }
+
+            // Pour les autres sujets nominaux :
+            // on ne généralise pas encore sans preuve supplémentaire.
+            return null
+        }
+
+        return null
+    }
+
+    private fun confirmedSaamakaNominalToFrench(
+        text: String
+    ): String? {
+
+        return when (normalizeForSearch(text)) {
+
+            "di mii" -> "l'enfant"
+            "di mujee" -> "la femme"
+            "di njanjan" -> "la nourriture"
+            "di baketi" -> "l'assiette"
+            "di kondee" -> "le village"
+
+            else -> null
+        }
+    }
+
+    private fun confirmedSaamakaVerbToFrench(
+        text: String
+    ): String? {
+
+        return when (normalizeForSearch(text)) {
+
+            "waka" -> "marcher"
+            "sindo" -> "s'asseoir"
+            "booko" -> "casser"
+            "njan" -> "manger"
+            "wooko" -> "travailler"
+            "baka" -> "laver"
+            "duumi" -> "dormir"
+            "dɛ", "de" -> "être"
+
+            else -> null
+        }
+    }
+
+    private fun conjugateFrenchFuture(
+        subject: String,
+        infinitive: String
+    ): String? {
+
+        val verb =
+            normalizeForSearch(infinitive)
+
+        if (verb == "etre") {
+            return when (subject) {
+                "je" -> "je serai"
+                "tu" -> "tu seras"
+                "il/elle" -> "il/elle sera"
+                "nous" -> "nous serons"
+                "vous" -> "vous serez"
+                "ils/elles" -> "ils/elles seront"
+                else -> null
+            }
+        }
+
+        if (verb == "dormir") {
+            return when (subject) {
+                "je" -> "je dormirai"
+                "tu" -> "tu dormiras"
+                "il/elle" -> "il/elle dormira"
+                "nous" -> "nous dormirons"
+                "vous" -> "vous dormirez"
+                "ils/elles" -> "ils/elles dormiront"
+                else -> null
+            }
+        }
+
+        if (verb == "aimer") {
+            return when (subject) {
+                "je" -> "j'aimerai"
+                "tu" -> "tu aimeras"
+                "il/elle" -> "il/elle aimera"
+                "nous" -> "nous aimerons"
+                "vous" -> "vous aimerez"
+                "ils/elles" -> "ils/elles aimeront"
+                else -> null
+            }
+        }
+
+        return null
+    }
+
     fun translatePhrase(
         text: String,
         frenchToSaamaka: Boolean
@@ -621,8 +1341,7 @@ LIMIT ?
 
             if (!confirmedNegative.isNullOrBlank()) {
 
-                return "✅ Construction grammaticale attestée :\n" +
-                        confirmedNegative
+                return confirmedNegative
             }
         }
 
@@ -655,16 +1374,110 @@ LIMIT ?
         // -------------------------------------------------
         // 1. PRIORITÉ ABSOLUE : PHRASE EXACTE ATTESTÉE
         // -------------------------------------------------
+        if (frenchToSaamaka) {
+
+            val confirmedFuture =
+                translateConfirmedFuturePattern(
+                    cleanText
+                )
+
+            if (!confirmedFuture.isNullOrBlank()) {
+
+                return "✅ Futur grammatical attesté :\n" +
+                        confirmedFuture
+            }
+        }
+
+        if (frenchToSaamaka) {
+
+            val confirmedNearFuture =
+                translateConfirmedNearFuturePattern(
+                    cleanText
+                )
+
+            if (!confirmedNearFuture.isNullOrBlank()) {
+
+                return "✅ Futur grammatical attesté :\n" +
+                        confirmedNearFuture
+            }
+        }
+
+        if (frenchToSaamaka) {
+
+            val confirmedInaccompli =
+                translateConfirmedInaccompliPattern(
+                    cleanText
+                )
+
+            if (!confirmedInaccompli.isNullOrBlank()) {
+
+                return "✅ Inaccompli grammatical attesté :\n" +
+                        confirmedInaccompli
+            }
+        }
 
         val exact = translateExactPhrase(
             text = cleanText,
             frenchToSaamaka = frenchToSaamaka
         )
 
-        if (!exact.isNullOrBlank()) {
-            return "✅ Traduction attestée dans le dictionnaire :\n" +
-                    cleanTranslationForDisplay(exact)
+        if (frenchToSaamaka) {
+
+            val confirmedInaccompli =
+                translateConfirmedInaccompliPattern(
+                    cleanText
+                )
+
+            if (!confirmedInaccompli.isNullOrBlank()) {
+
+                return "✅ Inaccompli grammatical attesté :\n" +
+                        confirmedInaccompli
+            }
         }
+        if (!frenchToSaamaka) {
+
+            val negativeInaccompli =
+                translateConfirmedNegativeInaccompliToFrench(
+                    cleanText
+                )
+
+            if (!negativeInaccompli.isNullOrBlank()) {
+                return negativeInaccompli
+            }
+        }
+
+        if (!frenchToSaamaka) {
+
+            val negativeFrench =
+                translateConfirmedSaamakaNegativeToFrench(
+                    cleanText
+                )
+
+            if (!negativeFrench.isNullOrBlank()) {
+                return negativeFrench
+            }
+        }
+// ----------------------------------------------
+// SAAMAKA -> FRANÇAIS : GRAMMAIRE o / ta
+// ----------------------------------------------
+        if (!frenchToSaamaka) {
+
+            val grammaticalFrench =
+                translateConfirmedSaamakaGrammarToFrench(
+                    cleanText
+                )
+
+            if (!grammaticalFrench.isNullOrBlank()) {
+
+                return grammaticalFrench
+            }
+        }
+
+
+// ----------------------------------------------
+// TRADUCTION EXACTE DU DICTIONNAIRE
+// ----------------------------------------------
+
 
         // -------------------------------------------------
         // 2. NETTOYAGE LÉGER
@@ -897,6 +1710,70 @@ LIMIT ?
                 translatedText +
                 missingInfo
     }
+
+    private fun translateConfirmedSaamakaNegativeToFrench(
+        text: String
+    ): String? {
+
+        val words = text
+            .trim()
+            .replace(Regex("\\s+"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+
+        if (words.size != 2) {
+            return null
+        }
+
+        val subject =
+            saamakaNegativeSubjectToFrench(words[0])
+                ?: return null
+
+        val saamakaVerb = words[1]
+
+        val infinitive =
+            when (normalizeForSearch(saamakaVerb)) {
+
+                "dɛ", "de" -> "être"
+                "duumi" -> "dormir"
+
+                else -> {
+
+                    val alternatives =
+                        translateExactAlternatives(
+                            text = saamakaVerb,
+                            frenchToSaamaka = false
+                        )
+
+                    alternatives.firstOrNull { candidate ->
+
+                        val normalized =
+                            normalizeForSearch(candidate)
+
+                        normalized.endsWith("er") ||
+                                normalized.endsWith("ir") ||
+                                normalized.endsWith("re")
+
+                    } ?: return null
+                }
+            }
+
+        val conjugated =
+            conjugateFrenchPresent(
+                subject = subject,
+                infinitive = infinitive
+            ) ?: return null
+
+        return when (subject) {
+            "je" -> "je ne $conjugated pas"
+            "tu" -> "tu ne $conjugated pas"
+            "il/elle" -> "il/elle ne $conjugated pas"
+            "nous" -> "nous ne $conjugated pas"
+            else -> null
+        }
+    }
+
+
     fun findByIds(ids: Set<Int>): List<DictionaryEntry> {
         if (ids.isEmpty()) {
             return emptyList()
