@@ -44,6 +44,9 @@ fun SearchScreen(
     onTranslateClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onHistoryClick: () -> Unit,
+    categoryOfDay: String,
+    categoryOfDayCount: Int,
+    onCategoryOfDayClick: () -> Unit,
     onCategoriesClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -170,7 +173,7 @@ fun SearchScreen(
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        // La barre de recherche reste juste en dessous
+                        onCategoryOfDayClick()
                     },
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
@@ -181,19 +184,27 @@ fun SearchScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "🌿",
-                        style = MaterialTheme.typography.headlineSmall
+                        text = "📚",
+                        style = MaterialTheme.typography.titleLarge
                     )
 
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Mot du jour",
-                        fontWeight = FontWeight.Bold
+                        text = "Catégorie du jour",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
                     )
 
                     Text(
-                        text = "Découvrir",
+                        text = categoryOfDay,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Text(
+                        text = "$categoryOfDayCount mots • Découvrir",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

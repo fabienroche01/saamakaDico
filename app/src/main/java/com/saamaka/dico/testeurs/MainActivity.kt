@@ -723,44 +723,148 @@ private fun TesterApp() {
                         )
                     }
 
-                    MainTab.SEARCH -> SearchScreen(
-                        total = total,
-                        officiallyValidated = 76,
-                        toReview = 990,
-                        waiting = (total - 76 - 990).coerceAtLeast(0),
-                        query = query,
-                        status = status,
-                        entries = searchResults.map { applyCorrection(it) },
-                        isValidated = validationStore::isValidated,
-                        selectedLanguage = selectedLanguage,
-                        onLanguageChange = { selectedLanguage = it },
+                    MainTab.SEARCH -> {
 
-                        onQueryChange = {
-                            query = it
-                            runSearch(it)
-                        },
-                        onClear = {
-                            query = ""
-                            searchResults.clear()
-                            status = "Commence à écrire pour rechercher"
-                        },
-                        strings = appStrings,
-                        onOpen = ::openEntry,
-                        onTranslateClick = {
-                            activeTab = MainTab.TRANSLATE
-                        },
-                        onFavoritesClick = {
-                            activeTab = MainTab.FAVORITES
-                        },
-                        onCategoriesClick = {
-                            activeTab = MainTab.CATEGORIES
-                        },
-                        onHistoryClick = {
-                            activeTab = MainTab.HISTORY
+                        val categoriesOfDay = remember {
+                            database.categories()
+                                .filter { it.isNotBlank() }
+                                .sortedBy { it.lowercase() }
                         }
 
-                    )
+                        val entriesForCategoryOfDay = remember {
+                            database.allEntries()
+                        }
 
+                        val calendar = java.util.Calendar.getInstance()
+
+                        val dayNumber =
+                            calendar.get(java.util.Calendar.DAY_OF_YEAR)
+
+                        val year =
+                            calendar.get(java.util.Calendar.YEAR)
+
+                        val categoryOfDay =
+                            if (categoriesOfDay.isNotEmpty()) {
+                                categoriesOfDay[
+                                    ((year * 366L + dayNumber) % categoriesOfDay.size)
+                                        .toInt()
+                                ]
+                            } else {
+                                ""
+                            }
+
+                        val categoryOfDayEntries = remember(categoryOfDay) {
+                            entriesForCategoryOfDay.filter { entry ->
+                                entry.categorie
+                                    ?.trim()
+                                    ?.equals(
+                                        categoryOfDay,
+                                        ignoreCase = true
+                                    ) == true
+                            }
+                        }
+
+                        val categoryOfDayContext = LocalContext.current
+
+                        val categoryOfDayPrefs = remember {
+                            categoryOfDayContext.getSharedPreferences(
+                                "category_of_day_progress",
+                                android.content.Context.MODE_PRIVATE
+                            )
+                        }
+
+                        val categoryProgressKey =
+                            "seen_${year}_${dayNumber}_${categoryOfDay}"
+
+                        val seenCategoryOfDayEntryIds =
+                            remember(categoryProgressKey) {
+
+                                val savedIds =
+                                    categoryOfDayPrefs
+                                        .getStringSet(categoryProgressKey, emptySet())
+                                        .orEmpty()
+                                        .mapNotNull { it.toIntOrNull() }
+
+                                mutableStateListOf<Int>().apply {
+                                    addAll(savedIds)
+                                }
+                            }
+
+                        SearchScreen(
+                            categoryOfDay = categoryOfDay,
+                            categoryOfDayCount = categoryOfDayEntries.size,
+                            total = total,
+                            officiallyValidated = 76,
+                            toReview = 990,
+                            waiting = (total - 76 - 990).coerceAtLeast(0),
+                            query = query,
+                            status = status,
+                            entries = searchResults.map { applyCorrection(it) },
+                            isValidated = validationStore::isValidated,
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = { selectedLanguage = it },
+
+                            onQueryChange = {
+                                query = it
+                                runSearch(it)
+                            },
+                            onClear = {
+                                query = ""
+                                searchResults.clear()
+                                status = "Commence à écrire pour rechercher"
+                            },
+                            strings = appStrings,
+                            onOpen = ::openEntry,
+                            onTranslateClick = {
+                                activeTab = MainTab.TRANSLATE
+                            },
+                            onFavoritesClick = {
+                                activeTab = MainTab.FAVORITES
+                            },
+                            onCategoriesClick = {
+                                activeTab = MainTab.CATEGORIES
+                            },
+                            onHistoryClick = {
+                                activeTab = MainTab.HISTORY
+                            },
+                            onCategoryOfDayClick = {
+
+                                if (categoryOfDayEntries.isNotEmpty()) {
+
+                                    var availableEntries =
+                                        categoryOfDayEntries.filter { entry ->
+                                            entry.id !in seenCategoryOfDayEntryIds
+                                        }
+
+                                    if (availableEntries.isEmpty()) {
+
+                                        seenCategoryOfDayEntryIds.clear()
+
+                                        categoryOfDayPrefs.edit()
+                                            .remove(categoryProgressKey)
+                                            .apply()
+
+                                        availableEntries = categoryOfDayEntries
+                                    }
+
+                                    val entry = availableEntries.random()
+
+                                    seenCategoryOfDayEntryIds.add(entry.id)
+
+                                    categoryOfDayPrefs.edit()
+                                        .putStringSet(
+                                            categoryProgressKey,
+                                            seenCategoryOfDayEntryIds
+                                                .map { it.toString() }
+                                                .toSet()
+                                        )
+                                        .apply()
+
+                                    openEntry(entry)
+                                }
+                            }
+                        )
+                    }
                     MainTab.MISSION -> {
 
                         if (accessLevel != AccessLevel.TESTER) {
