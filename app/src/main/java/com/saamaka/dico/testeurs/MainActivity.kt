@@ -56,7 +56,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.NavigationBarItemDefaults
-
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.BorderStroke
 
 
 private val LightColors = lightColorScheme(
@@ -110,11 +115,15 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class MainTab {
+    HOME,
     SEARCH,
+    FAVORITES,
+    LEARN,
+    MORE,
+
     TRANSLATE,
     CATEGORIES,
     MISSION,
-    FAVORITES,
     HISTORY,
     CORRECTIONS
 }
@@ -180,6 +189,97 @@ private fun TesterApp() {
     val historyResults = remember { mutableStateListOf<DictionaryEntry>() }
     val total = remember { database.countEntries() }
     val allEntries: List<DictionaryEntry> = remember { database.allEntries() }
+    var quizScore by remember { mutableStateOf(0) }
+    var quizQuestionNumber by remember { mutableStateOf(1) }
+    var learnSection by remember {
+        mutableStateOf("QUIZ")
+    }
+    val quizEntries = remember(allEntries) {
+        allEntries.filter { entry ->
+
+            val saamaka = entry.saamaka.trim()
+            val french = entry.french.trim()
+
+            val saamakaWordCount =
+                saamaka.split(Regex("\\s+"))
+                    .filter { it.isNotBlank() }
+                    .size
+
+            val frenchWordCount =
+                french.split(Regex("\\s+"))
+                    .filter { it.isNotBlank() }
+                    .size
+
+            val forbiddenChars = listOf(
+                ".", ",", ";", ":", "?", "!",
+                "(", ")", "[", "]", "{", "}",
+                "/", "\\", "\""
+            )
+
+            saamaka.isNotBlank() &&
+                    french.isNotBlank() &&
+
+                    // Un seul mot Saamaka pour le quiz de base
+                    saamakaWordCount == 1 &&
+
+                    // Traduction courte
+                    frenchWordCount in 1..3 &&
+
+                    // Évite les entrées anormalement longues
+                    saamaka.length in 2..20 &&
+                    french.length in 2..30 &&
+
+                    // Évite phrases, références et formulations complexes
+                    forbiddenChars.none { saamaka.contains(it) } &&
+                    forbiddenChars.none { french.contains(it) } &&
+
+                    // Évite les traductions qui commencent comme une définition
+                    !french.startsWith("le ", ignoreCase = true) &&
+                    !french.startsWith("la ", ignoreCase = true) &&
+                    !french.startsWith("les ", ignoreCase = true) &&
+                    !french.startsWith("un ", ignoreCase = true) &&
+                    !french.startsWith("une ", ignoreCase = true) &&
+
+                    // Évite les entrées purement numériques
+                    saamaka.any { it.isLetter() } &&
+                    french.any { it.isLetter() }
+        }
+    }
+
+    var quizEntry by remember {
+        mutableStateOf(
+            quizEntries.randomOrNull()
+        )
+    }
+
+    var quizAnswers by remember {
+        mutableStateOf<List<String>>(emptyList())
+    }
+
+    var selectedQuizAnswer by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    LaunchedEffect(quizEntry) {
+        val current = quizEntry ?: return@LaunchedEffect
+
+        val wrongAnswers = quizEntries
+            .asSequence()
+            .filter { it.id != current.id }
+            .map { it.french.trim() }
+            .filter { it.isNotBlank() }
+            .filter { it != current.french.trim() }
+            .distinct()
+            .shuffled()
+            .take(3)
+            .toList()
+
+        quizAnswers =
+            (wrongAnswers + current.french.trim())
+                .shuffled()
+
+        selectedQuizAnswer = null
+    }
     var remainingTranslationTrials by remember {
         mutableStateOf(
             translationTrialStore.remainingTrials()
@@ -449,22 +549,41 @@ private fun TesterApp() {
 
                 NavigationBar(
                     containerColor = Color(0xFFFFFBF3),
-                    contentColor = Color(0xFF234437)
+                    contentColor = Color(0xFF234437),
+                    tonalElevation = 4.dp
                 ) {
 
                     val navigationItemColors =
                         NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF0F5A3C),
-                            selectedTextColor = Color(0xFF0F5A3C),
+                            selectedIconColor = Color(0xFF0B5D3B),
+                            selectedTextColor = Color(0xFF0B5D3B),
 
-                            // Pastille derrière l'onglet actif
-                            indicatorColor = Color(0xFFDCEBDD),
+                            indicatorColor = Color(0xFFDCEEE2),
 
-                            unselectedIconColor = Color(0xFF5C675F),
-                            unselectedTextColor = Color(0xFF5C675F)
+                            unselectedIconColor = Color(0xFF68736C),
+                            unselectedTextColor = Color(0xFF68736C)
                         )
 
                     // Recherche : tout le monde
+                    // Accueil
+                    NavigationBarItem(
+                        selected = activeTab == MainTab.HOME,
+                        onClick = {
+                            activeTab = MainTab.HOME
+                        },
+                        colors = navigationItemColors,
+                        icon = {
+                            Icon(
+                                Icons.Default.Home,
+                                contentDescription = null
+                            )
+                        },
+                        label = {
+                            Text("Accueil")
+                        }
+                    )
+
+                    // Recherche
                     NavigationBarItem(
                         selected = activeTab == MainTab.SEARCH,
                         onClick = {
@@ -482,44 +601,7 @@ private fun TesterApp() {
                         }
                     )
 
-                    // Traduire : tout le monde
-                    NavigationBarItem(
-                        selected = activeTab == MainTab.TRANSLATE,
-                        onClick = {
-                            activeTab = MainTab.TRANSLATE
-                        },
-                        colors = navigationItemColors,
-                        icon = {
-                            Text(
-                                text = "✨"
-                            )
-                        },
-                        label = {
-                            Text(appStrings.translate)
-                        }
-                    )
-
-                    // Mission : TESTEUR seulement
-                    if (accessLevel == AccessLevel.TESTER) {
-                        NavigationBarItem(
-                            selected = activeTab == MainTab.MISSION,
-                            onClick = {
-                                activeTab = MainTab.MISSION
-                            },
-                            colors = navigationItemColors,
-                            icon = {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null
-                                )
-                            },
-                            label = {
-                                Text(appStrings.mission)
-                            }
-                        )
-                    }
-
-                    // Favoris : tout le monde
+                    // Favoris
                     NavigationBarItem(
                         selected = activeTab == MainTab.FAVORITES,
                         onClick = {
@@ -538,44 +620,44 @@ private fun TesterApp() {
                         }
                     )
 
-                    // Historique : tout le monde
+                    // Apprendre
                     NavigationBarItem(
-                        selected = activeTab == MainTab.HISTORY,
+                        selected = activeTab == MainTab.LEARN,
                         onClick = {
-                            activeTab = MainTab.HISTORY
-                            refreshHistory()
+                            activeTab = MainTab.LEARN
                         },
                         colors = navigationItemColors,
                         icon = {
                             Icon(
-                                Icons.Default.History,
+                                Icons.Default.School,
                                 contentDescription = null
                             )
                         },
                         label = {
-                            Text(appStrings.history)
+                            Text("Apprendre")
                         }
                     )
 
-                    // Corrections : TESTEUR seulement
-                    if (accessLevel == AccessLevel.TESTER) {
-                        NavigationBarItem(
-                            selected = activeTab == MainTab.CORRECTIONS,
-                            onClick = {
-                                activeTab = MainTab.CORRECTIONS
-                            },
-                            colors = navigationItemColors,
-                            icon = {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = null
-                                )
-                            },
-                            label = {
-                                Text(appStrings.corrections)
-                            }
-                        )
-                    }
+                    // Plus
+                    NavigationBarItem(
+                        selected = activeTab == MainTab.MORE,
+                        onClick = {
+                            activeTab = MainTab.MORE
+                        },
+                        colors = navigationItemColors,
+                        icon = {
+                            Icon(
+                                Icons.Default.MoreHoriz,
+                                contentDescription = null
+                            )
+                        },
+                        label = {
+                            Text("Plus")
+                        }
+                    )
+
+
+
                 }
             }
         }
@@ -723,7 +805,7 @@ private fun TesterApp() {
                         )
                     }
 
-                    MainTab.SEARCH -> {
+                    MainTab.HOME -> {
 
                         val categoriesOfDay = remember {
                             database.categories()
@@ -865,6 +947,59 @@ private fun TesterApp() {
                             }
                         )
                     }
+
+                    MainTab.SEARCH -> {
+
+                        SearchScreen(
+                            categoryOfDay = "",
+                            categoryOfDayCount = 0,
+                            total = total,
+                            officiallyValidated = 76,
+                            toReview = 990,
+                            waiting = (total - 76 - 990).coerceAtLeast(0),
+                            query = query,
+                            status = status,
+                            entries = searchResults.map { applyCorrection(it) },
+                            isValidated = validationStore::isValidated,
+                            selectedLanguage = selectedLanguage,
+                            onLanguageChange = { selectedLanguage = it },
+
+                            onQueryChange = {
+                                query = it
+                                runSearch(it)
+                            },
+
+                            onClear = {
+                                query = ""
+                                searchResults.clear()
+                                status = "Commence à écrire pour rechercher"
+                            },
+
+                            strings = appStrings,
+                            onOpen = ::openEntry,
+
+                            onTranslateClick = {
+                                activeTab = MainTab.TRANSLATE
+                            },
+
+                            onFavoritesClick = {
+                                activeTab = MainTab.FAVORITES
+                            },
+
+                            onCategoriesClick = {
+                                activeTab = MainTab.CATEGORIES
+                            },
+
+                            onHistoryClick = {
+                                activeTab = MainTab.HISTORY
+                            },
+
+
+                            onCategoryOfDayClick = { },
+                            showHomeContent = false
+                        )
+                    }
+
                     MainTab.MISSION -> {
 
                         if (accessLevel != AccessLevel.TESTER) {
@@ -1166,6 +1301,695 @@ private fun TesterApp() {
                         onOpen = ::openEntry
                     )
 
+                    MainTab.LEARN -> {
+
+                        val knownWordIds = remember {
+                            mutableStateListOf<Int>()
+                        }
+
+                        val reviewWordIds = remember {
+                            mutableStateListOf<Int>()
+                        }
+
+                        var wordReviewEntry by remember {
+                            mutableStateOf(
+                                quizEntries.randomOrNull()
+                            )
+                        }
+
+                        var knownWordsCount by remember {
+                            mutableStateOf(0)
+                        }
+
+                        var reviewWordsCount by remember {
+                            mutableStateOf(0)
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 12.dp)
+                        ) {
+
+                            Text(
+                                text = "Apprendre",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF16372A)
+                            )
+
+                            Spacer(Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+
+                                FilterChip(
+                                    selected = learnSection == "QUIZ",
+                                    onClick = {
+                                        learnSection = "QUIZ"
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Text(
+                                            text = "Quiz",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
+
+                                FilterChip(
+                                    selected = learnSection == "WORDS",
+                                    onClick = {
+                                        learnSection = "WORDS"
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Text(
+                                            text = "Mots",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
+
+                                FilterChip(
+                                    selected = learnSection == "PHRASES",
+                                    onClick = {
+                                        learnSection = "PHRASES"
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Text(
+                                            text = "Phrases",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
+
+                                FilterChip(
+                                    selected = learnSection == "GAMES",
+                                    onClick = {
+                                        learnSection = "GAMES"
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Text(
+                                            text = "Jeux",
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                )
+                            }
+
+                            Spacer(Modifier.height(18.dp))
+
+                            when (learnSection) {
+
+                                "QUIZ" -> {
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFFFFBF3)
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(18.dp)
+                                        ) {
+
+                                            Text(
+                                                text = "Quiz du jour",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF16372A)
+                                            )
+
+                                            Spacer(Modifier.height(6.dp))
+
+                                            Text(
+                                                text = "Question $quizQuestionNumber • Score : $quizScore",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF0B5D3B)
+                                            )
+
+                                            Text(
+                                                text = "Teste tes connaissances en Saamaka",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+
+                                            Spacer(Modifier.height(20.dp))
+
+                                            Surface(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(18.dp),
+                                                color = Color(0xFFDCEEE2)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(16.dp)
+                                                ) {
+
+                                                    Text(
+                                                        text = "Que signifie ce mot ?",
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF68736C)
+                                                    )
+
+                                                    Spacer(Modifier.height(10.dp))
+
+                                                    Text(
+                                                        text = quizEntry?.saamaka ?: "—",
+                                                        fontSize = 28.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF0B5D3B)
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(16.dp))
+
+                                            quizAnswers.forEach { answer ->
+
+                                                val isSelected =
+                                                    selectedQuizAnswer == answer
+
+                                                val isCorrect =
+                                                    quizEntry?.french?.trim() == answer
+
+                                                val hasAnswered =
+                                                    selectedQuizAnswer != null
+
+                                                val buttonContainerColor = when {
+                                                    !hasAnswered ->
+                                                        Color.Transparent
+
+                                                    isCorrect ->
+                                                        Color(0xFFDCEEE2)
+
+                                                    isSelected && !isCorrect ->
+                                                        Color(0xFFF8DDDD)
+
+                                                    else ->
+                                                        Color.Transparent
+                                                }
+
+                                                val buttonBorderColor = when {
+                                                    !hasAnswered ->
+                                                        Color(0xFFB7BDB8)
+
+                                                    isCorrect ->
+                                                        Color(0xFF0B5D3B)
+
+                                                    isSelected && !isCorrect ->
+                                                        Color(0xFF8B2F2F)
+
+                                                    else ->
+                                                        Color(0xFFB7BDB8)
+                                                }
+
+                                                val buttonTextColor = when {
+                                                    isCorrect && hasAnswered ->
+                                                        Color(0xFF0B5D3B)
+
+                                                    isSelected && !isCorrect ->
+                                                        Color(0xFF8B2F2F)
+
+                                                    else ->
+                                                        Color(0xFF2E332F)
+                                                }
+
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        if (selectedQuizAnswer == null) {
+
+                                                            selectedQuizAnswer = answer
+
+                                                            if (
+                                                                answer ==
+                                                                quizEntry?.french?.trim()
+                                                            ) {
+                                                                quizScore++
+                                                            }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    colors =
+                                                        ButtonDefaults.outlinedButtonColors(
+                                                            containerColor =
+                                                                buttonContainerColor,
+                                                            contentColor =
+                                                                buttonTextColor
+                                                        ),
+                                                    border = BorderStroke(
+                                                        width = 1.dp,
+                                                        color = buttonBorderColor
+                                                    )
+                                                ) {
+                                                    Text(
+                                                        text = answer,
+                                                        modifier =
+                                                            Modifier.fillMaxWidth(),
+                                                        textAlign =
+                                                            TextAlign.Start,
+                                                        fontWeight =
+                                                            if (
+                                                                hasAnswered &&
+                                                                (isCorrect || isSelected)
+                                                            ) {
+                                                                FontWeight.SemiBold
+                                                            } else {
+                                                                FontWeight.Normal
+                                                            }
+                                                    )
+                                                }
+
+                                                Spacer(Modifier.height(8.dp))
+                                            }
+
+                                            selectedQuizAnswer?.let {
+
+                                                val correctAnswer =
+                                                    quizEntry
+                                                        ?.french
+                                                        ?.trim()
+                                                        .orEmpty()
+
+                                                if (
+                                                    selectedQuizAnswer ==
+                                                    correctAnswer
+                                                ) {
+
+                                                    Text(
+                                                        text = "✅ Bonne réponse",
+                                                        fontSize = 13.sp,
+                                                        fontWeight =
+                                                            FontWeight.SemiBold,
+                                                        color =
+                                                            Color(0xFF0B5D3B)
+                                                    )
+
+                                                } else {
+
+                                                    Text(
+                                                        text = "❌ Mauvaise réponse",
+                                                        fontSize = 13.sp,
+                                                        fontWeight =
+                                                            FontWeight.SemiBold,
+                                                        color =
+                                                            Color(0xFF8B2F2F)
+                                                    )
+
+                                                    Spacer(
+                                                        Modifier.height(3.dp)
+                                                    )
+
+                                                    Text(
+                                                        text =
+                                                            "✅ Réponse correcte : $correctAnswer",
+                                                        fontSize = 13.sp,
+                                                        fontWeight =
+                                                            FontWeight.SemiBold,
+                                                        color =
+                                                            Color(0xFF0B5D3B)
+                                                    )
+                                                }
+
+                                                Spacer(
+                                                    Modifier.height(12.dp)
+                                                )
+
+                                                Button(
+                                                    onClick = {
+
+                                                        quizEntry =
+                                                            quizEntries
+                                                                .filter {
+                                                                    it.id !=
+                                                                            quizEntry?.id
+                                                                }
+                                                                .randomOrNull()
+
+                                                        quizQuestionNumber++
+                                                    },
+                                                    modifier =
+                                                        Modifier.fillMaxWidth(),
+                                                    shape =
+                                                        RoundedCornerShape(14.dp),
+                                                    colors =
+                                                        ButtonDefaults.buttonColors(
+                                                            containerColor =
+                                                                Color(0xFF0B5D3B)
+                                                        )
+                                                ) {
+                                                    Text(
+                                                        text = "Suivant",
+                                                        color = Color.White
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                "WORDS" -> {
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFFFFBF3)
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(18.dp)
+                                        ) {
+
+                                            Text(
+                                                text = "Révision des mots",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF16372A)
+                                            )
+
+                                            Spacer(Modifier.height(6.dp))
+
+                                            Text(
+                                                text = "Révise ton vocabulaire Saamaka",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+
+                                            Spacer(Modifier.height(8.dp))
+
+                                            Text(
+                                                text = "✅ Je connais : $knownWordsCount   •   🔁 À revoir : $reviewWordsCount",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF0B5D3B)
+                                            )
+
+                                            Spacer(Modifier.height(22.dp))
+
+                                            Surface(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(18.dp),
+                                                color = Color(0xFFDCEEE2)
+                                            ) {
+                                                Column(
+                                                    modifier =
+                                                        Modifier.padding(18.dp)
+                                                ) {
+
+                                                    Text(
+                                                        text =
+                                                            wordReviewEntry
+                                                                ?.saamaka
+                                                                ?: "—",
+                                                        fontSize = 28.sp,
+                                                        fontWeight =
+                                                            FontWeight.Bold,
+                                                        color =
+                                                            Color(0xFF0B5D3B)
+                                                    )
+
+                                                    Spacer(
+                                                        Modifier.height(8.dp)
+                                                    )
+
+                                                    Text(
+                                                        text =
+                                                            wordReviewEntry
+                                                                ?.french
+                                                                ?: "",
+                                                        fontSize = 16.sp,
+                                                        fontWeight =
+                                                            FontWeight.Medium,
+                                                        color =
+                                                            Color(0xFF2E332F)
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(18.dp))
+
+                                            Row(
+                                                modifier =
+                                                    Modifier.fillMaxWidth(),
+                                                horizontalArrangement =
+                                                    Arrangement.spacedBy(10.dp)
+                                            ) {
+
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        knownWordsCount++
+
+                                                        wordReviewEntry?.id?.let { id ->
+                                                            if (id !in knownWordIds) {
+                                                                knownWordIds.add(id)
+                                                            }
+
+                                                            reviewWordIds.remove(id)
+                                                        }
+
+                                                        wordReviewEntry = quizEntries
+                                                            .filter { it.id != wordReviewEntry?.id }
+                                                            .randomOrNull()
+                                                    },
+                                                    modifier =
+                                                        Modifier.weight(1f),
+                                                    shape =
+                                                        RoundedCornerShape(14.dp)
+                                                ) {
+                                                    Text("À revoir")
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        wordReviewEntry =
+                                                            quizEntries
+                                                                .filter {
+                                                                    it.id !=
+                                                                            wordReviewEntry?.id
+                                                                }
+                                                                .randomOrNull()
+                                                    },
+                                                    modifier =
+                                                        Modifier.weight(1f),
+                                                    shape =
+                                                        RoundedCornerShape(14.dp),
+                                                    colors =
+                                                        ButtonDefaults.buttonColors(
+                                                            containerColor =
+                                                                Color(0xFF0B5D3B)
+                                                        )
+                                                ) {
+                                                    Text(
+                                                        text = "Je connais",
+                                                        color = Color.White
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                "PHRASES" -> {
+                                    Text(
+                                        text = "Phrases",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF16372A)
+                                    )
+                                }
+
+                                "GAMES" -> {
+                                    Text(
+                                        text = "Jeux",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF16372A)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                        MainTab.MORE -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+
+                            Text(
+                                text = "Plus",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF16372A)
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            if (accessLevel == AccessLevel.TESTER) {
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            activeTab = MainTab.MISSION
+                                        },
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFDCEEE2)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = Color(0xFF0B5D3B)
+                                        )
+
+                                        Spacer(Modifier.width(12.dp))
+
+                                        Column(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "Mission testeur",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp
+                                            )
+
+                                            Text(
+                                                text = "Valider et corriger les mots",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.Default.ChevronRight,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        activeTab = MainTab.HISTORY
+                                        refreshHistory()
+                                    },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFF4EFE5)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = Color(0xFF0B5D3B)
+                                    )
+
+                                    Spacer(Modifier.width(12.dp))
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = "Historique",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+
+                                        Text(
+                                            text = "Retrouver les mots consultés",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF68736C)
+                                        )
+                                    }
+
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+
+                            if (accessLevel == AccessLevel.TESTER) {
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            activeTab = MainTab.CORRECTIONS
+                                        },
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFF4EFE5)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = null,
+                                            tint = Color(0xFF0B5D3B)
+                                        )
+
+                                        Spacer(Modifier.width(12.dp))
+
+                                        Column(
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "Corrections",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp
+                                            )
+
+                                            Text(
+                                                text = "Exports et travail testeur",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.Default.ChevronRight,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     MainTab.CORRECTIONS -> CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),

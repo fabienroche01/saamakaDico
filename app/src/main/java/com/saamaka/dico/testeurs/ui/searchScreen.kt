@@ -24,6 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Row
+
 
 @Composable
 fun SearchScreen(
@@ -47,7 +51,8 @@ fun SearchScreen(
     categoryOfDay: String,
     categoryOfDayCount: Int,
     onCategoryOfDayClick: () -> Unit,
-    onCategoriesClick: () -> Unit
+    onCategoriesClick: () -> Unit,
+    showHomeContent: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -55,54 +60,74 @@ fun SearchScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
+            shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = Color(0xFF0B5D3B)
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 2.dp
             )
         ) {
             Column(
-                modifier = Modifier.padding(22.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 18.dp,
+                        vertical = 18.dp
+                    )
             ) {
 
                 Text(
                     text = "SAAMAKA DICO",
-                    style = MaterialTheme.typography.headlineSmall,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = Color.White
                 )
 
                 Spacer(Modifier.height(4.dp))
 
                 Text(
                     text = "Découvrir • Comprendre • Préserver",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.90f)
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.90f)
                 )
 
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(2.dp))
 
                 Text(
                     text = "Notre langue, notre patrimoine",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.72f)
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.75f)
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFF7F2E8)
                 ) {
-                    Text(
-                        text = "📚 $total mots et expressions disponibles",
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(
-                            horizontal = 14.dp,
-                            vertical = 10.dp
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                            horizontal = 12.dp,
+                            vertical = 7.dp
+                        )
+                    ) {
+
+                        Text(
+                            text = "📚",
+                            fontSize = 14.sp
+                        )
+
+                        Spacer(Modifier.width(6.dp))
+
+                        Text(
+                            text = "$total mots et expressions disponibles",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF0B5D3B)
+                        )
+                    }
                 }
             }
         }
@@ -154,6 +179,7 @@ fun SearchScreen(
             }
         )
 
+        if (showHomeContent) {
         Spacer(Modifier.height(16.dp))
 
         Text(
@@ -175,38 +201,48 @@ fun SearchScreen(
                     .clickable {
                         onCategoryOfDayClick()
                     },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = Color(0xFFDCEEE2)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 ) {
                     Text(
                         text = "📚",
-                        style = MaterialTheme.typography.titleLarge
+                        fontSize = 20.sp
                     )
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     Text(
                         text = "Catégorie du jour",
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
+                        color = Color(0xFF16372A)
                     )
+
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = categoryOfDay,
-                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        style = MaterialTheme.typography.bodyMedium
+                        color = Color(0xFF0B5D3B)
                     )
+
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = "$categoryOfDayCount mots • Découvrir",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 11.sp,
+                        color = Color(0xFF52645B)
                     )
                 }
             }
@@ -217,30 +253,39 @@ fun SearchScreen(
                     .clickable {
                         onTranslateClick()
                     },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = Color(0xFFFFEFC4)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 ) {
                     Text(
                         text = "✨",
-                        style = MaterialTheme.typography.headlineSmall
+                        fontSize = 20.sp
                     )
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     Text(
                         text = "Traduire",
-                        fontWeight = FontWeight.Bold
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF3B3014)
                     )
+
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = "Une phrase",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 11.sp,
+                        color = Color(0xFF6B6041)
                     )
                 }
             }
@@ -259,31 +304,40 @@ fun SearchScreen(
                     .clickable {
                         onFavoritesClick()
                     },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = Color(0xFFF4EFE5)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 ) {
                     Text(
                         text = "♡",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        fontSize = 22.sp,
+                        color = Color(0xFF0B5D3B)
                     )
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     Text(
                         text = "Favoris",
-                        fontWeight = FontWeight.Bold
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E332F)
                     )
+
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = "Mes mots",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 11.sp,
+                        color = Color(0xFF6B6B63)
                     )
                 }
             }
@@ -294,53 +348,57 @@ fun SearchScreen(
                     .clickable {
                         onCategoriesClick()
                     },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = Color(0xFFF4EFE5)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
                 ) {
                     Text(
                         text = "◷",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        fontSize = 22.sp,
+                        color = Color(0xFF0B5D3B)
                     )
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     Text(
                         text = "Catégories",
-                        style = MaterialTheme.typography.headlineSmall
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E332F)
                     )
+
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = "Explorer",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 11.sp,
+                        color = Color(0xFF6B6B63)
                     )
                 }
             }
         }
-
-        Spacer(Modifier.height(18.dp))
-
-        // -------------------------------------------------
-        // CHOIX DE LA LANGUE
-        // -------------------------------------------------
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
-            strings.language,
-            fontWeight = FontWeight.Bold
+            text = strings.language,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2E332F)
         )
 
         Spacer(Modifier.height(8.dp))
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
 
             AppLanguage.entries
@@ -362,31 +420,24 @@ fun SearchScreen(
                                 onClick = {
                                     onLanguageChange(language)
                                 },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(34.dp),
+                                shape = RoundedCornerShape(17.dp),
 
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor =
-                                        MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor =
-                                        MaterialTheme.colorScheme.onPrimary,
-                                    containerColor =
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                    labelColor =
-                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    selectedContainerColor = Color(0xFF0B5D3B),
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color(0xFFF4EFE5),
+                                    labelColor = Color(0xFF3F4842)
                                 ),
 
-                                border =
-                                    FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
-                                        selected = selected,
-                                        borderColor =
-                                            MaterialTheme.colorScheme.outline.copy(
-                                                alpha = 0.35f
-                                            ),
-                                        selectedBorderColor =
-                                            MaterialTheme.colorScheme.primary
-                                    ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selected,
+                                    borderColor = Color(0xFFD2CCC0),
+                                    selectedBorderColor = Color(0xFF0B5D3B)
+                                ),
 
                                 label = {
                                     Text(
@@ -399,6 +450,7 @@ fun SearchScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         textAlign = TextAlign.Center,
                                         maxLines = 1,
+                                        fontSize = 11.sp,
                                         fontWeight =
                                             if (selected) {
                                                 FontWeight.Bold
@@ -419,11 +471,11 @@ fun SearchScreen(
                 }
         }
 
-        // -------------------------------------------------
-        // RECHERCHE
-        // -------------------------------------------------
+        } // ferme if (showHomeContent)
 
         Spacer(Modifier.height(10.dp))
+
+
 
         // -------------------------------------------------
         // RÉSULTATS
@@ -593,3 +645,4 @@ fun SearchScreen(
         }
     }
 }
+
