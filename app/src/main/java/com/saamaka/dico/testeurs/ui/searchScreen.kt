@@ -46,6 +46,7 @@ fun SearchScreen(
     onClear: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit,
     onTranslateClick: () -> Unit,
+    onLearnClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onHistoryClick: () -> Unit,
     categoryOfDay: String,
@@ -60,12 +61,12 @@ fun SearchScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF0B5D3B)
+                containerColor = Color(0xFF0A5A39)
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
+                defaultElevation = 4.dp
             )
         ) {
             Column(
@@ -73,59 +74,123 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .padding(
                         horizontal = 18.dp,
-                        vertical = 18.dp
+                        vertical = 16.dp
                     )
             ) {
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
+                        Text(
+                            text = "SAAMAKA TONGO",
+                            fontSize = 23.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+
+                        Spacer(Modifier.height(2.dp))
+
+                        Text(
+                            text = "DICTIONNAIRE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF0C96A),
+                            letterSpacing = 1.4.sp
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = "🌿",
+                            fontSize = 24.sp,
+                            modifier = Modifier.padding(9.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
                 Text(
-                    text = "SAAMAKA DICO",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "Français ↔ Saamaka",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
 
                 Spacer(Modifier.height(4.dp))
 
                 Text(
-                    text = "Découvrir • Comprendre • Préserver",
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.90f)
+                    text = "Apprendre • Comprendre • Préserver",
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.88f)
                 )
 
                 Spacer(Modifier.height(2.dp))
 
                 Text(
                     text = "Notre langue, notre patrimoine",
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.75f)
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.72f)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
 
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Color(0xFFF7F2E8)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(
-                            horizontal = 12.dp,
-                            vertical = 7.dp
-                        )
+
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(50),
+                        color = Color(0xFFF7F2E8)
                     ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = 10.dp,
+                                vertical = 7.dp
+                            ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📚",
+                                fontSize = 13.sp
+                            )
 
+                            Spacer(Modifier.width(5.dp))
+
+                            Text(
+                                text = "$total mots et expressions",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF0B5D3B),
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color(0xFFF0C96A)
+                    ) {
                         Text(
-                            text = "📚",
-                            fontSize = 14.sp
-                        )
-
-                        Spacer(Modifier.width(6.dp))
-
-                        Text(
-                            text = "$total mots et expressions disponibles",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF0B5D3B)
+                            text = "V14",
+                            modifier = Modifier.padding(
+                                horizontal = 10.dp,
+                                vertical = 7.dp
+                            ),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16372A)
                         )
                     }
                 }
@@ -139,30 +204,36 @@ fun SearchScreen(
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(24.dp),
 
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(
-                    alpha = 0.55f
-                ),
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                focusedBorderColor = Color(0xFF0B5D3B),
+                unfocusedBorderColor = Color(0xFFD6D0C5),
+                focusedContainerColor = Color(0xFFFFFBF3),
+                unfocusedContainerColor = Color(0xFFFFFBF3),
+                cursorColor = Color(0xFF0B5D3B)
             ),
 
             placeholder = {
                 Text(
-                    text = strings.searchPlaceholder,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Rechercher un mot...",
+                    fontSize = 13.sp,
+                    color = Color(0xFF7A817C)
                 )
             },
 
             leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Rechercher",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFDCEEE2)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Rechercher",
+                        tint = Color(0xFF0B5D3B),
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             },
 
             trailingIcon = {
@@ -172,471 +243,596 @@ fun SearchScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Clear,
-                            contentDescription = "Effacer"
+                            contentDescription = "Effacer",
+                            tint = Color(0xFF52645B)
                         )
                     }
                 }
             }
         )
 
-        if (showHomeContent) {
-        Spacer(Modifier.height(16.dp))
+        if (showHomeContent && query.isBlank()) {
+            Spacer(Modifier.height(16.dp))
 
-        Text(
-            text = "Accès rapide",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+            Text(
+                text = "Accès rapide",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF16372A)
+            )
 
-        Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        onCategoryOfDayClick()
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFDCEEE2)
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(
+
+                Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp)
+                        .weight(1f)
+                        .height(112.dp)
+                        .clickable {
+                            onCategoriesClick()
+                        },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF0B5D3B)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 3.dp
+                    )
                 ) {
-                    Text(
-                        text = "📚",
-                        fontSize = 20.sp
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Catégorie du jour",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF16372A)
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        text = categoryOfDay,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF0B5D3B)
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        text = "$categoryOfDayCount mots • Découvrir",
-                        fontSize = 11.sp,
-                        color = Color(0xFF52645B)
-                    )
-                }
-            }
-
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        onTranslateClick()
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFEFC4)
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp)
-                ) {
-                    Text(
-                        text = "✨",
-                        fontSize = 20.sp
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Traduire",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF3B3014)
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        text = "Une phrase",
-                        fontSize = 11.sp,
-                        color = Color(0xFF6B6041)
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        onFavoritesClick()
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF4EFE5)
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp)
-                ) {
-                    Text(
-                        text = "♡",
-                        fontSize = 22.sp,
-                        color = Color(0xFF0B5D3B)
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Favoris",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E332F)
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        text = "Mes mots",
-                        fontSize = 11.sp,
-                        color = Color(0xFF6B6B63)
-                    )
-                }
-            }
-
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        onCategoriesClick()
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF4EFE5)
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp)
-                ) {
-                    Text(
-                        text = "◷",
-                        fontSize = 22.sp,
-                        color = Color(0xFF0B5D3B)
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = "Catégories",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E332F)
-                    )
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        text = "Explorer",
-                        fontSize = 11.sp,
-                        color = Color(0xFF6B6B63)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            text = strings.language,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF2E332F)
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-
-            AppLanguage.entries
-                .chunked(2)
-                .forEach { rowLanguages ->
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(14.dp)
                     ) {
 
-                        rowLanguages.forEach { language ->
-
-                            val selected =
-                                selectedLanguage == language
-
-                            FilterChip(
-                                selected = selected,
-                                onClick = {
-                                    onLanguageChange(language)
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(34.dp),
-                                shape = RoundedCornerShape(17.dp),
-
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF0B5D3B),
-                                    selectedLabelColor = Color.White,
-                                    containerColor = Color(0xFFF4EFE5),
-                                    labelColor = Color(0xFF3F4842)
-                                ),
-
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = selected,
-                                    borderColor = Color(0xFFD2CCC0),
-                                    selectedBorderColor = Color(0xFF0B5D3B)
-                                ),
-
-                                label = {
-                                    Text(
-                                        text = when (language) {
-                                            AppLanguage.FRENCH -> "🇫🇷 Français"
-                                            AppLanguage.SAAMAKA -> "🇸🇷 Saamaka"
-                                            AppLanguage.ENGLISH -> "🇬🇧 English"
-                                            AppLanguage.DUTCH -> "🇳🇱 Nederlands"
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        fontSize = 11.sp,
-                                        fontWeight =
-                                            if (selected) {
-                                                FontWeight.Bold
-                                            } else {
-                                                FontWeight.Medium
-                                            }
-                                    )
-                                }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "📚",
+                                fontSize = 22.sp
                             )
+
+                            Spacer(Modifier.weight(1f))
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.14f)
+                            ) {
+                                Text(
+                                    text = "21 thèmes",
+                                    modifier = Modifier.padding(
+                                        horizontal = 7.dp,
+                                        vertical = 3.dp
+                                    ),
+                                    fontSize = 9.sp,
+                                    color = Color.White
+                                )
+                            }
                         }
 
-                        if (rowLanguages.size == 1) {
-                            Spacer(
-                                modifier = Modifier.weight(1f)
+                        Spacer(Modifier.height(7.dp))
+
+                        Text(
+                            text = "Catégories",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Text(
+                            text = "Explorer par thème",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.78f)
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text(
+                            text = "Explorer →",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFF0C96A)
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(112.dp)
+                        .clickable {
+                            onFavoritesClick()
+                        },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF174C36)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 3.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(14.dp)
+                    ) {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "♥",
+                                fontSize = 22.sp,
+                                color = Color(0xFFF0C96A)
+                            )
+
+                            Spacer(Modifier.weight(1f))
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.14f)
+                            ) {
+                                Text(
+                                    text = "Mes mots",
+                                    modifier = Modifier.padding(
+                                        horizontal = 7.dp,
+                                        vertical = 3.dp
+                                    ),
+                                    fontSize = 9.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(7.dp))
+
+                        Text(
+                            text = "Favoris",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Text(
+                            text = "Retrouver mes mots",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.78f)
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Text(
+                            text = "Voir mes mots →",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFF0C96A)
+                        )
+                    }
+                }
+            }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                onCategoryOfDayClick()
+                            },
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFEFC4)
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 2.dp
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        ) {
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                Text(
+                                    text = "☀️",
+                                    fontSize = 22.sp
+                                )
+
+                                Spacer(Modifier.weight(1f))
+
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = Color.White.copy(alpha = 0.65f)
+                                ) {
+                                    Text(
+                                        text = "Aujourd'hui",
+                                        modifier = Modifier.padding(
+                                            horizontal = 7.dp,
+                                            vertical = 3.dp
+                                        ),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF705A1D)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(7.dp))
+
+                            Text(
+                                text = "Mot du jour",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF3B3014)
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                text = categoryOfDay,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0B5D3B),
+                                maxLines = 1
+                            )
+
+                            Spacer(Modifier.height(2.dp))
+
+                            Text(
+                                text = "$categoryOfDayCount mots • Découvrir →",
+                                fontSize = 10.sp,
+                                color = Color(0xFF7A6B46)
+                            )
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                onLearnClick()
+                            },
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF4EFE5)
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 2.dp
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                        ) {
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                Text(
+                                    text = "🎓",
+                                    fontSize = 22.sp
+                                )
+
+                                Spacer(Modifier.weight(1f))
+
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = Color(0xFFDCEEE2)
+                                ) {
+                                    Text(
+                                        text = "Progression",
+                                        modifier = Modifier.padding(
+                                            horizontal = 7.dp,
+                                            vertical = 3.dp
+                                        ),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF0B5D3B)
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(7.dp))
+
+                            Text(
+                                text = "Apprendre",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF16372A)
+                            )
+
+                            Spacer(Modifier.height(4.dp))
+
+                            Text(
+                                text = "Quiz • Mots • Phrases • Jeux",
+                                fontSize = 10.sp,
+                                color = Color(0xFF68736C),
+                                maxLines = 1
+                            )
+
+                            Spacer(Modifier.height(3.dp))
+
+                            Text(
+                                text = "Continuer →",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF0B5D3B)
                             )
                         }
                     }
                 }
-        }
 
-        } // ferme if (showHomeContent)
-
-        Spacer(Modifier.height(10.dp))
-
-
-
-        // -------------------------------------------------
-        // RÉSULTATS
-        // -------------------------------------------------
-
-        when {
-
-            query.isBlank() -> {
-
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = strings.startSearching,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = strings.language,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E332F)
                 )
-            }
-
-            entries.isEmpty() -> {
 
                 Spacer(Modifier.height(8.dp))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = status.ifBlank {
-                            strings.noResult
-                        },
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+
+                    AppLanguage.entries
+                        .chunked(2)
+                        .forEach { rowLanguages ->
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+
+                                rowLanguages.forEach { language ->
+
+                                    val selected =
+                                        selectedLanguage == language
+
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            onLanguageChange(language)
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(34.dp),
+                                        shape = RoundedCornerShape(17.dp),
+
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0xFF0B5D3B),
+                                            selectedLabelColor = Color.White,
+                                            containerColor = Color(0xFFF4EFE5),
+                                            labelColor = Color(0xFF3F4842)
+                                        ),
+
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = selected,
+                                            borderColor = Color(0xFFD2CCC0),
+                                            selectedBorderColor = Color(0xFF0B5D3B)
+                                        ),
+
+                                        label = {
+                                            Text(
+                                                text = when (language) {
+                                                    AppLanguage.FRENCH -> "🇫🇷 Français"
+                                                    AppLanguage.SAAMAKA -> "🇸🇷 Saamaka"
+                                                    AppLanguage.ENGLISH -> "🇬🇧 English"
+                                                    AppLanguage.DUTCH -> "🇳🇱 Nederlands"
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 1,
+                                                fontSize = 11.sp,
+                                                fontWeight =
+                                                    if (selected) {
+                                                        FontWeight.Bold
+                                                    } else {
+                                                        FontWeight.Medium
+                                                    }
+                                            )
+                                        }
+                                    )
+                                }
+
+                                if (rowLanguages.size == 1) {
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
                 }
-            }
 
-            else -> {
+            } // ferme if (showHomeContent)
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Spacer(Modifier.height(10.dp))
+
+
+            // -------------------------------------------------
+            // RÉSULTATS
+            // -------------------------------------------------
+
+            when {
+
+                query.isBlank() -> {
+
+                    Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "${entries.size} ${strings.results}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = selectedLanguage.label,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = strings.startSearching,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
+                entries.isEmpty() -> {
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                    Spacer(Modifier.height(8.dp))
 
-                    items(
-                        entries,
-                        key = { it.id }
-                    ) { entry ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Text(
+                            text = status.ifBlank {
+                                strings.noResult
+                            },
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
 
-                        val sourceText = when (selectedLanguage) {
-                            AppLanguage.FRENCH -> entry.french
-                            AppLanguage.ENGLISH -> entry.english
-                            AppLanguage.DUTCH -> entry.dutch
-                            AppLanguage.SAAMAKA -> entry.saamaka
-                        }
+                else -> {
 
-                        val translationText = when (selectedLanguage) {
-                            AppLanguage.FRENCH -> entry.saamaka
-                            AppLanguage.SAAMAKA -> entry.french
-                            AppLanguage.ENGLISH -> entry.saamaka
-                            AppLanguage.DUTCH -> entry.saamaka
-                        }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onOpen(entry)
-                                },
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor =
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
 
-                            Row(
+                        Text(
+                            text = "${entries.size} ${strings.results}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Text(
+                            text = selectedLanguage.label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+
+                        items(
+                            entries,
+                            key = { it.id }
+                        ) { entry ->
+
+                            val sourceText = when (selectedLanguage) {
+                                AppLanguage.FRENCH -> entry.french
+                                AppLanguage.ENGLISH -> entry.english
+                                AppLanguage.DUTCH -> entry.dutch
+                                AppLanguage.SAAMAKA -> entry.saamaka
+                            }
+
+                            val translationText = when (selectedLanguage) {
+                                AppLanguage.FRENCH -> entry.saamaka
+                                AppLanguage.SAAMAKA -> entry.french
+                                AppLanguage.ENGLISH -> entry.saamaka
+                                AppLanguage.DUTCH -> entry.saamaka
+                            }
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(15.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .clickable {
+                                        onOpen(entry)
+                                    },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor =
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                )
                             ) {
 
-                                Column(
-                                    modifier = Modifier.weight(1f)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(15.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
 
-                                    Text(
-                                        text = sourceText,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
 
-                                    Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = sourceText,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
 
-                                    Text(
-                                        text = translationText.ifBlank {
-                                            if (selectedLanguage == AppLanguage.SAAMAKA) {
-                                                "Français : à compléter"
-                                            } else {
-                                                "Saamaka : à compléter"
-                                            }
-                                        },
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                        Spacer(Modifier.height(4.dp))
 
-                                    if (isValidated(entry.id)) {
+                                        Text(
+                                            text = translationText.ifBlank {
+                                                if (selectedLanguage == AppLanguage.SAAMAKA) {
+                                                    "Français : à compléter"
+                                                } else {
+                                                    "Saamaka : à compléter"
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
 
-                                        Spacer(Modifier.height(7.dp))
+                                        if (isValidated(entry.id)) {
 
-                                        Surface(
-                                            shape = RoundedCornerShape(50),
-                                            color =
-                                                MaterialTheme.colorScheme.primaryContainer
-                                        ) {
-                                            Text(
-                                                text = "✓ ${strings.verified}",
-                                                modifier = Modifier.padding(
-                                                    horizontal = 9.dp,
-                                                    vertical = 4.dp
-                                                ),
-                                                style =
-                                                    MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.SemiBold,
+                                            Spacer(Modifier.height(7.dp))
+
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
                                                 color =
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                            ) {
+                                                Text(
+                                                    text = "✓ ${strings.verified}",
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 9.dp,
+                                                        vertical = 4.dp
+                                                    ),
+                                                    style =
+                                                        MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color =
+                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
@@ -644,5 +840,5 @@ fun SearchScreen(
             }
         }
     }
-}
+
 

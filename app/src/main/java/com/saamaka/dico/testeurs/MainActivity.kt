@@ -62,6 +62,8 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 
 private val LightColors = lightColorScheme(
@@ -164,7 +166,9 @@ private fun TesterApp() {
     val audioStore = remember { AudioStore(context) }
 
     var validatedCount by remember { mutableStateOf(validationStore.count()) }
-    var activeTab by remember { mutableStateOf(MainTab.SEARCH) }
+    var activeTab by remember {
+        mutableStateOf(MainTab.HOME)
+    }
 
     LaunchedEffect(accessLevel) {
         if (
@@ -251,6 +255,41 @@ private fun TesterApp() {
             quizEntries.randomOrNull()
         )
     }
+
+    var matchingGameKey by remember {
+        mutableStateOf(0)
+    }
+
+    val matchingEntries = remember(
+        quizEntries,
+        matchingGameKey
+    ) {
+        quizEntries
+            .shuffled()
+            .take(4)
+    }
+
+    var selectedSaamakaMatch by remember {
+        mutableStateOf<DictionaryEntry?>(null)
+    }
+
+    var selectedFrenchMatch by remember {
+        mutableStateOf<DictionaryEntry?>(null)
+    }
+
+    val matchedEntryIds = remember {
+        mutableStateListOf<Int>()
+    }
+
+    var matchingFeedback by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var matchingErrors by remember {
+        mutableStateOf(0)
+    }
+
+
 
     var quizAnswers by remember {
         mutableStateOf<List<String>>(emptyList())
@@ -400,32 +439,46 @@ private fun TesterApp() {
                 TopAppBar(
                     title = {
                         Column {
+
                             Text(
                                 text = when {
                                     correctionEntry != null -> appStrings.proposeCorrection
                                     selectedEntry != null -> appStrings.wordDetails
-                                    else -> appStrings.appTitle
+                                    else -> "Dictionnaire Saamaka"
                                 },
-                                fontWeight = FontWeight.Bold
-                            )
-                            val context = LocalContext.current
-                            val versionName = context.packageManager.getPackageInfo(context.packageName,0).versionName
-
-                            Text(
-                                text = "$total entrées — version $versionName",
-                                style = MaterialTheme.typography.labelMedium
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF16372A)
                             )
 
-                            Text(
-                                text = when (accessLevel) {
-                                    AccessLevel.GUEST -> "👤 ${appStrings.guest}"
-                                    AccessLevel.FREE_ACCOUNT -> "🔐 ${appStrings.freeAccount}"
-                                    AccessLevel.PREMIUM -> "👑 ${appStrings.premium}"
-                                    AccessLevel.TESTER -> "🧪 ${appStrings.tester}"
-                                },
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (correctionEntry == null && selectedEntry == null) {
+
+                                val context = LocalContext.current
+                                val versionName =
+                                    context.packageManager
+                                        .getPackageInfo(context.packageName, 0)
+                                        .versionName
+
+                                Spacer(Modifier.height(1.dp))
+
+                                Text(
+                                    text = "$total entrées • version $versionName",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF68736C)
+                                )
+
+                                Text(
+                                    text = when (accessLevel) {
+                                        AccessLevel.GUEST -> "👤 ${appStrings.guest}"
+                                        AccessLevel.FREE_ACCOUNT -> "🔐 ${appStrings.freeAccount}"
+                                        AccessLevel.PREMIUM -> "👑 ${appStrings.premium}"
+                                        AccessLevel.TESTER -> "🧪 ${appStrings.tester}"
+                                    },
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF0B5D3B)
+                                )
+                            }
                         }
                     },
 
@@ -886,6 +939,10 @@ private fun TesterApp() {
                             selectedLanguage = selectedLanguage,
                             onLanguageChange = { selectedLanguage = it },
 
+                            onLearnClick = {
+                                activeTab = MainTab.LEARN
+                            },
+
                             onQueryChange = {
                                 query = it
                                 runSearch(it)
@@ -994,6 +1051,9 @@ private fun TesterApp() {
                                 activeTab = MainTab.HISTORY
                             },
 
+                            onLearnClick = {
+                                activeTab = MainTab.LEARN
+                            },
 
                             onCategoryOfDayClick = { },
                             showHomeContent = false
@@ -1303,18 +1363,110 @@ private fun TesterApp() {
 
                     MainTab.LEARN -> {
 
+                        val learningPrefs = remember {
+                            context.getSharedPreferences(
+                                "learning_progress",
+                                android.content.Context.MODE_PRIVATE
+                            )
+                        }
+
+                        var matchingGamesPlayed by remember {
+                            mutableStateOf(
+                                learningPrefs.getInt("matching_games_played", 0)
+                            )
+                        }
+
+                        var matchingTotalCorrect by remember {
+                            mutableStateOf(
+                                learningPrefs.getInt("matching_total_correct", 0)
+                            )
+                        }
+
+                        var matchingTotalErrors by remember {
+                            mutableStateOf(
+                                learningPrefs.getInt("matching_total_errors", 0)
+                            )
+                        }
+
+                        var matchingPerfectGames by remember {
+                            mutableStateOf(
+                                learningPrefs.getInt("matching_perfect_games", 0)
+                            )
+                        }
+
                         val knownWordIds = remember {
-                            mutableStateListOf<Int>()
+                            mutableStateListOf<Int>().apply {
+                                addAll(
+                                    learningPrefs
+                                        .getStringSet("known_word_ids", emptySet())
+                                        .orEmpty()
+                                        .mapNotNull { it.toIntOrNull() }
+                                )
+                            }
                         }
 
                         val reviewWordIds = remember {
-                            mutableStateListOf<Int>()
+                            mutableStateListOf<Int>().apply {
+                                addAll(
+                                    learningPrefs
+                                        .getStringSet("review_word_ids", emptySet())
+                                        .orEmpty()
+                                        .mapNotNull { it.toIntOrNull() }
+                                )
+                            }
                         }
 
                         var wordReviewEntry by remember {
                             mutableStateOf(
                                 quizEntries.randomOrNull()
                             )
+                        }
+
+                        val phraseEntries = remember(allEntries) {
+                            allEntries.filter { entry ->
+
+                                val saamaka = entry.saamaka.trim()
+                                val french = entry.french.trim()
+
+                                val saamakaWordCount =
+                                    saamaka.split(Regex("\\s+"))
+                                        .filter { it.isNotBlank() }
+                                        .size
+
+                                saamaka.isNotBlank() &&
+                                        french.isNotBlank() &&
+                                        saamakaWordCount in 2..5 &&
+                                        saamaka.length <= 60 &&
+                                        french.length <= 80
+                            }
+                        }
+
+                        var phraseReviewEntry by remember {
+                            mutableStateOf(
+                                phraseEntries.randomOrNull()
+                            )
+                        }
+
+                        val phraseKnownIds = remember {
+                            mutableStateListOf<Int>().apply {
+                                addAll(
+                                    learningPrefs
+                                        .getStringSet("known_phrase_ids", emptySet())
+                                        .orEmpty()
+                                        .mapNotNull { it.toIntOrNull() }
+                                )
+                            }
+                        }
+
+                        val phraseReviewIds = remember {
+                            mutableStateListOf<Int>().apply {
+                                addAll(
+                                    learningPrefs
+                                        .getStringSet("review_phrase_ids", emptySet())
+                                        .orEmpty()
+                                        .mapNotNull { it.toIntOrNull() }
+                                )
+                            }
                         }
 
                         var knownWordsCount by remember {
@@ -1327,6 +1479,7 @@ private fun TesterApp() {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
                                 .padding(top = 12.dp)
                         ) {
 
@@ -1337,7 +1490,51 @@ private fun TesterApp() {
                                 color = Color(0xFF16372A)
                             )
 
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
+
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color(0xFFF4EFE5)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp)
+                                ) {
+
+                                    Text(
+                                        text = "Ma progression",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF16372A)
+                                    )
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    Text(
+                                        text = "📚 ${knownWordIds.size} connus • 🔁 ${reviewWordIds.size} à revoir",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF2E332F)
+                                    )
+
+                                    Text(
+                                        text = "💬 ${phraseKnownIds.size} phrases • 🔁 ${phraseReviewIds.size} à revoir",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF2E332F)
+                                    )
+
+                                    Text(
+                                        text = "🎮 $matchingGamesPlayed parties • 🏆 $matchingPerfectGames parfaites",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF2E332F)
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
+
+
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1748,19 +1945,66 @@ private fun TesterApp() {
 
                                                 OutlinedButton(
                                                     onClick = {
-                                                        knownWordsCount++
+                                                        reviewWordsCount++
 
                                                         wordReviewEntry?.id?.let { id ->
-                                                            if (id !in knownWordIds) {
-                                                                knownWordIds.add(id)
+                                                            if (id !in reviewWordIds) {
+                                                                reviewWordIds.add(id)
                                                             }
 
-                                                            reviewWordIds.remove(id)
+                                                            knownWordIds.remove(id)
+                                                            learningPrefs.edit()
+                                                                .putStringSet(
+                                                                    "known_word_ids",
+                                                                    knownWordIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .putStringSet(
+                                                                    "review_word_ids",
+                                                                    reviewWordIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .apply()
                                                         }
 
-                                                        wordReviewEntry = quizEntries
-                                                            .filter { it.id != wordReviewEntry?.id }
-                                                            .randomOrNull()
+                                                        val reviewCandidates = quizEntries.filter {
+                                                            it.id in reviewWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        val unknownCandidates = quizEntries.filter {
+                                                            it.id !in knownWordIds &&
+                                                                    it.id !in reviewWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        val knownCandidates = quizEntries.filter {
+                                                            it.id in knownWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        wordReviewEntry = when {
+                                                            reviewCandidates.isNotEmpty() &&
+                                                                    (0..99).random() < 60 -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            unknownCandidates.isNotEmpty() -> {
+                                                                unknownCandidates.random()
+                                                            }
+
+                                                            reviewCandidates.isNotEmpty() -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            knownCandidates.isNotEmpty() -> {
+                                                                knownCandidates.random()
+                                                            }
+
+                                                            else -> {
+                                                                quizEntries
+                                                                    .filter { it.id != wordReviewEntry?.id }
+                                                                    .randomOrNull()
+                                                            }
+                                                        }
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -1772,13 +2016,67 @@ private fun TesterApp() {
 
                                                 Button(
                                                     onClick = {
-                                                        wordReviewEntry =
-                                                            quizEntries
-                                                                .filter {
-                                                                    it.id !=
-                                                                            wordReviewEntry?.id
-                                                                }
-                                                                .randomOrNull()
+                                                        knownWordsCount++
+
+                                                        wordReviewEntry?.id?.let { id ->
+                                                            if (id !in knownWordIds) {
+                                                                knownWordIds.add(id)
+                                                            }
+
+                                                            reviewWordIds.remove(id)
+
+                                                            learningPrefs.edit()
+                                                                .putStringSet(
+                                                                    "known_word_ids",
+                                                                    knownWordIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .putStringSet(
+                                                                    "review_word_ids",
+                                                                    reviewWordIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .apply()
+                                                        }
+
+                                                        val reviewCandidates = quizEntries.filter {
+                                                            it.id in reviewWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        val unknownCandidates = quizEntries.filter {
+                                                            it.id !in knownWordIds &&
+                                                                    it.id !in reviewWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        val knownCandidates = quizEntries.filter {
+                                                            it.id in knownWordIds &&
+                                                                    it.id != wordReviewEntry?.id
+                                                        }
+
+                                                        wordReviewEntry = when {
+                                                            reviewCandidates.isNotEmpty() &&
+                                                                    (0..99).random() < 60 -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            unknownCandidates.isNotEmpty() -> {
+                                                                unknownCandidates.random()
+                                                            }
+
+                                                            reviewCandidates.isNotEmpty() -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            knownCandidates.isNotEmpty() -> {
+                                                                knownCandidates.random()
+                                                            }
+
+                                                            else -> {
+                                                                quizEntries
+                                                                    .filter { it.id != wordReviewEntry?.id }
+                                                                    .randomOrNull()
+                                                            }
+                                                        }
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -1801,21 +2099,594 @@ private fun TesterApp() {
                                 }
 
                                 "PHRASES" -> {
-                                    Text(
-                                        text = "Phrases",
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF16372A)
-                                    )
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFFFFBF3)
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(18.dp)
+                                        ) {
+
+                                            Text(
+                                                text = "Phrases",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF16372A)
+                                            )
+
+                                            Spacer(Modifier.height(6.dp))
+
+                                            Text(
+                                                text = "Découvre des expressions courtes en Saamaka",
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+
+                                            Spacer(Modifier.height(8.dp))
+
+                                            Text(
+                                                text = "✅ Je connais : ${phraseKnownIds.size}   •   🔁 À revoir : ${phraseReviewIds.size}",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF0B5D3B)
+                                            )
+
+                                            Spacer(Modifier.height(22.dp))
+
+                                            Surface(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(18.dp),
+                                                color = Color(0xFFDCEEE2)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(18.dp)
+                                                ) {
+
+                                                    Text(
+                                                        text = phraseReviewEntry?.saamaka ?: "—",
+                                                        fontSize = 24.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF0B5D3B)
+                                                    )
+
+                                                    Spacer(Modifier.height(10.dp))
+
+                                                    Text(
+                                                        text = phraseReviewEntry?.french ?: "",
+                                                        fontSize = 16.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = Color(0xFF2E332F)
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(18.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        phraseReviewEntry?.id?.let { id ->
+                                                            if (id !in phraseReviewIds) {
+                                                                phraseReviewIds.add(id)
+                                                            }
+
+                                                            phraseKnownIds.remove(id)
+
+                                                            learningPrefs.edit()
+                                                                .putStringSet(
+                                                                    "known_phrase_ids",
+                                                                    phraseKnownIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .putStringSet(
+                                                                    "review_phrase_ids",
+                                                                    phraseReviewIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .apply()
+                                                        }
+
+                                                        val reviewCandidates = phraseEntries.filter {
+                                                            it.id in phraseReviewIds &&
+                                                                    it.id != phraseReviewEntry?.id
+                                                        }
+
+                                                        val unknownCandidates = phraseEntries.filter {
+                                                            it.id !in phraseKnownIds &&
+                                                                    it.id !in phraseReviewIds &&
+                                                                    it.id != phraseReviewEntry?.id
+                                                        }
+
+                                                        phraseReviewEntry = when {
+                                                            reviewCandidates.isNotEmpty() &&
+                                                                    (0..99).random() < 60 -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            unknownCandidates.isNotEmpty() -> {
+                                                                unknownCandidates.random()
+                                                            }
+
+                                                            reviewCandidates.isNotEmpty() -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            else -> {
+                                                                phraseEntries
+                                                                    .filter { it.id != phraseReviewEntry?.id }
+                                                                    .randomOrNull()
+                                                            }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    shape = RoundedCornerShape(14.dp)
+                                                ) {
+                                                    Text("À revoir")
+                                                }
+
+                                                Button(
+                                                    onClick = {
+                                                        phraseReviewEntry?.id?.let { id ->
+                                                            if (id !in phraseKnownIds) {
+                                                                phraseKnownIds.add(id)
+                                                            }
+
+                                                            phraseReviewIds.remove(id)
+
+                                                            learningPrefs.edit()
+                                                                .putStringSet(
+                                                                    "known_phrase_ids",
+                                                                    phraseKnownIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .putStringSet(
+                                                                    "review_phrase_ids",
+                                                                    phraseReviewIds.map { it.toString() }.toSet()
+                                                                )
+                                                                .apply()
+                                                        }
+
+                                                        val reviewCandidates = phraseEntries.filter {
+                                                            it.id in phraseReviewIds &&
+                                                                    it.id != phraseReviewEntry?.id
+                                                        }
+
+                                                        val unknownCandidates = phraseEntries.filter {
+                                                            it.id !in phraseKnownIds &&
+                                                                    it.id !in phraseReviewIds &&
+                                                                    it.id != phraseReviewEntry?.id
+                                                        }
+
+                                                        phraseReviewEntry = when {
+                                                            reviewCandidates.isNotEmpty() &&
+                                                                    (0..99).random() < 60 -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            unknownCandidates.isNotEmpty() -> {
+                                                                unknownCandidates.random()
+                                                            }
+
+                                                            reviewCandidates.isNotEmpty() -> {
+                                                                reviewCandidates.random()
+                                                            }
+
+                                                            else -> {
+                                                                phraseEntries
+                                                                    .filter { it.id != phraseReviewEntry?.id }
+                                                                    .randomOrNull()
+                                                            }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = Color(0xFF0B5D3B)
+                                                    )
+                                                ) {
+                                                    Text(
+                                                        text = "Je connais",
+                                                        color = Color.White
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
 
                                 "GAMES" -> {
-                                    Text(
-                                        text = "Jeux",
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF16372A)
-                                    )
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(18.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFF4EFE5)
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp)
+                                        ) {
+
+                                            Text(
+                                                text = "🧩 Associer les mots",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF16372A)
+                                            )
+
+                                            Spacer(Modifier.height(10.dp))
+
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(0.dp),
+                                                shape = RoundedCornerShape(14.dp),
+                                                color = Color(0xFFDCEEE2)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp)
+                                                ) {
+
+                                                    Text(
+                                                        text = "Mes statistiques",
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF16372A)
+                                                    )
+
+                                                    Spacer(Modifier.height(6.dp))
+
+                                                    Text(
+                                                        text = "🎮 Parties : $matchingGamesPlayed",
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF2E332F)
+                                                    )
+
+                                                    Text(
+                                                        text = "✅ Associations réussies : $matchingTotalCorrect",
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF2E332F)
+                                                    )
+
+                                                    Text(
+                                                        text = "❌ Erreurs : $matchingTotalErrors",
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF2E332F)
+                                                    )
+
+                                                    Text(
+                                                        text = "🏆 Parties parfaites : $matchingPerfectGames",
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF2E332F)
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.height(4.dp))
+
+                                            Text(
+                                                text = "Choisis un mot Saamaka puis sa traduction",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF68736C)
+                                            )
+
+                                            Spacer(Modifier.height(8.dp))
+
+                                            Text(
+                                                text = "Score : ${matchedEntryIds.size}/${matchingEntries.size} • Erreurs : $matchingErrors",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF0B5D3B)
+                                            )
+
+                                            Spacer(Modifier.height(16.dp))
+
+                                            val shuffledFrenchEntries = remember(
+                                                matchingEntries,
+                                                matchingGameKey
+                                            ) {
+                                                matchingEntries.shuffled()
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+
+                                                // Colonne Saamaka
+                                                Column(
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+
+                                                    Text(
+                                                        text = "Saamaka",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF16372A)
+                                                    )
+
+                                                    Spacer(Modifier.height(6.dp))
+
+                                                    matchingEntries.forEach { entry ->
+
+                                                        val isMatched = entry.id in matchedEntryIds
+                                                        val isSelected =
+                                                            selectedSaamakaMatch?.id == entry.id
+
+                                                        OutlinedButton(
+                                                            onClick = {
+                                                                if (!isMatched) {
+                                                                    selectedSaamakaMatch = entry
+                                                                    selectedFrenchMatch = null
+                                                                    matchingFeedback = null
+                                                                }
+                                                            },
+                                                            enabled = !isMatched,
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            shape = RoundedCornerShape(14.dp),
+                                                            contentPadding = PaddingValues(
+                                                                horizontal = 10.dp,
+                                                                vertical = 8.dp
+                                                            ),
+                                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                                containerColor = when {
+                                                                    isMatched -> Color(0xFFDCEEE2)
+                                                                    isSelected -> Color(0xFFDCEEE2)
+                                                                    else -> Color.Transparent
+                                                                }
+                                                            )
+                                                        ) {
+                                                            Text(
+                                                                text = if (isMatched) {
+                                                                    "✅ ${entry.saamaka}"
+                                                                } else {
+                                                                    entry.saamaka
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                textAlign = TextAlign.Start,
+                                                                fontSize = 12.sp,
+                                                                maxLines = 2,
+                                                                fontWeight = if (isMatched || isSelected) {
+                                                                    FontWeight.Bold
+                                                                } else {
+                                                                    FontWeight.Normal
+                                                                }
+                                                            )
+                                                        }
+
+                                                        Spacer(Modifier.height(6.dp))
+                                                    }
+                                                }
+
+                                                // Colonne Français
+                                                Column(
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+
+                                                    Text(
+                                                        text = "Français",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF16372A)
+                                                    )
+
+                                                    Spacer(Modifier.height(6.dp))
+
+                                                    shuffledFrenchEntries.forEach { entry ->
+
+                                                        val isMatched = entry.id in matchedEntryIds
+
+                                                        Button(
+                                                            onClick = {
+                                                                if (!isMatched) {
+
+                                                                    selectedFrenchMatch = entry
+
+                                                                    val saamakaSelection =
+                                                                        selectedSaamakaMatch
+
+                                                                    if (saamakaSelection == null) {
+
+                                                                        matchingFeedback =
+                                                                            "ℹ️ Choisis d'abord un mot Saamaka."
+
+                                                                    } else if (
+                                                                        saamakaSelection.id == entry.id
+                                                                    ) {
+
+                                                                        if (entry.id !in matchedEntryIds) {
+                                                                            matchedEntryIds.add(entry.id)
+                                                                        }
+
+                                                                        matchingFeedback =
+                                                                            "✅ Bonne association"
+
+                                                                        selectedSaamakaMatch = null
+                                                                        selectedFrenchMatch = null
+
+                                                                    } else {
+
+                                                                        matchingErrors++
+
+                                                                        matchingFeedback =
+                                                                            "❌ Mauvaise association"
+                                                                    }
+                                                                }
+                                                            },
+                                                            enabled = !isMatched,
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            shape = RoundedCornerShape(14.dp),
+                                                            contentPadding = PaddingValues(
+                                                                horizontal = 10.dp,
+                                                                vertical = 8.dp
+                                                            ),
+                                                            colors = ButtonDefaults.buttonColors(
+                                                                containerColor = if (isMatched) {
+                                                                    Color(0xFFDCEEE2)
+                                                                } else {
+                                                                    Color(0xFFDCEEE2)
+                                                                },
+                                                                contentColor = Color(0xFF16372A)
+                                                            )
+                                                        ) {
+                                                            Text(
+                                                                text = if (isMatched) {
+                                                                    "✅ ${entry.french}"
+                                                                } else {
+                                                                    entry.french
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                textAlign = TextAlign.Start,
+                                                                fontSize = 12.sp,
+                                                                maxLines = 2,
+                                                                fontWeight = if (isMatched) {
+                                                                    FontWeight.Bold
+                                                                } else {
+                                                                    FontWeight.Normal
+                                                                }
+                                                            )
+                                                        }
+
+                                                        Spacer(Modifier.height(6.dp))
+                                                    }
+                                                }
+                                            }
+
+                                            matchingFeedback?.let { feedback ->
+
+                                                Spacer(Modifier.height(8.dp))
+
+                                                Text(
+                                                    text = feedback,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = when {
+                                                        feedback.startsWith("✅") ->
+                                                            Color(0xFF0B5D3B)
+
+                                                        feedback.startsWith("❌") ->
+                                                            Color(0xFF8B2F2F)
+
+                                                        else ->
+                                                            Color(0xFF68736C)
+                                                    }
+                                                )
+                                            }
+
+                                            if (
+                                                matchingEntries.isNotEmpty() &&
+                                                matchedEntryIds.size == matchingEntries.size
+                                            ) {
+
+                                                Spacer(Modifier.height(12.dp))
+
+                                                Column {
+
+                                                    Text(
+                                                        text = "🎉 Partie terminée !",
+                                                        fontSize = 15.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF0B5D3B)
+                                                    )
+
+                                                    Spacer(Modifier.height(4.dp))
+
+                                                    Text(
+                                                        text = "✅ ${matchedEntryIds.size}/${matchingEntries.size} associations réussies",
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Color(0xFF0B5D3B)
+                                                    )
+
+                                                    Spacer(Modifier.height(2.dp))
+
+                                                    Text(
+                                                        text = "❌ $matchingErrors erreur(s)",
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = if (matchingErrors == 0) {
+                                                            Color(0xFF0B5D3B)
+                                                        } else {
+                                                            Color(0xFF8B2F2F)
+                                                        }
+                                                    )
+
+                                                    Spacer(Modifier.height(4.dp))
+
+                                                    Text(
+                                                        text = when {
+                                                            matchingErrors == 0 ->
+                                                                "Excellent ! Aucune erreur 👏"
+
+                                                            matchingErrors <= 2 ->
+                                                                "Très bien ! Continue comme ça 👍"
+
+                                                            else ->
+                                                                "Bien joué ! Encore un peu d'entraînement 💪"
+                                                        },
+                                                        fontSize = 12.sp,
+                                                        color = Color(0xFF68736C)
+                                                    )
+                                                }
+
+                                                Spacer(Modifier.height(10.dp))
+
+                                                Button(
+                                                    onClick = {
+
+                                                        matchingGamesPlayed++
+                                                        matchingTotalCorrect += matchedEntryIds.size
+                                                        matchingTotalErrors += matchingErrors
+
+                                                        if (matchingErrors == 0) {
+                                                            matchingPerfectGames++
+                                                        }
+
+                                                        learningPrefs.edit()
+                                                            .putInt(
+                                                                "matching_games_played",
+                                                                matchingGamesPlayed
+                                                            )
+                                                            .putInt(
+                                                                "matching_total_correct",
+                                                                matchingTotalCorrect
+                                                            )
+                                                            .putInt(
+                                                                "matching_total_errors",
+                                                                matchingTotalErrors
+                                                            )
+                                                            .putInt(
+                                                                "matching_perfect_games",
+                                                                matchingPerfectGames
+                                                            )
+                                                            .apply()
+
+                                                        matchedEntryIds.clear()
+                                                        selectedSaamakaMatch = null
+                                                        selectedFrenchMatch = null
+                                                        matchingFeedback = null
+                                                        matchingErrors = 0
+                                                        matchingGameKey++
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = Color(0xFF0B5D3B)
+                                                    )
+                                                ) {
+                                                    Text(
+                                                        text = "Nouvelle partie",
+                                                        color = Color.White
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
