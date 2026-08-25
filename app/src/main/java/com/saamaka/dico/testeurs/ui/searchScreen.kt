@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Clear
@@ -61,7 +63,19 @@ fun SearchScreen(
     onCategoriesClick: () -> Unit,
     showHomeContent: Boolean = true
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    val homeScrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (showHomeContent && query.isBlank()) {
+                    Modifier.verticalScroll(homeScrollState)
+                } else {
+                    Modifier
+                }
+            )
+    ) {
 
         Spacer(Modifier.height(12.dp))
 
