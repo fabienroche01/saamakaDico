@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -66,9 +67,11 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.launch
 
 
 private val LightColors = lightColorScheme(
@@ -374,6 +377,16 @@ private fun TesterApp() {
         )
     }
 
+    fun updateFavorite(id: Int, favorite: Boolean) {
+        favoritesStore.setFavorite(id, favorite)
+        refreshFavorites()
+    }
+
+    fun openFavorites() {
+        refreshFavorites()
+        activeTab = MainTab.FAVORITES
+    }
+
     fun refreshHistory() {
         historyResults.clear()
         historyResults.addAll(
@@ -412,6 +425,9 @@ private fun TesterApp() {
         openEntry(nextEntry)
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     if (testerName.isBlank()) {
         TesterNameSetupScreen(
             initialName = "",
@@ -440,6 +456,7 @@ private fun TesterApp() {
     }
 
     Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = {
@@ -664,8 +681,7 @@ private fun TesterApp() {
                     NavigationBarItem(
                         selected = activeTab == MainTab.FAVORITES,
                         onClick = {
-                            activeTab = MainTab.FAVORITES
-                            refreshFavorites()
+                            openFavorites()
                         },
                         colors = navigationItemColors,
                         icon = {
@@ -815,7 +831,9 @@ private fun TesterApp() {
                             openNextUnvalidated()
                         },
                         onNext = { openNextUnvalidated() },
-                        onFavoriteChange = { favoritesStore.setFavorite(entry.id, it) },
+                        onFavoriteChange = { favorite ->
+                            updateFavorite(entry.id, favorite)
+                        },
                         onCopy = {
                             copyEntry(
                                 context,
@@ -936,7 +954,7 @@ private fun TesterApp() {
                                 activeTab = MainTab.TRANSLATE
                             },
                             onFavoritesClick = {
-                                activeTab = MainTab.FAVORITES
+                                openFavorites()
                             },
                             onCategoriesClick = {
                                 activeTab = MainTab.CATEGORIES
@@ -985,7 +1003,7 @@ private fun TesterApp() {
                             },
 
                             onFavoritesClick = {
-                                activeTab = MainTab.FAVORITES
+                                openFavorites()
                             },
 
                             onCategoriesClick = {
@@ -1339,8 +1357,26 @@ private fun TesterApp() {
                             "${favoriteResults.size} favori(s)"
                         },
                         entries = favoriteResults,
-                        selectedLanguage = selectedLanguage,
-                        onOpen = ::openEntry
+                        onOpen = ::openEntry,
+                        onRemove = { entry ->
+                            updateFavorite(entry.id, false)
+
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Retiré des favoris",
+                                    actionLabel = "Annuler",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    updateFavorite(entry.id, true)
+                                }
+                            }
+                        },
+                        onSearch = {
+                            activeTab = MainTab.SEARCH
+                        }
                     )
 
                     MainTab.HISTORY -> HistoryScreen(
@@ -3136,9 +3172,10 @@ private fun TesterNameSetupScreen(
 @Composable
 private fun SavedScreen(
     title: String,
-    selectedLanguage: AppLanguage,
     entries: List<DictionaryEntry>,
-    onOpen: (DictionaryEntry) -> Unit
+    onOpen: (DictionaryEntry) -> Unit,
+    onRemove: (DictionaryEntry) -> Unit,
+    onSearch: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize()
@@ -3191,14 +3228,16 @@ private fun SavedScreen(
         if (entries.isEmpty()) {
             LibraryEmptyState(
                 icon = Icons.Default.FavoriteBorder,
-                title = "Aucun favori pour le moment",
-                message = "Ajoute des mots depuis leur fiche pour les retrouver ici."
+                title = "Aucun favori",
+                message = "Ajoute des mots à tes favoris pour les retrouver ici.",
+                actionLabel = "Rechercher un mot",
+                onAction = onSearch
             )
         } else {
-            EntryList(
+            FavoritesList(
                 entries = entries,
-                selectedLanguage = selectedLanguage,
-                onOpen = onOpen
+                onOpen = onOpen,
+                onRemove = onRemove
             )
         }
     }
@@ -3546,7 +3585,9 @@ private fun StatCard(
 private fun LibraryEmptyState(
     icon: ImageVector,
     title: String,
-    message: String
+    message: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -3586,6 +3627,108 @@ private fun LibraryEmptyState(
                 color = Color(0xFF68736C),
                 textAlign = TextAlign.Center
             )
+
+            if (actionLabel != null && onAction != null) {
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = onAction,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0B5D3B)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(actionLabel)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoritesList(
+    entries: List<DictionaryEntry>,
+    onOpen: (DictionaryEntry) -> Unit,
+    onRemove: (DictionaryEntry) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(
+            items = entries,
+            key = { it.id }
+        ) { entry ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(entry) },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFFBF3)
+                ),
+                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Français",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = entry.french.ifBlank { "À compléter" },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16372A),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = "Saamaka",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = entry.saamaka.ifBlank { "À compléter" },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color(0xFF0B5D3B),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onRemove(entry) },
+                        modifier = Modifier.padding(start = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Retirer des favoris",
+                            tint = Color(0xFF0B5D3B)
+                        )
+                    }
+                }
+            }
         }
     }
 }
