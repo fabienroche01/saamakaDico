@@ -2843,15 +2843,17 @@ private fun TesterApp() {
                         }
                     }
 
-                        MainTab.MORE -> {
+                    MainTab.MORE -> {
+                        val historyCount = historyStore.ids().size
+                        val correctionsCount = reviewStore.all().size
+
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
-                                .padding(top = 12.dp),
+                                .padding(top = 12.dp, bottom = 32.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-
                             Text(
                                 text = "Plus",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -2865,221 +2867,94 @@ private fun TesterApp() {
                                 color = Color(0xFF68736C)
                             )
 
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(4.dp))
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        activeTab = MainTab.TRANSLATE
-                                    },
-                                shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFF0B5D3B)
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = Color.White.copy(alpha = 0.13f)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Translate,
-                                            contentDescription = null,
-                                            tint = Color(0xFFF0C96A),
-                                            modifier = Modifier
-                                                .padding(9.dp)
-                                                .size(22.dp)
-                                        )
-                                    }
+                            Text(
+                                text = "Explorer",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF16372A)
+                            )
 
-                                    Spacer(Modifier.width(12.dp))
+                            MoreAccessCard(
+                                icon = Icons.Default.Translate,
+                                title = "Traduire",
+                                description = "Français ↔ Saamaka",
+                                onClick = { activeTab = MainTab.TRANSLATE }
+                            )
 
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Traduire",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
-                                            color = Color.White
-                                        )
+                            MoreAccessCard(
+                                icon = Icons.AutoMirrored.Filled.MenuBook,
+                                title = "Catégories",
+                                description = "Explorer les mots par thème",
+                                onClick = { activeTab = MainTab.CATEGORIES }
+                            )
 
-                                        Spacer(Modifier.height(2.dp))
-
-                                        Text(
-                                            text = "Français ↔ Saamaka",
-                                            fontSize = 12.sp,
-                                            color = Color.White.copy(alpha = 0.82f)
-                                        )
-                                    }
-
-                                    Icon(
-                                        imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = Color(0xFFF0C96A)
-                                    )
-                                }
-                            }
+                            MoreAccessCard(
+                                icon = Icons.Default.History,
+                                title = "Historique",
+                                description = "Retrouver les mots consultés",
+                                badge = historyCount.toString(),
+                                onClick = ::openHistory
+                            )
 
                             if (accessLevel == AccessLevel.TESTER) {
+                                Spacer(Modifier.height(4.dp))
 
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            activeTab = MainTab.MISSION
-                                        },
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFDCEEE2)
-                                    ),
-                                    border = BorderStroke(1.dp, Color(0xFFBFD8C6)),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = Color(0xFFDCEEE2),
+                                    border = BorderStroke(1.dp, Color(0xFFBFD8C6))
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = Color(0xFF0B5D3B)
-                                        )
-
-                                        Spacer(Modifier.width(12.dp))
-
-                                        Column(
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                text = "Mission testeur",
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 14.sp
-                                            )
-
-                                            Text(
-                                                text = "Valider et corriger les mots",
-                                                fontSize = 12.sp,
-                                                color = Color(0xFF68736C)
-                                            )
-                                        }
-
-                                        Icon(
-                                            imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null,
-                                            tint = Color(0xFF0B5D3B)
-                                        )
-                                    }
-                                }
-                            }
-
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        openHistory()
-                                    },
-                                shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFFF4EFE5)
-                                ),
-                                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.History,
-                                        contentDescription = null,
-                                        tint = Color(0xFF0B5D3B)
-                                    )
-
-                                    Spacer(Modifier.width(12.dp))
-
                                     Column(
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Text(
-                                            text = "Historique",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp
-                                        )
-
-                                        Text(
-                                            text = "Retrouver les mots consultés",
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF68736C)
-                                        )
-                                    }
-
-                                    Icon(
-                                        imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = Color(0xFF0B5D3B)
-                                    )
-                                }
-                            }
-
-                            if (accessLevel == AccessLevel.TESTER) {
-
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            activeTab = MainTab.CORRECTIONS
-                                        },
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFF4EFE5)
-                                    ),
-                                    border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = null,
-                                            tint = Color(0xFF0B5D3B)
-                                        )
-
-                                        Spacer(Modifier.width(12.dp))
-
-                                        Column(
-                                            modifier = Modifier.weight(1f)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "Corrections",
+                                                text = "Espace testeur",
+                                                style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 14.sp
+                                                color = Color(0xFF16372A)
                                             )
 
-                                            Text(
-                                                text = "Exports et travail testeur",
-                                                fontSize = 12.sp,
-                                                color = Color(0xFF68736C)
-                                            )
+                                            Spacer(Modifier.width(8.dp))
+
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = Color(0xFFFFEFC4)
+                                            ) {
+                                                Text(
+                                                    text = "TESTEUR",
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 8.dp,
+                                                        vertical = 3.dp
+                                                    ),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF6D5312)
+                                                )
+                                            }
                                         }
 
-                                        Icon(
-                                            imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null,
-                                            tint = Color(0xFF0B5D3B)
+                                        MoreAccessCard(
+                                            icon = Icons.Default.CheckCircle,
+                                            title = "Mission testeur",
+                                            description = "Valider et corriger les mots",
+                                            containerColor = Color(0xFFFFFBF3),
+                                            onClick = { activeTab = MainTab.MISSION }
+                                        )
+
+                                        MoreAccessCard(
+                                            icon = Icons.Default.Settings,
+                                            title = "Corrections",
+                                            description = "Exports et travail testeur",
+                                            badge = correctionsCount.toString(),
+                                            containerColor = Color(0xFFFFFBF3),
+                                            onClick = { activeTab = MainTab.CORRECTIONS }
                                         )
                                     }
                                 }
@@ -4567,6 +4442,92 @@ private fun learnSectionChipBorder(selected: Boolean) =
         borderColor = Color(0xFFD2CCC0),
         selectedBorderColor = Color(0xFF0B5D3B)
     )
+
+@Composable
+private fun MoreAccessCard(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+    badge: String? = null,
+    containerColor: Color = Color(0xFFF4EFE5)
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFDCEEE2)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF0B5D3B),
+                    modifier = Modifier.padding(9.dp).size(20.dp)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF16372A)
+                )
+
+                Spacer(Modifier.height(2.dp))
+
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF68736C),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (badge != null) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFFFEFC4)
+                ) {
+                    Text(
+                        text = badge,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6D5312)
+                    )
+                }
+
+                Spacer(Modifier.width(8.dp))
+            }
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color(0xFF0B5D3B),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
 
 @Composable
 private fun CategoriesScreen(
