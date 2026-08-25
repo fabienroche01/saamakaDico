@@ -70,7 +70,9 @@ fun SearchScreen(
             .fillMaxSize()
             .then(
                 if (showHomeContent && query.isBlank()) {
-                    Modifier.verticalScroll(homeScrollState)
+                    Modifier
+                        .verticalScroll(homeScrollState)
+                        .padding(bottom = 24.dp)
                 } else {
                     Modifier
                 }
@@ -658,7 +660,7 @@ fun SearchScreen(
                                         },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(32.dp),
+                                            .heightIn(min = 32.dp),
                                         shape = RoundedCornerShape(16.dp),
 
                                         colors = FilterChipDefaults.filterChipColors(
