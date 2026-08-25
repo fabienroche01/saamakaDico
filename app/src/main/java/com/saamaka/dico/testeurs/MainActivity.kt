@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.database.DictionaryDatabase
@@ -1528,7 +1529,7 @@ private fun TesterApp() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(learnScrollState)
-                                .padding(top = 12.dp)
+                                .padding(top = 12.dp, bottom = 32.dp)
                         ) {
 
                             Text(
@@ -1549,7 +1550,7 @@ private fun TesterApp() {
                                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(16.dp)
+                                    modifier = Modifier.padding(12.dp)
                                 ) {
 
                                     Text(
@@ -1567,40 +1568,55 @@ private fun TesterApp() {
                                         color = Color.White.copy(alpha = 0.78f)
                                     )
 
-                                    Spacer(Modifier.height(12.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        LearnProgressStat(
-                                            modifier = Modifier.weight(1f),
-                                            value = knownWordIds.size,
-                                            label = "Mots connus"
-                                        )
-                                        LearnProgressStat(
-                                            modifier = Modifier.weight(1f),
-                                            value = reviewWordIds.size,
-                                            label = "À revoir"
-                                        )
-                                    }
-
                                     Spacer(Modifier.height(8.dp))
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    val progressStats = listOf(
+                                        knownWordIds.size to "Mots connus",
+                                        reviewWordIds.size to "À revoir",
+                                        phraseKnownIds.size to "Phrases",
+                                        matchingPerfectGames to "Parfaites"
+                                    )
+
+                                    BoxWithConstraints(
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        LearnProgressStat(
-                                            modifier = Modifier.weight(1f),
-                                            value = phraseKnownIds.size,
-                                            label = "Phrases • ${phraseReviewIds.size} à revoir"
-                                        )
-                                        LearnProgressStat(
-                                            modifier = Modifier.weight(1f),
-                                            value = matchingGamesPlayed,
-                                            label = "$matchingPerfectGames parfaites"
-                                        )
+                                        val useSingleRow =
+                                            maxWidth >= 340.dp &&
+                                                LocalDensity.current.fontScale <= 1.15f
+
+                                        if (useSingleRow) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                progressStats.forEach { (value, label) ->
+                                                    LearnProgressStat(
+                                                        modifier = Modifier.weight(1f),
+                                                        value = value,
+                                                        label = label
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            Column(
+                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                progressStats.chunked(2).forEach { rowStats ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
+                                                        rowStats.forEach { (value, label) ->
+                                                            LearnProgressStat(
+                                                                modifier = Modifier.weight(1f),
+                                                                value = value,
+                                                                label = label
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -4366,10 +4382,10 @@ private fun LearnProgressStat(
         shape = RoundedCornerShape(14.dp),
         color = Color.White.copy(alpha = 0.12f)
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp)) {
             Text(
                 text = value.toString(),
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color(0xFFF0C96A)
             )
@@ -4377,7 +4393,8 @@ private fun LearnProgressStat(
                 text = label,
                 fontSize = 10.sp,
                 color = Color.White.copy(alpha = 0.82f),
-                maxLines = 1
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
