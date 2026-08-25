@@ -625,7 +625,8 @@ private fun TesterApp() {
                     // Recherche : tout le monde
                     // Accueil
                     NavigationBarItem(
-                        selected = activeTab == MainTab.HOME,
+                        selected = activeTab == MainTab.HOME ||
+                            activeTab == MainTab.CATEGORIES,
                         onClick = {
                             activeTab = MainTab.HOME
                         },
@@ -699,7 +700,10 @@ private fun TesterApp() {
                     // Plus
                     NavigationBarItem(
                         selected = activeTab == MainTab.MORE ||
-                            activeTab == MainTab.TRANSLATE,
+                            activeTab == MainTab.TRANSLATE ||
+                            activeTab == MainTab.HISTORY ||
+                            activeTab == MainTab.MISSION ||
+                            activeTab == MainTab.CORRECTIONS,
                         onClick = {
                             activeTab = MainTab.MORE
                         },
@@ -2761,6 +2765,7 @@ private fun TesterApp() {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
                                 .padding(top = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {

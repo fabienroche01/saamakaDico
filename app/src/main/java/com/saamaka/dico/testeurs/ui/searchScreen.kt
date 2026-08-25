@@ -206,7 +206,7 @@ fun SearchScreen(
                         color = Color(0xFFF0C96A)
                     ) {
                         Text(
-                            text = "V14",
+                            text = "V15",
                             modifier = Modifier.padding(
                                 horizontal = 10.dp,
                                 vertical = 7.dp
