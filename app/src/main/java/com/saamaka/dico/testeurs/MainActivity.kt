@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
@@ -396,9 +397,15 @@ private fun TesterApp() {
         )
     }
 
+    fun openHistory() {
+        refreshHistory()
+        activeTab = MainTab.HISTORY
+    }
+
     fun openEntry(entry: DictionaryEntry) {
         selectedEntry = applyCorrection(entry)
         historyStore.add(entry.id)
+        refreshHistory()
     }
     fun openNextUnvalidated() {
         val validatedIds = validationStore.ids()
@@ -961,7 +968,7 @@ private fun TesterApp() {
                                 activeTab = MainTab.CATEGORIES
                             },
                             onHistoryClick = {
-                                activeTab = MainTab.HISTORY
+                                openHistory()
                             },
                             onWordOfDayClick = {
                                 wordOfDay?.let(::openEntry)
@@ -1012,7 +1019,7 @@ private fun TesterApp() {
                             },
 
                             onHistoryClick = {
-                                activeTab = MainTab.HISTORY
+                                openHistory()
                             },
 
                             onLearnClick = {
@@ -1382,12 +1389,35 @@ private fun TesterApp() {
 
                     MainTab.HISTORY -> HistoryScreen(
                         entries = historyResults,
-                        selectedLanguage = selectedLanguage,
                         onClear = {
                             historyStore.clear()
                             refreshHistory()
                         },
-                        onOpen = ::openEntry
+                        onOpen = ::openEntry,
+                        onRemove = { entry ->
+                            val previousIndex = historyStore.remove(entry.id)
+
+                            if (previousIndex != null) {
+                                refreshHistory()
+
+                                coroutineScope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "Retiré de l’historique",
+                                        actionLabel = "Annuler",
+                                        withDismissAction = true,
+                                        duration = SnackbarDuration.Long
+                                    )
+
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        historyStore.restore(entry.id, previousIndex)
+                                        refreshHistory()
+                                    }
+                                }
+                            }
+                        },
+                        onSearch = {
+                            activeTab = MainTab.SEARCH
+                        }
                     )
 
                     MainTab.LEARN -> {
@@ -2954,8 +2984,7 @@ private fun TesterApp() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        activeTab = MainTab.HISTORY
-                                        refreshHistory()
+                                        openHistory()
                                     },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(
@@ -3263,10 +3292,39 @@ private fun SavedScreen(
 @Composable
 private fun HistoryScreen(
     entries: List<DictionaryEntry>,
-    selectedLanguage: AppLanguage,
     onClear: () -> Unit,
-    onOpen: (DictionaryEntry) -> Unit
+    onOpen: (DictionaryEntry) -> Unit,
+    onRemove: (DictionaryEntry) -> Unit,
+    onSearch: () -> Unit
 ) {
+    var showClearConfirmation by remember { mutableStateOf(false) }
+
+    if (showClearConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Effacer l’historique ?") },
+            text = { Text("Tous les mots consultés seront supprimés.") },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmation = false }) {
+                    Text("Annuler")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearConfirmation = false
+                        onClear()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Tout effacer")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -3312,7 +3370,7 @@ private fun HistoryScreen(
                 }
 
                 TextButton(
-                    onClick = onClear,
+                    onClick = { showClearConfirmation = true },
                     enabled = entries.isNotEmpty(),
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = Color(0xFFF0C96A),
@@ -3330,13 +3388,15 @@ private fun HistoryScreen(
             LibraryEmptyState(
                 icon = Icons.Default.History,
                 title = "Historique vide",
-                message = "Les mots que tu consultes apparaîtront ici."
+                message = "Les mots que tu consulteras apparaîtront ici.",
+                actionLabel = "Rechercher un mot",
+                onAction = onSearch
             )
         } else {
-            EntryList(
+            HistoryList(
                 entries = entries,
-                selectedLanguage = selectedLanguage,
-                onOpen = onOpen
+                onOpen = onOpen,
+                onRemove = onRemove
             )
         }
     }
@@ -3743,6 +3803,96 @@ private fun FavoritesList(
                             tint = Color(0xFF0B5D3B)
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryList(
+    entries: List<DictionaryEntry>,
+    onOpen: (DictionaryEntry) -> Unit,
+    onRemove: (DictionaryEntry) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(
+            items = entries,
+            key = { it.id }
+        ) { entry ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(entry) },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFFBF3)
+                ),
+                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Français",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = entry.french.ifBlank { "À compléter" },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16372A),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = "Saamaka",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = entry.saamaka.ifBlank { "À compléter" },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color(0xFF0B5D3B),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onRemove(entry) },
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Retirer de l’historique",
+                            tint = Color(0xFF68736C),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = Color(0xFF0B5D3B),
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
