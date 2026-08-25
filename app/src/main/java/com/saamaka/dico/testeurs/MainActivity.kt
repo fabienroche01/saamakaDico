@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -1415,10 +1416,30 @@ private fun TesterApp() {
                         var reviewWordsCount by remember {
                             mutableStateOf(0)
                         }
+
+                        val learnScrollState = rememberScrollState()
+
+                        LaunchedEffect(
+                            learnSection,
+                            matchedEntryIds.size,
+                            matchingEntries.size
+                        ) {
+                            if (
+                                learnSection == "GAMES" &&
+                                matchingEntries.isNotEmpty() &&
+                                matchedEntryIds.size == matchingEntries.size
+                            ) {
+                                withFrameNanos { }
+                                learnScrollState.animateScrollTo(
+                                    learnScrollState.maxValue
+                                )
+                            }
+                        }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
+                                .verticalScroll(learnScrollState)
                                 .padding(top = 12.dp)
                         ) {
 
@@ -1431,45 +1452,68 @@ private fun TesterApp() {
 
                             Spacer(Modifier.height(12.dp))
 
-                            Surface(
+                            Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp),
-                                color = Color(0xFFF4EFE5)
+                                shape = RoundedCornerShape(22.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF0B5D3B)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(14.dp)
+                                    modifier = Modifier.padding(16.dp)
                                 ) {
 
                                     Text(
                                         text = "Ma progression",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF16372A)
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
                                     )
 
-                                    Spacer(Modifier.height(6.dp))
-
-                                    Text(
-                                        text = "📚 ${knownWordIds.size} connus • 🔁 ${reviewWordIds.size} à revoir",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF2E332F)
-                                    )
+                                    Spacer(Modifier.height(4.dp))
 
                                     Text(
-                                        text = "💬 ${phraseKnownIds.size} phrases • 🔁 ${phraseReviewIds.size} à revoir",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF2E332F)
+                                        text = "Ton parcours d'apprentissage",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.78f)
                                     )
 
-                                    Text(
-                                        text = "🎮 $matchingGamesPlayed parties • 🏆 $matchingPerfectGames parfaites",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF2E332F)
-                                    )
+                                    Spacer(Modifier.height(12.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        LearnProgressStat(
+                                            modifier = Modifier.weight(1f),
+                                            value = knownWordIds.size,
+                                            label = "Mots connus"
+                                        )
+                                        LearnProgressStat(
+                                            modifier = Modifier.weight(1f),
+                                            value = reviewWordIds.size,
+                                            label = "À revoir"
+                                        )
+                                    }
 
                                     Spacer(Modifier.height(8.dp))
 
-
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        LearnProgressStat(
+                                            modifier = Modifier.weight(1f),
+                                            value = phraseKnownIds.size,
+                                            label = "Phrases • ${phraseReviewIds.size} à revoir"
+                                        )
+                                        LearnProgressStat(
+                                            modifier = Modifier.weight(1f),
+                                            value = matchingGamesPlayed,
+                                            label = "$matchingPerfectGames parfaites"
+                                        )
+                                    }
                                 }
                             }
 
@@ -1486,6 +1530,11 @@ private fun TesterApp() {
                                         learnSection = "QUIZ"
                                     },
                                     modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = learnSectionChipColors(),
+                                    border = learnSectionChipBorder(
+                                        selected = learnSection == "QUIZ"
+                                    ),
                                     label = {
                                         Text(
                                             text = "Quiz",
@@ -1501,6 +1550,11 @@ private fun TesterApp() {
                                         learnSection = "WORDS"
                                     },
                                     modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = learnSectionChipColors(),
+                                    border = learnSectionChipBorder(
+                                        selected = learnSection == "WORDS"
+                                    ),
                                     label = {
                                         Text(
                                             text = "Mots",
@@ -1516,6 +1570,11 @@ private fun TesterApp() {
                                         learnSection = "PHRASES"
                                     },
                                     modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = learnSectionChipColors(),
+                                    border = learnSectionChipBorder(
+                                        selected = learnSection == "PHRASES"
+                                    ),
                                     label = {
                                         Text(
                                             text = "Phrases",
@@ -1531,6 +1590,11 @@ private fun TesterApp() {
                                         learnSection = "GAMES"
                                     },
                                     modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = learnSectionChipColors(),
+                                    border = learnSectionChipBorder(
+                                        selected = learnSection == "GAMES"
+                                    ),
                                     label = {
                                         Text(
                                             text = "Jeux",
@@ -1552,7 +1616,9 @@ private fun TesterApp() {
                                         shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(
                                             containerColor = Color(0xFFFFFBF3)
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(18.dp)
@@ -1801,7 +1867,9 @@ private fun TesterApp() {
                                         shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(
                                             containerColor = Color(0xFFFFFBF3)
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(18.dp)
@@ -2044,7 +2112,9 @@ private fun TesterApp() {
                                         shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(
                                             containerColor = Color(0xFFFFFBF3)
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(18.dp)
@@ -2242,10 +2312,12 @@ private fun TesterApp() {
 
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(18.dp),
+                                        shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(
                                             containerColor = Color(0xFFF4EFE5)
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(16.dp)
@@ -2261,9 +2333,7 @@ private fun TesterApp() {
                                             Spacer(Modifier.height(10.dp))
 
                                             Surface(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(0.dp),
+                                                modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(14.dp),
                                                 color = Color(0xFFDCEEE2)
                                             ) {
@@ -2524,7 +2594,14 @@ private fun TesterApp() {
 
                                                 Spacer(Modifier.height(12.dp))
 
-                                                Column {
+                                                Surface(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    color = Color(0xFFFFEFC4)
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier.padding(14.dp)
+                                                    ) {
 
                                                     Text(
                                                         text = "🎉 Partie terminée !",
@@ -2571,6 +2648,7 @@ private fun TesterApp() {
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF68736C)
                                                     )
+                                                    }
                                                 }
 
                                                 Spacer(Modifier.height(10.dp))
@@ -3953,6 +4031,52 @@ private fun DetailScreen(
             }
         }
     }
+
+@Composable
+private fun LearnProgressStat(
+    modifier: Modifier = Modifier,
+    value: Int,
+    label: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White.copy(alpha = 0.12f)
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                text = value.toString(),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFFF0C96A)
+            )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.82f),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun learnSectionChipColors() =
+    FilterChipDefaults.filterChipColors(
+        selectedContainerColor = Color(0xFF0B5D3B),
+        selectedLabelColor = Color.White,
+        containerColor = Color(0xFFF4EFE5),
+        labelColor = Color(0xFF3F4842)
+    )
+
+@Composable
+private fun learnSectionChipBorder(selected: Boolean) =
+    FilterChipDefaults.filterChipBorder(
+        enabled = true,
+        selected = selected,
+        borderColor = Color(0xFFD2CCC0),
+        selectedBorderColor = Color(0xFF0B5D3B)
+    )
 
 @Composable
 private fun CategoriesScreen(
