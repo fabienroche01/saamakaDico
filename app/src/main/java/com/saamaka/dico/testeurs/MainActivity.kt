@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -1044,7 +1045,11 @@ private fun TesterApp() {
 
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(20.dp)
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFF0B5D3B)
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(18.dp)
@@ -1053,7 +1058,8 @@ private fun TesterApp() {
                                             Text(
                                                 text = "Mission de $testerName",
                                                 style = MaterialTheme.typography.headlineSmall,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White
                                             )
 
                                             Spacer(
@@ -1062,7 +1068,8 @@ private fun TesterApp() {
 
                                             Text(
                                                 text = "Valide, corrige et complète les mots de ta mission.",
-                                                style = MaterialTheme.typography.bodyMedium
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.White.copy(alpha = 0.82f)
                                             )
 
                                             Spacer(
@@ -1075,6 +1082,11 @@ private fun TesterApp() {
 
                                                 Button(
                                                     modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(14.dp),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = Color(0xFFF0C96A),
+                                                        contentColor = Color(0xFF16372A)
+                                                    ),
                                                     onClick = {
                                                         expandedCategory = true
                                                     }
@@ -1136,7 +1148,11 @@ private fun TesterApp() {
 
                                         Card(
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = Color(0xFFF4EFE5)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFFE0D8C9))
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(12.dp)
@@ -1156,7 +1172,11 @@ private fun TesterApp() {
 
                                         Card(
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = Color(0xFFFFEFC4)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFFE2CC8B))
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(12.dp)
@@ -1176,7 +1196,11 @@ private fun TesterApp() {
 
                                         Card(
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = Color(0xFFDCEEE2)
+                                            ),
+                                            border = BorderStroke(1.dp, Color(0xFFBFD8C6))
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(12.dp)
@@ -1200,6 +1224,16 @@ private fun TesterApp() {
                                     )
                                 }
 
+                                if (missionEntries.isEmpty()) {
+                                    item {
+                                        LibraryEmptyState(
+                                            icon = Icons.Default.CheckCircle,
+                                            title = "Mission vide",
+                                            message = "Aucun mot n'est disponible pour cette catégorie."
+                                        )
+                                    }
+                                }
+
                                 items(missionEntries) { entry ->
 
                                     Card(
@@ -1209,7 +1243,12 @@ private fun TesterApp() {
                                             .clickable {
                                                 openEntry(entry)
                                             },
-                                        shape = RoundedCornerShape(16.dp)
+                                        shape = RoundedCornerShape(18.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(0xFFFFFBF3)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                                     ) {
 
                                         Row(
@@ -1226,7 +1265,8 @@ private fun TesterApp() {
                                                 Text(
                                                     text = entry.french,
                                                     style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF16372A)
                                                 )
 
                                                 Spacer(
@@ -1264,13 +1304,21 @@ private fun TesterApp() {
                                                             "✅ Déjà validé"
                                                     },
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    fontWeight = FontWeight.Medium
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = when {
+                                                        entry.valide.equals("D", ignoreCase = true) ->
+                                                            Color(0xFF8A6712)
+                                                        entry.saamaka.isBlank() ->
+                                                            Color(0xFF8B2F2F)
+                                                        else -> Color(0xFF0B5D3B)
+                                                    }
                                                 )
                                             }
 
                                             Icon(
                                                 imageVector = Icons.Default.ChevronRight,
-                                                contentDescription = null
+                                                contentDescription = null,
+                                                tint = Color(0xFF0B5D3B)
                                             )
                                         }
                                     }
@@ -2720,11 +2768,17 @@ private fun TesterApp() {
                             Text(
                                 text = "Plus",
                                 style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF16372A)
                             )
 
-                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Outils, historique et espace testeur",
+                                fontSize = 13.sp,
+                                color = Color(0xFF68736C)
+                            )
+
+                            Spacer(Modifier.height(6.dp))
 
                             Card(
                                 modifier = Modifier
@@ -2793,10 +2847,12 @@ private fun TesterApp() {
                                         .clickable {
                                             activeTab = MainTab.MISSION
                                         },
-                                    shape = RoundedCornerShape(18.dp),
+                                    shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = Color(0xFFDCEEE2)
-                                    )
+                                    ),
+                                    border = BorderStroke(1.dp, Color(0xFFBFD8C6)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -2830,7 +2886,8 @@ private fun TesterApp() {
 
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null
+                                            contentDescription = null,
+                                            tint = Color(0xFF0B5D3B)
                                         )
                                     }
                                 }
@@ -2843,10 +2900,12 @@ private fun TesterApp() {
                                         activeTab = MainTab.HISTORY
                                         refreshHistory()
                                     },
-                                shape = RoundedCornerShape(18.dp),
+                                shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = Color(0xFFF4EFE5)
-                                )
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -2880,7 +2939,8 @@ private fun TesterApp() {
 
                                     Icon(
                                         imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null
+                                        contentDescription = null,
+                                        tint = Color(0xFF0B5D3B)
                                     )
                                 }
                             }
@@ -2893,10 +2953,12 @@ private fun TesterApp() {
                                         .clickable {
                                             activeTab = MainTab.CORRECTIONS
                                         },
-                                    shape = RoundedCornerShape(18.dp),
+                                    shape = RoundedCornerShape(20.dp),
                                     colors = CardDefaults.cardColors(
                                         containerColor = Color(0xFFF4EFE5)
-                                    )
+                                    ),
+                                    border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -2930,7 +2992,8 @@ private fun TesterApp() {
 
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null
+                                            contentDescription = null,
+                                            tint = Color(0xFF0B5D3B)
                                         )
                                     }
                                 }
@@ -3078,38 +3141,61 @@ private fun SavedScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        Surface(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.primaryContainer
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B5D3B)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Mes favoris",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White.copy(alpha = 0.13f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = Color(0xFFF0C96A),
+                        modifier = Modifier.padding(9.dp).size(22.dp)
+                    )
+                }
 
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.width(12.dp))
 
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Column {
+                    Text(
+                        text = "Mes favoris",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        EntryList(
-            entries = entries,
-            selectedLanguage = selectedLanguage,
-            onOpen = onOpen
-        )
+        if (entries.isEmpty()) {
+            LibraryEmptyState(
+                icon = Icons.Default.FavoriteBorder,
+                title = "Aucun favori pour le moment",
+                message = "Ajoute des mots depuis leur fiche pour les retrouver ici."
+            )
+        } else {
+            EntryList(
+                entries = entries,
+                selectedLanguage = selectedLanguage,
+                onOpen = onOpen
+            )
+        }
     }
 }
 
@@ -3127,10 +3213,11 @@ private fun HistoryScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        Surface(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.primaryContainer
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B5D3B)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
 
             Row(
@@ -3147,8 +3234,8 @@ private fun HistoryScreen(
                     Text(
                         text = "Historique",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
                     )
 
                     Spacer(Modifier.height(3.dp))
@@ -3159,29 +3246,39 @@ private fun HistoryScreen(
                         } else {
                             "${entries.size} mot(s) récent(s)"
                         },
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f)
                     )
                 }
 
                 TextButton(
                     onClick = onClear,
-                    enabled = entries.isNotEmpty()
-                ) {
-                    Text(
-                        text = "Tout effacer",
-                        color = MaterialTheme.colorScheme.primary
+                    enabled = entries.isNotEmpty(),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFFF0C96A),
+                        disabledContentColor = Color.White.copy(alpha = 0.35f)
                     )
+                ) {
+                    Text(text = "Tout effacer", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        EntryList(
-            entries = entries,
-            selectedLanguage = selectedLanguage,
-            onOpen = onOpen
-        )
+        if (entries.isEmpty()) {
+            LibraryEmptyState(
+                icon = Icons.Default.History,
+                title = "Historique vide",
+                message = "Les mots que tu consultes apparaîtront ici."
+            )
+        } else {
+            EntryList(
+                entries = entries,
+                selectedLanguage = selectedLanguage,
+                onOpen = onOpen
+            )
+        }
     }
 }
 
@@ -3210,20 +3307,29 @@ private fun CorrectionsScreen(
 
             Spacer(Modifier.height(14.dp))
 
-            Text(
-                text = "Espace corrections",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B5D3B)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        text = "Espace corrections",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
 
-            Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(4.dp))
 
-            Text(
-                text = "Valide, corrige et exporte ton travail de testeur.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                    Text(
+                        text = "Valide, corrige et exporte ton travail de testeur.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.82f)
+                    )
+                }
+            }
 
             Spacer(Modifier.height(14.dp))
 
@@ -3240,15 +3346,23 @@ private fun CorrectionsScreen(
                 },
                 singleLine = true,
                 readOnly = true,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF0B5D3B),
+                    unfocusedBorderColor = Color(0xFFD2CCC0),
+                    focusedContainerColor = Color(0xFFFFFBF3),
+                    unfocusedContainerColor = Color(0xFFFFFBF3)
+                )
             )
 
             Spacer(Modifier.height(14.dp))
 
-            Surface(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4EFE5)),
+                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
 
                 Column(
@@ -3259,7 +3373,7 @@ private fun CorrectionsScreen(
                         text = "Résumé du travail",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF16372A)
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -3307,7 +3421,7 @@ private fun CorrectionsScreen(
                     Text(
                         text = "$validatedCount validation(s) locale(s)",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF68736C)
                     )
                 }
             }
@@ -3318,6 +3432,7 @@ private fun CorrectionsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 enabled = correctionCount > 0,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B5D3B)),
                 onClick = onExportCorrections
             ) {
                 Icon(
@@ -3352,10 +3467,11 @@ private fun CorrectionsScreen(
 
             Spacer(Modifier.height(18.dp))
 
-            Surface(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),
+                border = BorderStroke(1.dp, Color(0xFFE2CC8B))
             ) {
 
                 Column(
@@ -3366,7 +3482,7 @@ private fun CorrectionsScreen(
                         text = "Consignes",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color(0xFF16372A)
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -3399,24 +3515,71 @@ private fun StatCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface.copy(
-            alpha = 0.75f
-        )
+        color = Color(0xFFFFFBF3),
+        border = BorderStroke(1.dp, Color(0xFFE0D8C9))
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
         ) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF0B5D3B)
             )
 
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF68736C)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryEmptyState(
+    icon: ImageVector,
+    title: String,
+    message: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF4EFE5)),
+        border = BorderStroke(1.dp, Color(0xFFE0D8C9))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = Color(0xFFFFEFC4)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF0B5D3B),
+                    modifier = Modifier.padding(12.dp).size(26.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color(0xFF16372A),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = message,
+                fontSize = 13.sp,
+                color = Color(0xFF68736C),
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -3444,14 +3607,17 @@ private fun EntryList(
                     .clickable { onOpen(entry) },
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                    containerColor = Color(0xFFFFFBF3)
+                ),
+                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
                         modifier = Modifier.weight(1f)
@@ -3467,7 +3633,8 @@ private fun EntryList(
                         Text(
                             text = sourceText,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16372A)
                         )
 
                         Spacer(
@@ -3475,7 +3642,9 @@ private fun EntryList(
                         )
 
                         Text(
-                            text = entry.saamaka
+                            text = entry.saamaka,
+                            color = Color(0xFF0B5D3B),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
 
@@ -3484,6 +3653,12 @@ private fun EntryList(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Validé",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = Color(0xFF0B5D3B)
                         )
                     }
                 }
