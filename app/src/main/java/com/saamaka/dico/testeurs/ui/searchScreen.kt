@@ -8,10 +8,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -49,13 +57,25 @@ fun SearchScreen(
     onLearnClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onHistoryClick: () -> Unit,
-    categoryOfDay: String,
-    categoryOfDayCount: Int,
-    onCategoryOfDayClick: () -> Unit,
+    categoryCount: Int,
+    wordOfDay: DictionaryEntry?,
+    onWordOfDayClick: () -> Unit,
     onCategoriesClick: () -> Unit,
     showHomeContent: Boolean = true
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    val homeScrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (showHomeContent && query.isBlank()) {
+                    Modifier.verticalScroll(homeScrollState)
+                } else {
+                    Modifier
+                }
+            )
+    ) {
 
         Spacer(Modifier.height(12.dp))
 
@@ -109,9 +129,10 @@ fun SearchScreen(
                         shape = RoundedCornerShape(50),
                         color = Color.White.copy(alpha = 0.12f)
                     ) {
-                        Text(
-                            text = "🌿",
-                            fontSize = 24.sp,
+                        Icon(
+                            imageVector = Icons.Default.Spa,
+                            contentDescription = null,
+                            tint = Color(0xFFF0C96A),
                             modifier = Modifier.padding(9.dp)
                         )
                     }
@@ -161,9 +182,11 @@ fun SearchScreen(
                             ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "📚",
-                                fontSize = 13.sp
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                contentDescription = null,
+                                tint = Color(0xFF0B5D3B),
+                                modifier = Modifier.size(16.dp)
                             )
 
                             Spacer(Modifier.width(5.dp))
@@ -183,7 +206,7 @@ fun SearchScreen(
                         color = Color(0xFFF0C96A)
                     ) {
                         Text(
-                            text = "V14",
+                            text = "V15",
                             modifier = Modifier.padding(
                                 horizontal = 10.dp,
                                 vertical = 7.dp
@@ -293,9 +316,11 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "📚",
-                                fontSize = 22.sp
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                contentDescription = null,
+                                tint = Color(0xFFF0C96A),
+                                modifier = Modifier.size(24.dp)
                             )
 
                             Spacer(Modifier.weight(1f))
@@ -305,7 +330,7 @@ fun SearchScreen(
                                 color = Color.White.copy(alpha = 0.14f)
                             ) {
                                 Text(
-                                    text = "21 thèmes",
+                                    text = "$categoryCount thèmes",
                                     modifier = Modifier.padding(
                                         horizontal = 7.dp,
                                         vertical = 3.dp
@@ -367,10 +392,11 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "♥",
-                                fontSize = 22.sp,
-                                color = Color(0xFFF0C96A)
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = Color(0xFFF0C96A),
+                                modifier = Modifier.size(24.dp)
                             )
 
                             Spacer(Modifier.weight(1f))
@@ -429,7 +455,7 @@ fun SearchScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable {
-                                onCategoryOfDayClick()
+                                onWordOfDayClick()
                             },
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(
@@ -450,9 +476,11 @@ fun SearchScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
 
-                                Text(
-                                    text = "☀️",
-                                    fontSize = 22.sp
+                                Icon(
+                                    imageVector = Icons.Default.WbSunny,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9A7414),
+                                    modifier = Modifier.size(24.dp)
                                 )
 
                                 Spacer(Modifier.weight(1f))
@@ -486,7 +514,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(4.dp))
 
                             Text(
-                                text = categoryOfDay,
+                                text = wordOfDay?.saamaka.orEmpty(),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0B5D3B),
@@ -496,9 +524,10 @@ fun SearchScreen(
                             Spacer(Modifier.height(2.dp))
 
                             Text(
-                                text = "$categoryOfDayCount mots • Découvrir →",
+                                text = wordOfDay?.french.orEmpty(),
                                 fontSize = 10.sp,
-                                color = Color(0xFF7A6B46)
+                                color = Color(0xFF7A6B46),
+                                maxLines = 1
                             )
                         }
                     }
@@ -528,9 +557,11 @@ fun SearchScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
 
-                                Text(
-                                    text = "🎓",
-                                    fontSize = 22.sp
+                                Icon(
+                                    imageVector = Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0B5D3B),
+                                    modifier = Modifier.size(24.dp)
                                 )
 
                                 Spacer(Modifier.weight(1f))
@@ -584,17 +615,26 @@ fun SearchScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                Text(
-                    text = strings.language,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2E332F)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = Color(0xFF0B5D3B),
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = strings.language,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E332F)
+                    )
+                }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
 
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
 
                     AppLanguage.entries
@@ -603,7 +643,7 @@ fun SearchScreen(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
 
                                 rowLanguages.forEach { language ->
@@ -618,8 +658,8 @@ fun SearchScreen(
                                         },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(34.dp),
-                                        shape = RoundedCornerShape(17.dp),
+                                            .height(32.dp),
+                                        shape = RoundedCornerShape(16.dp),
 
                                         colors = FilterChipDefaults.filterChipColors(
                                             selectedContainerColor = Color(0xFF0B5D3B),
@@ -638,10 +678,10 @@ fun SearchScreen(
                                         label = {
                                             Text(
                                                 text = when (language) {
-                                                    AppLanguage.FRENCH -> "🇫🇷 Français"
-                                                    AppLanguage.SAAMAKA -> "🇸🇷 Saamaka"
-                                                    AppLanguage.ENGLISH -> "🇬🇧 English"
-                                                    AppLanguage.DUTCH -> "🇳🇱 Nederlands"
+                                                    AppLanguage.FRENCH -> "FR · Français"
+                                                    AppLanguage.SAAMAKA -> "SM · Saamaka"
+                                                    AppLanguage.ENGLISH -> "EN · English"
+                                                    AppLanguage.DUTCH -> "NL · Nederlands"
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
                                                 textAlign = TextAlign.Center,

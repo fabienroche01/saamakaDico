@@ -1,10 +1,30 @@
 package com.saamaka.dico.testeurs.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AccessLevel
@@ -13,6 +33,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import java.util.Locale
 
 @Composable
 fun TranslateScreen(
@@ -26,6 +47,26 @@ fun TranslateScreen(
     var sourceText by remember { mutableStateOf("") }
     var translationResult by remember { mutableStateOf("") }
     var frenchToSaamaka by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    var textToSpeechReady by remember { mutableStateOf(false) }
+    val textToSpeech = remember {
+        TextToSpeech(context) { status ->
+            textToSpeechReady = status == TextToSpeech.SUCCESS
+        }
+    }
+
+    DisposableEffect(textToSpeech) {
+        onDispose {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+    }
+
+    val forestGreen = Color(0xFF0B5D3B)
+    val cream = Color(0xFFFFFBF3)
+    val softCream = Color(0xFFF4EFE5)
+    val gold = Color(0xFFF0C96A)
+    val darkText = Color(0xFF16372A)
 
     Column(
         modifier = Modifier
@@ -45,35 +86,51 @@ fun TranslateScreen(
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.primaryContainer
+            shape = RoundedCornerShape(24.dp),
+            color = forestGreen,
+            shadowElevation = 3.dp
         ) {
             Column(
                 modifier = Modifier.padding(18.dp)
             ) {
 
-                Text(
-                    text = "✨ ${strings.translate}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White.copy(alpha = 0.13f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Translate,
+                            contentDescription = null,
+                            tint = gold,
+                            modifier = Modifier.padding(10.dp).size(24.dp)
+                        )
+                    }
 
-                Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.width(12.dp))
 
-                Text(
-                    text = "Français ↔ Saamaka",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    Column {
+                        Text(
+                            text = strings.translate,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Français ↔ Saamaka",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = gold
+                        )
+                    }
+                }
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = "Traduisez des phrases et des textes complets. Les mots et expressions du dictionnaire restent gratuits.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = Color.White.copy(alpha = 0.84f)
                 )
             }
         }
@@ -92,31 +149,35 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = softCream
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0D8C9))
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
 
-                        Text(
-                            text = "🔒 Créez votre compte gratuitement",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, null, tint = forestGreen)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Créez votre compte gratuitement",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = darkText
+                            )
+                        }
 
                         Spacer(Modifier.height(8.dp))
 
-                        Text(
-                            text = "🎁 Profitez de 3 traductions de phrases ou textes complets offertes."
-                        )
+                        Text("Profitez de 3 traductions de phrases ou textes complets offertes.")
 
                         Spacer(Modifier.height(14.dp))
 
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = forestGreen),
                             onClick = {
                                 // Compte réel plus tard
                             }
@@ -132,19 +193,23 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        containerColor = Color(0xFFFFEFC4)
                     )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
 
-                        Text(
-                            text = "👑 Saamaka Premium",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.WorkspacePremium, null, tint = Color(0xFF8A6712))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Saamaka Premium",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = darkText
+                            )
+                        }
 
                         Spacer(Modifier.height(8.dp))
 
@@ -157,6 +222,7 @@ fun TranslateScreen(
                         OutlinedButton(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
                             onClick = {
                                 // Écran Premium plus tard
                             }
@@ -173,18 +239,24 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        containerColor = softCream
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0D8C9))
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
 
-                        Text(
-                            text = "🎁 $remainingTrials traduction(s) restante(s)",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CardGiftcard, null, tint = forestGreen)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "$remainingTrials traduction(s) restante(s)",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = darkText
+                            )
+                        }
 
                         Spacer(Modifier.height(8.dp))
 
@@ -198,6 +270,7 @@ fun TranslateScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
                             enabled = remainingTrials > 0,
+                            colors = ButtonDefaults.buttonColors(containerColor = forestGreen),
                             onClick = {
                                 if (remainingTrials > 0) {
                                     showTranslator = true
@@ -212,7 +285,7 @@ fun TranslateScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "👑 Premium : traductions illimitées",
+                    text = "Premium : traductions illimitées",
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -224,18 +297,23 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        containerColor = Color(0xFFFFEFC4)
                     )
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
 
-                        Text(
-                            text = "👑 Premium",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.WorkspacePremium, null, tint = Color(0xFF8A6712))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Premium",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = darkText
+                            )
+                        }
 
                         Spacer(Modifier.height(8.dp))
 
@@ -248,6 +326,7 @@ fun TranslateScreen(
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = forestGreen),
                             onClick = {
                                 showTranslator = true
                             }
@@ -264,19 +343,24 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        containerColor = softCream
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0D8C9))
                 ) {
                     Column(
                         modifier = Modifier.padding(18.dp)
                     ) {
 
-                        Text(
-                            text = "🧪 Mode testeur",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Science, null, tint = forestGreen)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Mode testeur",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = darkText
+                            )
+                        }
 
                         Spacer(Modifier.height(8.dp))
 
@@ -289,6 +373,7 @@ fun TranslateScreen(
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = forestGreen),
                             onClick = {
                                 showTranslator = true
                             }
@@ -322,14 +407,26 @@ fun TranslateScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            Text(
-                text = "✨ Traduire une phrase",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = cream),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Translate, null, tint = forestGreen)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Traduire une phrase",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = darkText
+                        )
+                    }
 
-            Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
 
             // Sens de traduction
             Row(
@@ -348,7 +445,7 @@ fun TranslateScreen(
                             translationResult = ""
                         }
                     ) {
-                        Text("🇫🇷 → 🇸🇷")
+                        Text("FR  →  SM")
                     }
                 } else {
                     OutlinedButton(
@@ -359,7 +456,7 @@ fun TranslateScreen(
                             translationResult = ""
                         }
                     ) {
-                        Text("🇫🇷 → 🇸🇷")
+                        Text("FR  →  SM")
                     }
                 }
 
@@ -372,7 +469,7 @@ fun TranslateScreen(
                             translationResult = ""
                         }
                     ) {
-                        Text("🇸🇷 → 🇫🇷")
+                        Text("SM  →  FR")
                     }
                 } else {
                     OutlinedButton(
@@ -383,7 +480,7 @@ fun TranslateScreen(
                             translationResult = ""
                         }
                     ) {
-                        Text("🇸🇷 → 🇫🇷")
+                        Text("SM  →  FR")
                     }
                 }
             }
@@ -413,15 +510,16 @@ fun TranslateScreen(
                 },
                 minLines = 4,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedBorderColor = forestGreen,
                     unfocusedBorderColor =
                         MaterialTheme.colorScheme.outline.copy(
                             alpha = 0.5f
                         ),
                     focusedContainerColor =
-                        MaterialTheme.colorScheme.surface,
+                        cream,
                     unfocusedContainerColor =
-                        MaterialTheme.colorScheme.surface
+                        cream,
+                    cursorColor = forestGreen
                 )
             )
 
@@ -431,6 +529,7 @@ fun TranslateScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 enabled = sourceText.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = forestGreen),
                 onClick = {
 
                     val result = onTranslate(
@@ -451,7 +550,11 @@ fun TranslateScreen(
                     }
                 }
             ) {
-                Text("✨ Traduire")
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Traduire", fontWeight = FontWeight.Bold)
+            }
+                }
             }
 
             // -------------------------------------------------
@@ -465,12 +568,15 @@ fun TranslateScreen(
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
                     onClick = {
                         sourceText = ""
                         translationResult = ""
                     }
                 ) {
-                    Text("🔄 Nouvelle phrase")
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nouvelle phrase")
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -479,9 +585,10 @@ fun TranslateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor =
-                            MaterialTheme.colorScheme.primaryContainer
-                    )
+                        containerColor = Color(0xFFFFEFC4)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, gold),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
 
                     Column(
@@ -490,21 +597,21 @@ fun TranslateScreen(
 
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.surface
+                            color = cream
                         ) {
 
                             Text(
                                 text = if (frenchToSaamaka) {
-                                    "🇸🇷 Résultat Saamaka"
+                                    "Résultat Saamaka"
                                 } else {
-                                    "🇫🇷 Résultat français"
+                                    "Résultat français"
                                 },
                                 modifier = Modifier.padding(
                                     horizontal = 10.dp,
                                     vertical = 4.dp
                                 ),
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = forestGreen
                             )
                         }
 
@@ -514,9 +621,79 @@ fun TranslateScreen(
                             text = translationResult,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color =
-                                MaterialTheme.colorScheme.onPrimaryContainer
+                            color = darkText
                         )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        HorizontalDivider(color = Color(0xFFD8C58F))
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(
+                                        ClipData.newPlainText("Traduction Saamaka Dico", translationResult)
+                                    )
+                                    Toast.makeText(context, "Traduction copiée", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Copier", maxLines = 1)
+                            }
+
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                enabled = textToSpeechReady,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
+                                onClick = {
+                                    if (!frenchToSaamaka) {
+                                        textToSpeech.language = Locale.FRENCH
+                                    }
+                                    textToSpeech.speak(
+                                        translationResult,
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        "translation_result"
+                                    )
+                                }
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.VolumeUp, null, modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Écouter", maxLines = 1)
+                            }
+
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "Saamaka Dico")
+                                        putExtra(Intent.EXTRA_TEXT, translationResult)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Partager la traduction"))
+                                }
+                            ) {
+                                Icon(Icons.Default.Share, null, modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Partager", maxLines = 1)
+                            }
+                        }
                     }
                 }
             }
