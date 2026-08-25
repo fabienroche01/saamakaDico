@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -2846,6 +2847,56 @@ private fun TesterApp() {
                     MainTab.MORE -> {
                         val historyCount = historyStore.ids().size
                         val correctionsCount = reviewStore.all().size
+                        val versionName = remember(context) {
+                            context.packageManager
+                                .getPackageInfo(context.packageName, 0)
+                                .versionName
+                                .orEmpty()
+                        }
+                        var showAboutDialog by remember {
+                            mutableStateOf(false)
+                        }
+
+                        if (showAboutDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showAboutDialog = false },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFF0B5D3B)
+                                    )
+                                },
+                                title = {
+                                    Text(
+                                        text = "Dictionnaire Saamaka",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = "Version $versionName",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+
+                                        Spacer(Modifier.height(12.dp))
+
+                                        Text(
+                                            text = "© 2026 Fabien Roche. Tous droits réservés.",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = { showAboutDialog = false }
+                                    ) {
+                                        Text("Fermer")
+                                    }
+                                }
+                            )
+                        }
 
                         Column(
                             modifier = Modifier
@@ -2959,6 +3010,15 @@ private fun TesterApp() {
                                     }
                                 }
                             }
+
+                            Spacer(Modifier.height(4.dp))
+
+                            MoreAccessCard(
+                                icon = Icons.Default.Info,
+                                title = "À propos",
+                                description = "Dictionnaire Saamaka • version $versionName",
+                                onClick = { showAboutDialog = true }
+                            )
                         }
                     }
                     MainTab.CORRECTIONS -> CorrectionsScreen(
