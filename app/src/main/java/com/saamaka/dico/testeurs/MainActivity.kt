@@ -860,14 +860,19 @@ private fun TesterApp() {
 
                     MainTab.HOME -> {
 
-                        val categoriesOfDay = remember {
+                        val homeCategories = remember {
                             database.categories()
                                 .filter { it.isNotBlank() }
                                 .sortedBy { it.lowercase() }
                         }
 
-                        val entriesForCategoryOfDay = remember {
-                            database.allEntries()
+                        val wordsOfDay = remember(allEntries) {
+                            allEntries
+                                .filter { entry ->
+                                    entry.saamaka.isNotBlank() &&
+                                        entry.french.isNotBlank()
+                                }
+                                .sortedBy { it.id }
                         }
 
                         val calendar = java.util.Calendar.getInstance()
@@ -878,56 +883,19 @@ private fun TesterApp() {
                         val year =
                             calendar.get(java.util.Calendar.YEAR)
 
-                        val categoryOfDay =
-                            if (categoriesOfDay.isNotEmpty()) {
-                                categoriesOfDay[
-                                    ((year * 366L + dayNumber) % categoriesOfDay.size)
+                        val wordOfDay =
+                            if (wordsOfDay.isNotEmpty()) {
+                                wordsOfDay[
+                                    ((year * 366L + dayNumber) % wordsOfDay.size)
                                         .toInt()
                                 ]
                             } else {
-                                ""
-                            }
-
-                        val categoryOfDayEntries = remember(categoryOfDay) {
-                            entriesForCategoryOfDay.filter { entry ->
-                                entry.categorie
-                                    ?.trim()
-                                    ?.equals(
-                                        categoryOfDay,
-                                        ignoreCase = true
-                                    ) == true
-                            }
-                        }
-
-                        val categoryOfDayContext = LocalContext.current
-
-                        val categoryOfDayPrefs = remember {
-                            categoryOfDayContext.getSharedPreferences(
-                                "category_of_day_progress",
-                                android.content.Context.MODE_PRIVATE
-                            )
-                        }
-
-                        val categoryProgressKey =
-                            "seen_${year}_${dayNumber}_${categoryOfDay}"
-
-                        val seenCategoryOfDayEntryIds =
-                            remember(categoryProgressKey) {
-
-                                val savedIds =
-                                    categoryOfDayPrefs
-                                        .getStringSet(categoryProgressKey, emptySet())
-                                        .orEmpty()
-                                        .mapNotNull { it.toIntOrNull() }
-
-                                mutableStateListOf<Int>().apply {
-                                    addAll(savedIds)
-                                }
+                                null
                             }
 
                         SearchScreen(
-                            categoryOfDay = categoryOfDay,
-                            categoryOfDayCount = categoryOfDayEntries.size,
+                            categoryCount = homeCategories.size,
+                            wordOfDay = wordOfDay,
                             total = total,
                             officiallyValidated = 76,
                             toReview = 990,
@@ -966,41 +934,8 @@ private fun TesterApp() {
                             onHistoryClick = {
                                 activeTab = MainTab.HISTORY
                             },
-                            onCategoryOfDayClick = {
-
-                                if (categoryOfDayEntries.isNotEmpty()) {
-
-                                    var availableEntries =
-                                        categoryOfDayEntries.filter { entry ->
-                                            entry.id !in seenCategoryOfDayEntryIds
-                                        }
-
-                                    if (availableEntries.isEmpty()) {
-
-                                        seenCategoryOfDayEntryIds.clear()
-
-                                        categoryOfDayPrefs.edit()
-                                            .remove(categoryProgressKey)
-                                            .apply()
-
-                                        availableEntries = categoryOfDayEntries
-                                    }
-
-                                    val entry = availableEntries.random()
-
-                                    seenCategoryOfDayEntryIds.add(entry.id)
-
-                                    categoryOfDayPrefs.edit()
-                                        .putStringSet(
-                                            categoryProgressKey,
-                                            seenCategoryOfDayEntryIds
-                                                .map { it.toString() }
-                                                .toSet()
-                                        )
-                                        .apply()
-
-                                    openEntry(entry)
-                                }
+                            onWordOfDayClick = {
+                                wordOfDay?.let(::openEntry)
                             }
                         )
                     }
@@ -1008,8 +943,8 @@ private fun TesterApp() {
                     MainTab.SEARCH -> {
 
                         SearchScreen(
-                            categoryOfDay = "",
-                            categoryOfDayCount = 0,
+                            categoryCount = 0,
+                            wordOfDay = null,
                             total = total,
                             officiallyValidated = 76,
                             toReview = 990,
@@ -1055,7 +990,7 @@ private fun TesterApp() {
                                 activeTab = MainTab.LEARN
                             },
 
-                            onCategoryOfDayClick = { },
+                            onWordOfDayClick = { },
                             showHomeContent = false
                         )
                     }
