@@ -29,6 +29,7 @@ import com.saamaka.dico.testeurs.AppStrings
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
@@ -787,19 +788,6 @@ fun SearchScreen(
                             key = { it.id }
                         ) { entry ->
 
-                            val sourceText = when (selectedLanguage) {
-                                AppLanguage.FRENCH -> entry.french
-                                AppLanguage.ENGLISH -> entry.english
-                                AppLanguage.DUTCH -> entry.dutch
-                                AppLanguage.SAAMAKA -> entry.saamaka
-                            }
-
-                            val translationText = when (selectedLanguage) {
-                                AppLanguage.FRENCH -> entry.saamaka
-                                AppLanguage.SAAMAKA -> entry.french
-                                AppLanguage.ENGLISH -> entry.saamaka
-                                AppLanguage.DUTCH -> entry.saamaka
-                            }
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -816,7 +804,7 @@ fun SearchScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(15.dp),
+                                        .padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
 
@@ -825,23 +813,39 @@ fun SearchScreen(
                                     ) {
 
                                         Text(
-                                            text = sourceText,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
+                                            text = "Français",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
-                                        Spacer(Modifier.height(4.dp))
+                                        Spacer(Modifier.height(2.dp))
 
                                         Text(
-                                            text = translationText.ifBlank {
-                                                if (selectedLanguage == AppLanguage.SAAMAKA) {
-                                                    "Français : à compléter"
-                                                } else {
-                                                    "Saamaka : à compléter"
-                                                }
-                                            },
+                                            text = entry.french.ifBlank { "À compléter" },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        Spacer(Modifier.height(10.dp))
+
+                                        Text(
+                                            text = "Saamaka",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Spacer(Modifier.height(2.dp))
+
+                                        Text(
+                                            text = entry.saamaka.ifBlank { "À compléter" },
                                             style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
                                         )
 
                                         if (isValidated(entry.id)) {
@@ -872,7 +876,10 @@ fun SearchScreen(
                                     Icon(
                                         imageVector = Icons.Default.ChevronRight,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .padding(start = 12.dp)
+                                            .size(24.dp)
                                     )
                                 }
                             }
