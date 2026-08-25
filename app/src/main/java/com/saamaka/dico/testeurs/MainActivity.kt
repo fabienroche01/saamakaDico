@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -695,7 +696,8 @@ private fun TesterApp() {
 
                     // Plus
                     NavigationBarItem(
-                        selected = activeTab == MainTab.MORE,
+                        selected = activeTab == MainTab.MORE ||
+                            activeTab == MainTab.TRANSLATE,
                         onClick = {
                             activeTab = MainTab.MORE
                         },
@@ -2645,6 +2647,65 @@ private fun TesterApp() {
                             )
 
                             Spacer(Modifier.height(4.dp))
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        activeTab = MainTab.TRANSLATE
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF0B5D3B)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = Color.White.copy(alpha = 0.13f)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Translate,
+                                            contentDescription = null,
+                                            tint = Color(0xFFF0C96A),
+                                            modifier = Modifier
+                                                .padding(9.dp)
+                                                .size(22.dp)
+                                        )
+                                    }
+
+                                    Spacer(Modifier.width(12.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Traduire",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            color = Color.White
+                                        )
+
+                                        Spacer(Modifier.height(2.dp))
+
+                                        Text(
+                                            text = "Français ↔ Saamaka",
+                                            fontSize = 12.sp,
+                                            color = Color.White.copy(alpha = 0.82f)
+                                        )
+                                    }
+
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = Color(0xFFF0C96A)
+                                    )
+                                }
+                            }
 
                             if (accessLevel == AccessLevel.TESTER) {
 
