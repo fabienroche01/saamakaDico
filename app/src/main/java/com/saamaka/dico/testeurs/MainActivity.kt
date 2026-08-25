@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Favorite
@@ -3910,6 +3912,21 @@ private fun CategoriesScreen(
         database.allEntries()
     }
 
+    val categoryCounts = remember(categories, allEntries) {
+        categories.associateWith { category ->
+            allEntries.count { entry ->
+                entry.categorie.trim().equals(category, ignoreCase = true)
+            }
+        }
+    }
+
+    val forestGreen = Color(0xFF0B5D3B)
+    val secondaryGreen = Color(0xFF174C36)
+    val cream = Color(0xFFFFFBF3)
+    val softCream = Color(0xFFF4EFE5)
+    val gold = Color(0xFFF0C96A)
+    val darkText = Color(0xFF16372A)
+
     // ============================================
     // LISTE DES MOTS D'UNE CATÉGORIE
     // ============================================
@@ -3937,37 +3954,54 @@ private fun CategoriesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
             item {
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
-                TextButton(
-                    onClick = {
-                        selectedCategory = null
-                    }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = forestGreen),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
-                    Text("← Catégories")
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        TextButton(
+                            onClick = { selectedCategory = null },
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.textButtonColors(contentColor = gold)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("Catégories", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = "${categoryEntries.size} mot${if (categoryEntries.size > 1) "s" else ""} à découvrir",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.82f)
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = category,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Text(
-                    text = "${categoryEntries.size} mot(s)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
             }
 
             items(categoryEntries) { entry ->
@@ -3978,22 +4012,37 @@ private fun CategoriesScreen(
                         .clickable {
                             onOpen(entry)
                         },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor =
-                            MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = cream
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFE4DED2)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
-                                horizontal = 16.dp,
-                                vertical = 13.dp
+                                horizontal = 14.dp,
+                                vertical = 12.dp
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFDCEEE2)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                contentDescription = null,
+                                tint = forestGreen,
+                                modifier = Modifier.padding(9.dp).size(18.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(12.dp))
 
                         Column(
                             modifier = Modifier.weight(1f)
@@ -4001,8 +4050,9 @@ private fun CategoriesScreen(
 
                             Text(
                                 text = entry.french,
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.bodyLarge
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = darkText
                             )
 
                             if (entry.saamaka.isNotBlank()) {
@@ -4012,15 +4062,15 @@ private fun CategoriesScreen(
                                 Text(
                                     text = entry.saamaka,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = forestGreen
                                 )
                             }
                         }
 
-                        Text(
-                            text = "›",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = forestGreen
                         )
                     }
                 }
@@ -4043,47 +4093,74 @@ private fun CategoriesScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
 
         item {
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
 
-            TextButton(
-                onClick = onBack
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = forestGreen),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
-                Text("← Retour")
+                Column(modifier = Modifier.padding(18.dp)) {
+                    TextButton(
+                        onClick = onBack,
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = gold)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Retour", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        text = "Catégories",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        text = "Explore le vocabulaire par thème",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.84f)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White.copy(alpha = 0.13f)
+                    ) {
+                        Text(
+                            text = "${categories.size} thèmes • ${allEntries.size} mots et expressions",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = gold
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-                text = "Catégories",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Explore le vocabulaire par thème",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(4.dp))
         }
 
         items(categories) { category ->
 
-            val count = allEntries.count { entry ->
-                entry.categorie
-                    ?.trim()
-                    ?.equals(
-                        category,
-                        ignoreCase = true
-                    ) == true
-            }
+            val count = categoryCounts[category] ?: 0
 
             Card(
                 modifier = Modifier
@@ -4091,27 +4168,35 @@ private fun CategoriesScreen(
                     .clickable {
                         selectedCategory = category
                     },
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor =
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
+                    containerColor = softCream
+                ),
+                border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = 16.dp,
-                            vertical = 14.dp
+                            horizontal = 14.dp,
+                            vertical = 13.dp
                         ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    Text(
-                        text = "📚",
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = gold
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            tint = secondaryGreen,
+                            modifier = Modifier.padding(10.dp).size(20.dp)
+                        )
+                    }
 
                     Spacer(Modifier.width(12.dp))
 
@@ -4122,21 +4207,23 @@ private fun CategoriesScreen(
                         Text(
                             text = category,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold,
+                            color = darkText
                         )
 
+                        Spacer(Modifier.height(2.dp))
+
                         Text(
-                            text = "$count mot(s)",
+                            text = "$count mot${if (count > 1) "s" else ""}",
                             style = MaterialTheme.typography.bodySmall,
-                            color =
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF68736C)
                         )
                     }
 
-                    Text(
-                        text = "›",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = forestGreen
                     )
                 }
             }
