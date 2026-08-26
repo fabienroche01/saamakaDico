@@ -805,8 +805,19 @@ private fun TesterApp() {
                         audioStore = audioStore,
                         testerName = testerName,
                         initiallyFavorite = favoritesStore.isFavorite(entry.id),
-                        isValidated = validationStore.isValidated(entry.id),
-                        onValidate = {
+                        classification = classifyMissionEntry(
+                            entry = entry,
+                            hasLocalValidation = validationStore.isValidated(entry.id)
+                        ),
+                        onValidate = validate@{
+                            if (
+                                entry.french.isBlank() ||
+                                entry.saamaka.isBlank() ||
+                                entry.valide.trim().equals("O", ignoreCase = true) ||
+                                validationStore.isValidated(entry.id)
+                            ) {
+                                return@validate
+                            }
                             val reviewerName = correctionStore
                                 .testerName()
                                 .ifBlank { "Fucia" }
@@ -1089,8 +1100,7 @@ private fun TesterApp() {
                             ) {
                                 classifyMissionEntries(
                                     entries = missionEntries,
-                                    completedIds = validationStore.ids(),
-                                    correctedIds = localCorrections.keys
+                                    completedIds = validationStore.ids()
                                 )
                             }
 
@@ -3968,7 +3978,7 @@ private fun DetailScreen(
     audioStore: AudioStore,
     testerName: String,
     initiallyFavorite: Boolean,
-    isValidated: Boolean,
+    classification: MissionEntryClassification,
     onValidate: () -> Unit,
     onNext: () -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
@@ -4053,7 +4063,8 @@ private fun DetailScreen(
         }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         item {
             Spacer(Modifier.height(8.dp))
@@ -4063,6 +4074,30 @@ private fun DetailScreen(
             ) {
                 Text(strings.back)
             }
+
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = when (classification.visualStatus) {
+                    MissionVisualStatus.DOUBTFUL -> Color(0xFFFFEFC4)
+                    MissionVisualStatus.TO_COMPLETE -> Color(0xFFFFE1E1)
+                    MissionVisualStatus.ALREADY_VALIDATED -> Color(0xFFDCEEE2)
+                    MissionVisualStatus.NEW -> MaterialTheme.colorScheme.surfaceVariant
+                }
+            ) {
+                Text(
+                    text = classification.visualStatus.label,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = when (classification.visualStatus) {
+                        MissionVisualStatus.DOUBTFUL -> Color(0xFF8A6712)
+                        MissionVisualStatus.TO_COMPLETE -> Color(0xFF8B2F2F)
+                        else -> Color(0xFF0B5D3B)
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -4151,9 +4186,19 @@ private fun DetailScreen(
                         }
                     }
 
-
-
                     Spacer(Modifier.height(20.dp))
+
+                    if (accessLevel == AccessLevel.TESTER) {
+                        MissionValidationCard(
+                            strings = strings,
+                            entry = entry,
+                            classification = classification,
+                            onValidate = onValidate,
+                            onCorrection = onCorrection
+                        )
+
+                        Spacer(Modifier.height(20.dp))
+                    }
 
                     // Prononciation
                     Surface(
@@ -4412,92 +4457,97 @@ private fun DetailScreen(
                     }
 
                     Spacer(Modifier.height(18.dp))
-
-                    if (accessLevel == AccessLevel.TESTER) {
-
-                        Spacer(Modifier.height(14.dp))
-
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(
-                                alpha = 0.45f
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-
-                                    Text(
-                                        text = "✓",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Text(
-                                        text = strings.linguisticValidation,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-
-                                Spacer(Modifier.height(6.dp))
-
-                                Text(
-                                    text = strings.validationExplanation,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
-                                Spacer(Modifier.height(14.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-
-                                    Button(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(16.dp),
-                                        enabled = !isValidated,
-                                        onClick = onValidate
-                                    ) {
-                                        Text(
-                                            if (isValidated) {
-                                                strings.validatedO
-                                            } else {
-                                                strings.validateO
-                                            }
-                                        )
-                                    }
-
-                                    OutlinedButton(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(16.dp),
-                                        onClick = onCorrection
-                                    ) {
-                                        Text(strings.correct)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Fin des outils réservés aux testeurs
-                    }
-                    Spacer(Modifier.height(18.dp))
                     }
                 }
             }
         }
     }
+
+@Composable
+private fun MissionValidationCard(
+    strings: AppStrings,
+    entry: DictionaryEntry,
+    classification: MissionEntryClassification,
+    onValidate: () -> Unit,
+    onCorrection: () -> Unit
+) {
+    val isValidated = classification.isCompleted
+    val policy = missionValidationPolicy(entry, classification)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = strings.linguisticValidation,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = when {
+                    isValidated -> "Cette entrée est déjà validée. Une seconde validation identique est désactivée."
+                    policy.missingMessage != null -> "${policy.missingMessage}. Propose le texte manquant avec Corriger avant de valider."
+                    else -> strings.validationExplanation
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (policy.correctionIsPrimary) {
+                    Color(0xFF8B2F2F)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            if (policy.correctionIsPrimary) {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    onClick = onCorrection
+                ) {
+                    Text(strings.correct)
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = policy.canValidate,
+                        onClick = onValidate
+                    ) {
+                        Text(if (isValidated) strings.validatedO else strings.validateO)
+                    }
+
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp),
+                        onClick = onCorrection
+                    ) {
+                        Text(strings.correct)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun LearnProgressStat(

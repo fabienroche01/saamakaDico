@@ -15,8 +15,7 @@ class MissionFiltersTest {
     )
     private val classifications = classifyMissionEntries(
         entries = entries,
-        completedIds = setOf(3),
-        correctedIds = setOf(4, 5)
+        completedIds = setOf(4)
     )
 
     @Test
@@ -24,7 +23,7 @@ class MissionFiltersTest {
         assertEquals(listOf(1, 2, 3, 4, 5), ids(MissionFilter.ALL))
         assertEquals(listOf(1, 5), ids(MissionFilter.DOUBTFUL))
         assertEquals(listOf(2), ids(MissionFilter.TO_COMPLETE))
-        assertEquals(listOf(3, 4, 5), ids(MissionFilter.COMPLETED))
+        assertEquals(listOf(3, 4), ids(MissionFilter.COMPLETED))
     }
 
     @Test
@@ -51,6 +50,40 @@ class MissionFiltersTest {
         assertEquals(listOf(1, 4), ids(MissionFilter.ALL, "ECO"))
         assertEquals(listOf(1), ids(MissionFilter.DOUBTFUL, "éCO"))
         assertEquals(listOf(3), ids(MissionFilter.ALL, "FORET"))
+    }
+
+    @Test
+    fun completeDoubtfulEssoufflerCanBeValidated() {
+        val entry = entry(10, "essouffler", "hanse", "D")
+        val classification = classifyMissionEntry(entry, hasLocalValidation = false)
+        val policy = missionValidationPolicy(entry, classification)
+
+        assertEquals(MissionVisualStatus.DOUBTFUL, classification.visualStatus)
+        assertTrue(policy.canValidate)
+        assertEquals(false, policy.correctionIsPrimary)
+    }
+
+    @Test
+    fun discuterWithoutSaamakaRequiresCorrection() {
+        val entry = entry(11, "discuter", "", "")
+        val classification = classifyMissionEntry(entry, hasLocalValidation = false)
+        val policy = missionValidationPolicy(entry, classification)
+
+        assertEquals(MissionVisualStatus.TO_COMPLETE, classification.visualStatus)
+        assertEquals(false, policy.canValidate)
+        assertTrue(policy.correctionIsPrimary)
+        assertEquals("Traduction saamaka manquante", policy.missingMessage)
+    }
+
+    @Test
+    fun validatedEntryCannotBeValidatedTwiceButCanStillBeCorrected() {
+        val entry = entry(12, "mot", "woto", "D")
+        val classification = classifyMissionEntry(entry, hasLocalValidation = true)
+        val policy = missionValidationPolicy(entry, classification)
+
+        assertEquals(MissionVisualStatus.ALREADY_VALIDATED, classification.visualStatus)
+        assertEquals(false, policy.canValidate)
+        assertEquals(false, policy.correctionIsPrimary)
     }
 
     private fun ids(filter: MissionFilter, query: String = "") =

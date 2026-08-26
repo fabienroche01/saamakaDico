@@ -19,7 +19,7 @@ internal enum class MissionVisualStatus(
     DOUBTFUL("⚠️ Douteux", isDoubtful = true),
     TO_COMPLETE("❓ Traduction manquante", isToComplete = true),
     NEW("⬜ Nouveau"),
-    ALREADY_VALIDATED("✅ Déjà validé")
+    ALREADY_VALIDATED("✅ Validé")
 }
 
 internal data class MissionEntryClassification(
@@ -34,12 +34,46 @@ internal data class MissionEntryClassification(
     }
 }
 
+internal data class MissionValidationPolicy(
+    val canValidate: Boolean,
+    val correctionIsPrimary: Boolean,
+    val missingMessage: String?
+)
+
+internal fun missionValidationPolicy(
+    entry: DictionaryEntry,
+    classification: MissionEntryClassification
+): MissionValidationPolicy = when {
+    classification.isCompleted -> MissionValidationPolicy(
+        canValidate = false,
+        correctionIsPrimary = false,
+        missingMessage = null
+    )
+    entry.saamaka.isBlank() -> MissionValidationPolicy(
+        canValidate = false,
+        correctionIsPrimary = true,
+        missingMessage = "Traduction saamaka manquante"
+    )
+    entry.french.isBlank() -> MissionValidationPolicy(
+        canValidate = false,
+        correctionIsPrimary = true,
+        missingMessage = "Traduction française manquante"
+    )
+    else -> MissionValidationPolicy(
+        canValidate = true,
+        correctionIsPrimary = false,
+        missingMessage = null
+    )
+}
+
 internal fun classifyMissionEntry(
     entry: DictionaryEntry,
-    hasLocalValidation: Boolean,
-    hasLocalCorrection: Boolean
+    hasLocalValidation: Boolean
 ): MissionEntryClassification {
+    val hasOfficialValidation = hasLocalValidation ||
+        entry.valide.trim().equals("O", ignoreCase = true)
     val visualStatus = when {
+        hasOfficialValidation -> MissionVisualStatus.ALREADY_VALIDATED
         entry.valide.trim().equals("D", ignoreCase = true) -> MissionVisualStatus.DOUBTFUL
         entry.saamaka.isBlank() -> MissionVisualStatus.TO_COMPLETE
         entry.valide.isBlank() -> MissionVisualStatus.NEW
@@ -48,19 +82,17 @@ internal fun classifyMissionEntry(
 
     return MissionEntryClassification(
         visualStatus = visualStatus,
-        isCompleted = hasLocalValidation || hasLocalCorrection
+        isCompleted = hasOfficialValidation
     )
 }
 
 internal fun classifyMissionEntries(
     entries: List<DictionaryEntry>,
-    completedIds: Set<Int>,
-    correctedIds: Set<Int>
+    completedIds: Set<Int>
 ): Map<Int, MissionEntryClassification> = entries.associate { entry ->
     entry.id to classifyMissionEntry(
         entry = entry,
-        hasLocalValidation = entry.id in completedIds,
-        hasLocalCorrection = entry.id in correctedIds
+        hasLocalValidation = entry.id in completedIds
     )
 }
 
