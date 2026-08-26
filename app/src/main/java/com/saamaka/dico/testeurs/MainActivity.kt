@@ -75,6 +75,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 private val LightColors = lightColorScheme(
@@ -888,10 +890,17 @@ private fun TesterApp() {
                             },
 
                             onTranslate = { text, frenchToSaamaka ->
-                                database.translatePhrase(
-                                    text = text,
-                                    frenchToSaamaka = frenchToSaamaka
-                                )
+                                val localCorrections = withContext(Dispatchers.IO) {
+                                    database.preparePhraseTranslationIndex()
+                                    correctionStore.all()
+                                }
+                                withContext(Dispatchers.Default) {
+                                    database.translatePhrase(
+                                        text = text,
+                                        frenchToSaamaka = frenchToSaamaka,
+                                        localCorrections = localCorrections
+                                    )
+                                }
                             },
                             wordContent = {
                                 SearchScreen(

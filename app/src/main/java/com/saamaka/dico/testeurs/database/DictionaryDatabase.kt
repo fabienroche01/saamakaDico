@@ -3,6 +3,15 @@ package com.saamaka.dico.testeurs.database
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.saamaka.dico.testeurs.model.DictionaryEntry
+import com.saamaka.dico.testeurs.assembleAttestedPhrase
+import com.saamaka.dico.testeurs.cleanPhraseInput
+import com.saamaka.dico.testeurs.CorrectionProposal
+import com.saamaka.dico.testeurs.findAttestedPhraseRule
+import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
+import com.saamaka.dico.testeurs.LocalPhraseIndex
+import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
+import com.saamaka.dico.testeurs.model.TranslationReliability
 import java.io.FileOutputStream
 import java.text.Normalizer
 import java.util.Locale
@@ -10,6 +19,21 @@ import java.util.Locale
 class DictionaryDatabase(private val context: Context) {
 
     private val databaseName = "SaamakaDico_v11_25.db"
+    @Volatile
+    private var cachedPhraseIndex: LocalPhraseIndex? = null
+
+    private fun phraseIndex(): LocalPhraseIndex {
+        cachedPhraseIndex?.let { return it }
+        return synchronized(this) {
+            cachedPhraseIndex ?: LocalPhraseIndex(allEntries()).also {
+                cachedPhraseIndex = it
+            }
+        }
+    }
+
+    fun preparePhraseTranslationIndex() {
+        phraseIndex()
+    }
 
     private fun cleanTranslationForDisplay(text: String): String {
         return text
@@ -309,67 +333,7 @@ LIMIT ?
         frenchToSaamaka: Boolean
     ): List<String> {
 
-        val term = text.trim()
-
-        if (term.isBlank()) {
-            return emptyList()
-        }
-
-        val languageCode =
-            if (frenchToSaamaka) {
-                "fr"
-            } else {
-                "srm"
-            }
-
-        val normalizedTerm = normalizeForSearch(term)
-
-        return search(
-            query = term,
-            languageCode = languageCode,
-            limit = 100
-        )
-            .filter { entry ->
-
-                val source =
-                    if (frenchToSaamaka) {
-                        normalizeForSearch(entry.french)
-                    } else {
-                        normalizeForSearch(entry.saamaka)
-                    }
-
-                source == normalizedTerm
-            }
-            .sortedWith(
-                compareByDescending<DictionaryEntry> {
-                    it.valide.equals(
-                        "O",
-                        ignoreCase = true
-                    )
-                }
-                    .thenBy {
-                        it.valide.equals(
-                            "D",
-                            ignoreCase = true
-                        )
-                    }
-            )
-            .mapNotNull { entry ->
-
-                val translation =
-                    if (frenchToSaamaka) {
-                        entry.saamaka
-                    } else {
-                        entry.french
-                    }
-
-                translation
-                    .trim()
-                    .takeIf { it.isNotBlank() }
-            }
-            .distinctBy {
-                normalizeForSearch(it)
-            }
+        return phraseIndex().exactAlternatives(text, frenchToSaamaka)
     }
 
     fun translateExactPhrase(
@@ -377,62 +341,7 @@ LIMIT ?
         frenchToSaamaka: Boolean
     ): String? {
 
-        val term = text.trim()
-
-        if (term.isBlank()) {
-            return null
-        }
-
-        val languageCode =
-            if (frenchToSaamaka) {
-                "fr"
-            } else {
-                "srm"
-            }
-
-        val results = search(
-            query = term,
-            languageCode = languageCode,
-            limit = 100
-        )
-
-        val normalizedTerm = normalizeForSearch(term)
-
-        val exact = results
-            .sortedWith(
-                compareByDescending<DictionaryEntry> {
-                    it.valide.equals("O", ignoreCase = true)
-                }
-                    .thenBy {
-                        it.valide.equals("D", ignoreCase = true)
-                    }
-                    .thenBy {
-                        if (frenchToSaamaka) {
-                            it.french.contains(" ")
-                        } else {
-                            it.saamaka.contains(" ")
-                        }
-                    }
-            )
-            .firstOrNull { entry ->
-
-                val source =
-                    if (frenchToSaamaka) {
-                        normalizeForSearch(entry.french)
-                    } else {
-                        normalizeForSearch(entry.saamaka)
-                    }
-
-                source == normalizedTerm
-            }
-
-        return exact?.let { entry ->
-            if (frenchToSaamaka) {
-                entry.saamaka
-            } else {
-                entry.french
-            }
-        }
+        return phraseIndex().exactTranslation(text, frenchToSaamaka)
     }
 
     private fun prepareFrenchTextForTranslation(text: String): String {
@@ -1321,8 +1230,9 @@ val frenchObject =
 
     fun translatePhrase(
         text: String,
-        frenchToSaamaka: Boolean
-    ): String? {
+        frenchToSaamaka: Boolean,
+        localCorrections: List<CorrectionProposal> = emptyList()
+    ): PhraseTranslationResult? {
 
         val cleanText = text
             .trim()
@@ -1330,6 +1240,55 @@ val frenchObject =
 
         if (cleanText.isBlank()) {
             return null
+        }
+
+        fun complete(translation: String) = PhraseTranslationResult(
+            translation = translation,
+            recognizedSegments = listOf(
+                RecognizedPhraseSegment(cleanText, translation)
+            ),
+            untranslatedSegments = emptyList(),
+            isComplete = true,
+            reliability = TranslationReliability.HIGH
+        )
+
+        // La phrase complète attestée a toujours priorité sur les règles
+        // grammaticales et sur l'assemblage de segments.
+        val exact = translateExactPhrase(
+            text = cleanPhraseInput(cleanText),
+            frenchToSaamaka = frenchToSaamaka
+        )
+        if (!exact.isNullOrBlank()) {
+            return complete(cleanTranslationForDisplay(exact))
+        }
+
+        val attestedRule = findAttestedPhraseRule(
+            text = cleanText,
+            frenchToSaamaka = frenchToSaamaka
+        )
+        if (!attestedRule.isNullOrBlank()) {
+            return complete(attestedRule)
+        }
+
+        fun correctionTranslation(segment: String): String? {
+            val normalizedSegment = normalizeAttestedPhraseKey(segment)
+            return localCorrections.mapNotNull { correction ->
+                val source = if (frenchToSaamaka) {
+                    correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                } else {
+                    correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                }
+                val translation = if (frenchToSaamaka) {
+                    correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                } else {
+                    correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                }
+                translation.trim().takeIf {
+                    source.isNotBlank() &&
+                        it.isNotBlank() &&
+                        normalizeAttestedPhraseKey(source) == normalizedSegment
+                }
+            }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
         }
 
         if (frenchToSaamaka) {
@@ -1341,7 +1300,7 @@ val frenchObject =
 
             if (!confirmedNegative.isNullOrBlank()) {
 
-                return confirmedNegative
+                return complete(confirmedNegative)
             }
         }
 
@@ -1358,7 +1317,7 @@ val frenchObject =
                 normalizedSentence == "c est" ||
                 normalizedSentence == "ce est"
             ) {
-                return "✅ Construction grammaticale attestée :\nɗa"
+                return complete("✅ Construction grammaticale attestée :\nɗa")
             }
 
             if (
@@ -1367,7 +1326,7 @@ val frenchObject =
                 normalizedSentence == "c est pas" ||
                 normalizedSentence == "ce est pas"
             ) {
-                return "✅ Construction grammaticale attestée :\nna"
+                return complete("✅ Construction grammaticale attestée :\nna")
             }
         }
 
@@ -1383,8 +1342,7 @@ val frenchObject =
 
             if (!confirmedFuture.isNullOrBlank()) {
 
-                return "✅ Futur grammatical attesté :\n" +
-                        confirmedFuture
+                return complete("✅ Futur grammatical attesté :\n$confirmedFuture")
             }
         }
 
@@ -1397,8 +1355,7 @@ val frenchObject =
 
             if (!confirmedNearFuture.isNullOrBlank()) {
 
-                return "✅ Futur grammatical attesté :\n" +
-                        confirmedNearFuture
+                return complete("✅ Futur grammatical attesté :\n$confirmedNearFuture")
             }
         }
 
@@ -1411,15 +1368,9 @@ val frenchObject =
 
             if (!confirmedInaccompli.isNullOrBlank()) {
 
-                return "✅ Inaccompli grammatical attesté :\n" +
-                        confirmedInaccompli
+                return complete("✅ Inaccompli grammatical attesté :\n$confirmedInaccompli")
             }
         }
-
-        val exact = translateExactPhrase(
-            text = cleanText,
-            frenchToSaamaka = frenchToSaamaka
-        )
 
         if (frenchToSaamaka) {
 
@@ -1430,8 +1381,7 @@ val frenchObject =
 
             if (!confirmedInaccompli.isNullOrBlank()) {
 
-                return "✅ Inaccompli grammatical attesté :\n" +
-                        confirmedInaccompli
+                return complete("✅ Inaccompli grammatical attesté :\n$confirmedInaccompli")
             }
         }
         if (!frenchToSaamaka) {
@@ -1442,7 +1392,7 @@ val frenchObject =
                 )
 
             if (!negativeInaccompli.isNullOrBlank()) {
-                return negativeInaccompli
+                return complete(negativeInaccompli)
             }
         }
 
@@ -1454,7 +1404,7 @@ val frenchObject =
                 )
 
             if (!negativeFrench.isNullOrBlank()) {
-                return negativeFrench
+                return complete(negativeFrench)
             }
         }
 // ----------------------------------------------
@@ -1469,7 +1419,7 @@ val frenchObject =
 
             if (!grammaticalFrench.isNullOrBlank()) {
 
-                return grammaticalFrench
+                return complete(grammaticalFrench)
             }
         }
 
@@ -1477,6 +1427,61 @@ val frenchObject =
 // ----------------------------------------------
 // TRADUCTION EXACTE DU DICTIONNAIRE
 // ----------------------------------------------
+
+        val localCorrectionPairs = mutableSetOf<Pair<String, String>>()
+        val frenchFallbackResolver = if (frenchToSaamaka) {
+            phraseIndex().frenchFallbackResolver
+        } else {
+            null
+        }
+
+        return assembleAttestedPhrase(
+            text = cleanText,
+            highReliabilityMatch = { segment ->
+                segment.detail == null && (
+                    normalizeAttestedPhraseKey(segment.source) to
+                        normalizeAttestedPhraseKey(segment.translation)
+                    ) !in localCorrectionPairs
+            }
+        ) { segment ->
+            findAttestedPhraseRule(segment, frenchToSaamaka)?.let {
+                return@assembleAttestedPhrase RecognizedPhraseSegment(segment, it)
+            }
+
+            correctionTranslation(segment)?.let {
+                localCorrectionPairs += normalizeAttestedPhraseKey(segment) to
+                    normalizeAttestedPhraseKey(it)
+                return@assembleAttestedPhrase RecognizedPhraseSegment(
+                    source = segment,
+                    translation = it,
+                    detail = "$segment : correction locale utilisée"
+                )
+            }
+
+            if (!frenchToSaamaka || segment.contains(' ')) {
+                return@assembleAttestedPhrase translateExactPhrase(
+                    text = segment,
+                    frenchToSaamaka = frenchToSaamaka
+                )?.let {
+                    RecognizedPhraseSegment(
+                        source = segment,
+                        translation = cleanTranslationForDisplay(it)
+                    )
+                }
+            }
+
+            frenchFallbackResolver?.resolve(segment)?.let { resolution ->
+                RecognizedPhraseSegment(
+                    source = segment,
+                    translation = cleanTranslationForDisplay(resolution.saamaka),
+                    detail = resolution.detail.takeUnless {
+                        resolution.kind == com.saamaka.dico.testeurs.FrenchResolutionKind.EXACT
+                    },
+                    matchedSource = resolution.matchedFrench,
+                    alternatives = resolution.alternatives
+                )
+            }
+        }
 
 
         // -------------------------------------------------
@@ -1706,9 +1711,15 @@ val frenchObject =
                 ""
             }
 
-        return "⚠️ Traduction approximative — à vérifier :\n" +
-                translatedText +
-                missingInfo
+        return PhraseTranslationResult(
+            translation = translatedParts.joinToString(" ").ifBlank { "[à vérifier]" },
+            recognizedSegments = translatedParts.map {
+                RecognizedPhraseSegment(source = "", translation = it)
+            },
+            untranslatedSegments = missingWords,
+            isComplete = false,
+            reliability = TranslationReliability.LOW
+        )
     }
 
     private fun translateConfirmedSaamakaNegativeToFrench(
