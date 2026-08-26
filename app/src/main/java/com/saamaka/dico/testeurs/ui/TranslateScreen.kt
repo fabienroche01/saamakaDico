@@ -35,8 +35,87 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import java.util.Locale
 
+private enum class TranslationMode {
+    WORD,
+    PHRASE
+}
+
 @Composable
 fun TranslateScreen(
+    strings: AppStrings,
+    accessLevel: AccessLevel,
+    remainingTrials: Int,
+    onUseTrial: () -> Unit,
+    onTranslate: (String, Boolean) -> String?,
+    wordContent: @Composable () -> Unit
+) {
+    var selectedMode by remember { mutableStateOf(TranslationMode.WORD) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FilterChip(
+                selected = selectedMode == TranslationMode.WORD,
+                onClick = { selectedMode = TranslationMode.WORD },
+                modifier = Modifier.weight(1f),
+                label = {
+                    Text(
+                        text = "Mot",
+                        modifier = Modifier.fillMaxWidth(),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+
+            FilterChip(
+                selected = selectedMode == TranslationMode.PHRASE,
+                onClick = { selectedMode = TranslationMode.PHRASE },
+                modifier = Modifier.weight(1f),
+                label = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("Phrase", fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color(0xFFFFEFC4)
+                        ) {
+                            Text(
+                                text = "Premium",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF6D5312)
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            when (selectedMode) {
+                TranslationMode.WORD -> wordContent()
+                TranslationMode.PHRASE -> PhraseTranslateContent(
+                    strings = strings,
+                    accessLevel = accessLevel,
+                    remainingTrials = remainingTrials,
+                    onUseTrial = onUseTrial,
+                    onTranslate = onTranslate
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseTranslateContent(
     strings: AppStrings,
     accessLevel: AccessLevel,
     remainingTrials: Int,

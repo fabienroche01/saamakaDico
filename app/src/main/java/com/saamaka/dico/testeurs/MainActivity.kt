@@ -892,6 +892,44 @@ private fun TesterApp() {
                                     text = text,
                                     frenchToSaamaka = frenchToSaamaka
                                 )
+                            },
+                            wordContent = {
+                                SearchScreen(
+                                    categoryCount = 0,
+                                    wordOfDay = null,
+                                    total = total,
+                                    officiallyValidated = 76,
+                                    toReview = 990,
+                                    waiting = (total - 76 - 990).coerceAtLeast(0),
+                                    query = query,
+                                    status = status,
+                                    entries = searchResults.map { applyCorrection(it) },
+                                    isValidated = validationStore::isValidated,
+                                    selectedLanguage = selectedLanguage,
+                                    onLanguageChange = { selectedLanguage = it },
+                                    onQueryChange = {
+                                        query = it
+                                        runSearch(it)
+                                    },
+                                    onClear = {
+                                        query = ""
+                                        searchResults.clear()
+                                        status = "Commence à écrire pour rechercher"
+                                    },
+                                    strings = appStrings,
+                                    onOpen = ::openEntry,
+                                    onTranslateClick = {},
+                                    onFavoritesClick = ::openFavorites,
+                                    onCategoriesClick = {
+                                        activeTab = MainTab.CATEGORIES
+                                    },
+                                    onHistoryClick = ::openHistory,
+                                    onLearnClick = {
+                                        activeTab = MainTab.LEARN
+                                    },
+                                    onWordOfDayClick = {},
+                                    showHomeContent = false
+                                )
                             }
                         )
                     }
