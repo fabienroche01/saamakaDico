@@ -35,6 +35,9 @@ class DictionaryDatabase(private val context: Context) {
         phraseIndex()
     }
 
+    fun exactLocalEntry(text: String, frenchToSaamaka: Boolean): DictionaryEntry? =
+        phraseIndex().exactEntry(text, frenchToSaamaka)
+
     private fun cleanTranslationForDisplay(text: String): String {
         return text
             .replace(Regex("\\([^)]*\\)"), "")

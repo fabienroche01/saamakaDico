@@ -48,4 +48,19 @@ internal class LocalPhraseIndex(entries: List<DictionaryEntry>) {
 
     fun exactTranslation(text: String, frenchToSaamaka: Boolean): String? =
         exactAlternatives(text, frenchToSaamaka).firstOrNull()
+
+    fun exactEntry(text: String, frenchToSaamaka: Boolean): DictionaryEntry? {
+        val candidates = if (frenchToSaamaka) {
+            frenchIndex[normalizeAttestedPhraseKey(text)]
+        } else {
+            saamakaIndex[normalizeAttestedPhraseKey(text)]
+        }.orEmpty()
+        return candidates.sortedWith(
+            compareByDescending<DictionaryEntry> {
+                it.valide.trim().equals("O", ignoreCase = true)
+            }.thenBy {
+                it.valide.trim().equals("D", ignoreCase = true)
+            }
+        ).firstOrNull()
+    }
 }

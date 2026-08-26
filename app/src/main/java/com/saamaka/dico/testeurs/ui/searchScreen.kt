@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AppStrings
+import com.saamaka.dico.testeurs.LocalExactMatch
+import com.saamaka.dico.testeurs.homeSearchPresentation
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +57,8 @@ fun SearchScreen(
     onClear: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit,
     onTranslateClick: () -> Unit,
+    exactCompleteMatch: LocalExactMatch? = null,
+    canTranslatePhrase: Boolean = true,
     onLearnClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onHistoryClick: () -> Unit,
@@ -65,6 +69,11 @@ fun SearchScreen(
     showHomeContent: Boolean = true
 ) {
     val homeScrollState = rememberScrollState()
+    val searchPresentation = homeSearchPresentation(
+        text = query,
+        localResultCount = entries.size,
+        hasExactCompleteMatch = exactCompleteMatch != null
+    )
 
     Column(
         modifier = Modifier
@@ -732,7 +741,64 @@ fun SearchScreen(
                     )
                 }
 
-                entries.isEmpty() -> {
+                exactCompleteMatch != null -> {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(
+                                exactCompleteMatch.provenance.label,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0B5D3B)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                exactCompleteMatch.translation,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text("Fiabilité : Élevée")
+                        }
+                    }
+                }
+
+                searchPresentation.showPhraseCta -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Traduire cette phrase", fontWeight = FontWeight.Bold)
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    color = Color(0xFFFFEFC4)
+                                ) {
+                                    Text(
+                                        "Premium",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF6D5312)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text("Aucune expression complète trouvée dans le dictionnaire")
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = canTranslatePhrase,
+                                onClick = onTranslateClick
+                            ) {
+                                Text("Traduire la phrase")
+                            }
+                        }
+                    }
+                }
+
+                searchPresentation.showNoResult || entries.isEmpty() -> {
 
                     Spacer(Modifier.height(8.dp))
 

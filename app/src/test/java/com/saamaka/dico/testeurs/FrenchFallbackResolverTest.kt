@@ -17,10 +17,10 @@ class FrenchFallbackResolverTest {
 
     @Test
     fun conjugatedVerbUsesOnlyAnExplicitSafeInfinitive() {
-        val result = resolver(candidate("être", "LOCAL_ETRE", "O")).resolve("suis")!!
+        val result = resolver(candidate("dormir", "LOCAL_DORMIR", "O")).resolve("dors")!!
 
         assertEquals(FrenchResolutionKind.INFLECTION, result.kind)
-        assertEquals("être", result.matchedFrench)
+        assertEquals("dormir", result.matchedFrench)
     }
 
     @Test
@@ -95,9 +95,9 @@ class FrenchFallbackResolverTest {
             }
         }!!
 
-        assertEquals("mi dë tàta", result.translation)
-        assertEquals(listOf("ton"), result.untranslatedSegments)
-        assertEquals(3, result.recognizedSegments.size)
+        assertEquals("mi tàta", result.translation)
+        assertEquals(listOf("suis", "ton"), result.untranslatedSegments)
+        assertEquals(2, result.recognizedSegments.size)
     }
 
     private fun resolver(vararg candidates: FrenchTranslationCandidate) =

@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import java.util.zip.ZipFile
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -198,6 +199,9 @@ private fun TesterApp() {
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
+    var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
+    var pendingPhraseText by remember { mutableStateOf("") }
+    var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
     var status by remember { mutableStateOf("Commence à écrire pour rechercher") }
 
@@ -350,6 +354,7 @@ private fun TesterApp() {
 
     fun runSearch(text: String) {
         searchResults.clear()
+        homeExactCompleteMatch = null
 
         val cleaned = text.trim()
 
@@ -366,6 +371,40 @@ private fun TesterApp() {
         }
 
         searchResults.addAll(found)
+
+        val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
+        if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
+            homeExactCompleteMatch = findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let {
+                LocalExactMatch(
+                    source = cleaned,
+                    translation = it,
+                    provenance = LocalMatchProvenance.ATTESTED_EXPRESSION
+                )
+            }
+            if (homeExactCompleteMatch == null) {
+                found.firstOrNull { entry ->
+                    val source = if (frenchToSaamaka) entry.french else entry.saamaka
+                    normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
+                }?.let { entry ->
+                    homeExactCompleteMatch = LocalExactMatch(
+                        source = cleaned,
+                        translation = if (frenchToSaamaka) entry.saamaka else entry.french,
+                        provenance = LocalMatchProvenance.DICTIONARY
+                    )
+                }
+            }
+        }
+
+        val presentation = homeSearchPresentation(
+            text = cleaned,
+            localResultCount = found.size,
+            hasExactCompleteMatch = homeExactCompleteMatch != null
+        )
+        Log.d(
+            "HomeSearch",
+            "normalized='${presentation.normalizedText}', words=${presentation.wordCount}, " +
+                "localResults=${found.size}, showPhraseCta=${presentation.showPhraseCta}"
+        )
 
         status = when (found.size) {
             0 -> "Aucun résultat trouvé"
@@ -880,6 +919,12 @@ private fun TesterApp() {
                     MainTab.TRANSLATE -> {
                         TranslateScreen(
                             strings = appStrings,
+                            initialText = pendingPhraseText,
+                            translateInitialTextImmediately = translatePendingPhraseImmediately,
+                            onInitialTextHandled = {
+                                pendingPhraseText = ""
+                                translatePendingPhraseImmediately = false
+                            },
                             accessLevel = accessLevel,
                             remainingTrials = remainingTranslationTrials,
                             onUseTrial = {
@@ -888,7 +933,93 @@ private fun TesterApp() {
                                         translationTrialStore.remainingTrials()
                                 }
                             },
+                            onLocalSearch = { text, frenchToSaamaka ->
+                                withContext(Dispatchers.IO) {
+                                    database.preparePhraseTranslationIndex()
+                                    val corrections = correctionStore.all()
+                                    val normalizedInput = normalizeAttestedPhraseKey(text)
 
+                                    fun corrected(entry: DictionaryEntry): DictionaryEntry {
+                                        val correction = corrections.firstOrNull { it.entryId == entry.id }
+                                            ?: return entry
+                                        return entry.copy(
+                                            french = correction.frenchProposed.ifBlank { entry.french },
+                                            saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
+                                        )
+                                    }
+
+                                    val dictionaryEntry = database.exactLocalEntry(text, frenchToSaamaka)
+                                    val correctedDictionaryEntry = dictionaryEntry?.let(::corrected)
+                                    val dictionaryCorrection = dictionaryEntry?.let { entry ->
+                                        corrections.firstOrNull { it.entryId == entry.id }
+                                    }
+                                    val standaloneCorrection = corrections.firstOrNull { correction ->
+                                        val source = if (frenchToSaamaka) {
+                                            correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                                        } else {
+                                            correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                                        }
+                                        normalizeAttestedPhraseKey(source) == normalizedInput
+                                    }
+
+                                    val exactMatch = when {
+                                        correctedDictionaryEntry != null -> {
+                                            val translation = if (frenchToSaamaka) {
+                                                correctedDictionaryEntry.saamaka
+                                            } else {
+                                                correctedDictionaryEntry.french
+                                            }
+                                            LocalExactMatch(
+                                                source = text.trim(),
+                                                translation = translation,
+                                                provenance = if (dictionaryCorrection != null) {
+                                                    LocalMatchProvenance.LOCAL_CORRECTION
+                                                } else {
+                                                    LocalMatchProvenance.DICTIONARY
+                                                }
+                                            )
+                                        }
+                                        standaloneCorrection != null -> LocalExactMatch(
+                                            source = text.trim(),
+                                            translation = if (frenchToSaamaka) {
+                                                standaloneCorrection.saamakaProposed.ifBlank {
+                                                    standaloneCorrection.saamakaCurrent
+                                                }
+                                            } else {
+                                                standaloneCorrection.frenchProposed.ifBlank {
+                                                    standaloneCorrection.frenchCurrent
+                                                }
+                                            },
+                                            provenance = LocalMatchProvenance.LOCAL_CORRECTION
+                                        )
+                                        else -> findAttestedPhraseRule(text, frenchToSaamaka)?.let {
+                                            LocalExactMatch(
+                                                source = text.trim(),
+                                                translation = it,
+                                                provenance = LocalMatchProvenance.ATTESTED_EXPRESSION
+                                            )
+                                        }
+                                    }?.takeIf { it.translation.isNotBlank() }
+
+                                    val languageCode = if (frenchToSaamaka) "fr" else "srm"
+                                    val usefulEntries = if (exactMatch == null) {
+                                        val wholeTextMatches = database.search(text, languageCode, limit = 20)
+                                        val segmentMatches = cleanPhraseInput(text)
+                                            .split(Regex("\\s+"))
+                                            .asSequence()
+                                            .filter { it.isNotBlank() }
+                                            .mapNotNull { database.exactLocalEntry(it, frenchToSaamaka) }
+                                            .toList()
+                                        (wholeTextMatches + segmentMatches)
+                                            .distinctBy { it.id }
+                                            .take(20)
+                                            .map(::corrected)
+                                    } else {
+                                        emptyList()
+                                    }
+                                    UnifiedLocalSearchResult(exactMatch, usefulEntries)
+                                }
+                            },
                             onTranslate = { text, frenchToSaamaka ->
                                 val localCorrections = withContext(Dispatchers.IO) {
                                     database.preparePhraseTranslationIndex()
@@ -902,44 +1033,7 @@ private fun TesterApp() {
                                     )
                                 }
                             },
-                            wordContent = {
-                                SearchScreen(
-                                    categoryCount = 0,
-                                    wordOfDay = null,
-                                    total = total,
-                                    officiallyValidated = 76,
-                                    toReview = 990,
-                                    waiting = (total - 76 - 990).coerceAtLeast(0),
-                                    query = query,
-                                    status = status,
-                                    entries = searchResults.map { applyCorrection(it) },
-                                    isValidated = validationStore::isValidated,
-                                    selectedLanguage = selectedLanguage,
-                                    onLanguageChange = { selectedLanguage = it },
-                                    onQueryChange = {
-                                        query = it
-                                        runSearch(it)
-                                    },
-                                    onClear = {
-                                        query = ""
-                                        searchResults.clear()
-                                        status = "Commence à écrire pour rechercher"
-                                    },
-                                    strings = appStrings,
-                                    onOpen = ::openEntry,
-                                    onTranslateClick = {},
-                                    onFavoritesClick = ::openFavorites,
-                                    onCategoriesClick = {
-                                        activeTab = MainTab.CATEGORIES
-                                    },
-                                    onHistoryClick = ::openHistory,
-                                    onLearnClick = {
-                                        activeTab = MainTab.LEARN
-                                    },
-                                    onWordOfDayClick = {},
-                                    showHomeContent = false
-                                )
-                            }
+                            onOpenEntry = ::openEntry
                         )
                     }
 
@@ -1013,13 +1107,20 @@ private fun TesterApp() {
                             onClear = {
                                 query = ""
                                 searchResults.clear()
+                                homeExactCompleteMatch = null
                                 status = "Commence à écrire pour rechercher"
                             },
                             strings = appStrings,
                             onOpen = ::openEntry,
                             onTranslateClick = {
+                                pendingPhraseText = query
+                                translatePendingPhraseImmediately = true
                                 activeTab = MainTab.TRANSLATE
                             },
+                            exactCompleteMatch = homeExactCompleteMatch,
+                            canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
+                                accessLevel == AccessLevel.TESTER ||
+                                (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTranslationTrials > 0),
                             onFavoritesClick = {
                                 openFavorites()
                             },
@@ -1059,6 +1160,7 @@ private fun TesterApp() {
                             onClear = {
                                 query = ""
                                 searchResults.clear()
+                                homeExactCompleteMatch = null
                                 status = "Commence à écrire pour rechercher"
                             },
 
@@ -1066,8 +1168,14 @@ private fun TesterApp() {
                             onOpen = ::openEntry,
 
                             onTranslateClick = {
+                                pendingPhraseText = query
+                                translatePendingPhraseImmediately = true
                                 activeTab = MainTab.TRANSLATE
                             },
+                            exactCompleteMatch = homeExactCompleteMatch,
+                            canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
+                                accessLevel == AccessLevel.TESTER ||
+                                (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTranslationTrials > 0),
 
                             onFavoritesClick = {
                                 openFavorites()

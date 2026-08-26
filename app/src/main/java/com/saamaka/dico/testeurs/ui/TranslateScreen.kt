@@ -7,6 +7,7 @@ import android.content.Intent
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -31,6 +32,12 @@ import com.saamaka.dico.testeurs.AccessLevel
 import com.saamaka.dico.testeurs.AppStrings
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
 import com.saamaka.dico.testeurs.model.TranslationReliability
+import com.saamaka.dico.testeurs.model.DictionaryEntry
+import com.saamaka.dico.testeurs.UnifiedLocalSearchResult
+import com.saamaka.dico.testeurs.unifiedSearchButtonLabel
+import com.saamaka.dico.testeurs.shouldOfferPremiumTranslation
+import com.saamaka.dico.testeurs.shouldConsumeTrialAfterPremiumResult
+import com.saamaka.dico.testeurs.normalizedInputWordCount
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -40,82 +47,387 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-private enum class TranslationMode {
-    WORD,
-    PHRASE
-}
-
 @Composable
 fun TranslateScreen(
     strings: AppStrings,
+    initialText: String = "",
+    translateInitialTextImmediately: Boolean = false,
+    onInitialTextHandled: () -> Unit = {},
     accessLevel: AccessLevel,
     remainingTrials: Int,
     onUseTrial: () -> Unit,
+    onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
     onTranslate: suspend (String, Boolean) -> PhraseTranslationResult?,
-    wordContent: @Composable () -> Unit
+    onOpenEntry: (DictionaryEntry) -> Unit
 ) {
-    var selectedMode by remember { mutableStateOf(TranslationMode.WORD) }
+    UnifiedTranslateContent(
+        strings = strings,
+        initialText = initialText,
+        translateInitialTextImmediately = translateInitialTextImmediately,
+        onInitialTextHandled = onInitialTextHandled,
+        accessLevel = accessLevel,
+        remainingTrials = remainingTrials,
+        onUseTrial = onUseTrial,
+        onLocalSearch = onLocalSearch,
+        onTranslate = onTranslate,
+        onOpenEntry = onOpenEntry
+    )
+}
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+@Composable
+private fun UnifiedTranslateContent(
+    strings: AppStrings,
+    initialText: String,
+    translateInitialTextImmediately: Boolean,
+    onInitialTextHandled: () -> Unit,
+    accessLevel: AccessLevel,
+    remainingTrials: Int,
+    onUseTrial: () -> Unit,
+    onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
+    onTranslate: suspend (String, Boolean) -> PhraseTranslationResult?,
+    onOpenEntry: (DictionaryEntry) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val startupText = remember { initialText }
+    val translateStartupText = remember { translateInitialTextImmediately }
+    var input by remember { mutableStateOf(initialText) }
+    var frenchToSaamaka by remember { mutableStateOf(true) }
+    var localResult by remember { mutableStateOf<UnifiedLocalSearchResult?>(null) }
+    var phraseResult by remember { mutableStateOf<PhraseTranslationResult?>(null) }
+    var runningJob by remember { mutableStateOf<Job?>(null) }
+    var requestId by remember { mutableStateOf(0L) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showDetails by remember { mutableStateOf(false) }
+    var trialConsumedForRequest by remember { mutableStateOf(false) }
+    var ttsReady by remember { mutableStateOf(false) }
+    val tts = remember {
+        TextToSpeech(context) { ttsReady = it == TextToSpeech.SUCCESS }
+    }
+
+    DisposableEffect(tts) {
+        onDispose {
+            runningJob?.cancel()
+            tts.stop()
+            tts.shutdown()
+        }
+    }
+
+    fun resetResults() {
+        runningJob?.cancel()
+        requestId++
+        isLoading = false
+        error = null
+        localResult = null
+        phraseResult = null
+        showDetails = false
+        trialConsumedForRequest = false
+    }
+
+    fun launchRequest(block: suspend () -> Unit) {
+        runningJob?.cancel()
+        val currentId = ++requestId
+        runningJob = scope.launch {
+            isLoading = true
+            error = null
+            try {
+                block()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Throwable) {
+                if (currentId == requestId) error = "La recherche a échoué. Réessayez."
+            } finally {
+                if (currentId == requestId) isLoading = false
+            }
+        }
+    }
+
+    val canUsePremium = accessLevel == AccessLevel.PREMIUM ||
+        accessLevel == AccessLevel.TESTER ||
+        (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTrials > 0)
+
+    suspend fun translateCurrentPhrase() {
+        val result = onTranslate(input, frenchToSaamaka)
+        if (result != null) {
+            phraseResult = result
+            if (shouldConsumeTrialAfterPremiumResult(
+                    accessLevel,
+                    remainingTrials,
+                    result,
+                    trialConsumedForRequest
+                )
+            ) {
+                trialConsumedForRequest = true
+                onUseTrial()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (startupText.isBlank()) return@LaunchedEffect
+        launchRequest {
+            val result = onLocalSearch(startupText, frenchToSaamaka)
+            localResult = result
+            if (
+                translateStartupText &&
+                result.exactMatch == null &&
+                normalizedInputWordCount(startupText) >= 2 &&
+                canUsePremium
+            ) {
+                translateCurrentPhrase()
+            }
+            onInitialTextHandled()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 12.dp, bottom = 120.dp)
+    ) {
+        Text(
+            text = strings.translate,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF16372A)
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (frenchToSaamaka) {
+                Button(modifier = Modifier.weight(1f), onClick = {}) { Text("FR → SM") }
+            } else {
+                OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+                    resetResults(); frenchToSaamaka = true
+                }) { Text("FR → SM") }
+            }
+            if (!frenchToSaamaka) {
+                Button(modifier = Modifier.weight(1f), onClick = {}) { Text("SM → FR") }
+            } else {
+                OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+                    resetResults(); frenchToSaamaka = false
+                }) { Text("SM → FR") }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it; resetResults() },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Rechercher ou traduire") },
+            placeholder = { Text("Écris un mot, une expression ou une phrase") },
+            minLines = 2,
+            maxLines = 6,
+            shape = RoundedCornerShape(18.dp)
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            enabled = input.isNotBlank() && !isLoading,
+            onClick = {
+                phraseResult = null
+                launchRequest {
+                    localResult = onLocalSearch(input, frenchToSaamaka)
+                }
+            }
         ) {
-            FilterChip(
-                selected = selectedMode == TranslationMode.WORD,
-                onClick = { selectedMode = TranslationMode.WORD },
-                modifier = Modifier.weight(1f),
-                label = {
-                    Text(
-                        text = "Mot",
-                        modifier = Modifier.fillMaxWidth(),
-                        fontWeight = FontWeight.Bold
+            if (isLoading) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(if (isLoading) "Recherche…" else unifiedSearchButtonLabel(input))
+        }
+
+        error?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+
+        localResult?.exactMatch?.let { match ->
+            Spacer(Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(match.provenance.label, fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
+                    Spacer(Modifier.height(8.dp))
+                    Text(match.translation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Fiabilité : Élevée", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(10.dp))
+                    ResultActionRow(
+                        text = match.translation,
+                        canListen = ttsReady,
+                        onListen = {
+                            tts.speak(match.translation, TextToSpeech.QUEUE_FLUSH, null, "local_exact")
+                        }
                     )
                 }
-            )
+            }
+        }
 
-            FilterChip(
-                selected = selectedMode == TranslationMode.PHRASE,
-                onClick = { selectedMode = TranslationMode.PHRASE },
-                modifier = Modifier.weight(1f),
-                label = {
+        val usefulEntries = localResult?.usefulEntries.orEmpty()
+        if (usefulEntries.isNotEmpty() && localResult?.exactMatch == null) {
+            Spacer(Modifier.height(16.dp))
+            Text("Résultats du dictionnaire", fontWeight = FontWeight.Bold)
+            usefulEntries.take(20).forEach { entry ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                        onOpenEntry(entry)
+                    }
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(entry.french, fontWeight = FontWeight.Bold)
+                        Text(entry.saamaka.ifBlank { "Traduction manquante" })
+                    }
+                }
+            }
+        }
+
+        if (
+            localResult != null &&
+            localResult?.exactMatch == null &&
+            usefulEntries.isEmpty() &&
+            normalizedInputWordCount(input) <= 1
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Aucun résultat trouvé",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (shouldOfferPremiumTranslation(input, localResult) && phraseResult == null) {
+            Spacer(Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Phrase", fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Traduire cette phrase",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = Color(0xFFFFEFC4)
                         ) {
                             Text(
                                 text = "Premium",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF6D5312)
                             )
                         }
                     }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Aucune expression complète trouvée dans le dictionnaire",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = canUsePremium && !isLoading,
+                    onClick = {
+                        launchRequest {
+                            translateCurrentPhrase()
+                        }
+                    }
+                    ) {
+                        Icon(Icons.Default.WorkspacePremium, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Traduire la phrase")
+                    }
+                    if (!canUsePremium) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = when (accessLevel) {
+                                AccessLevel.GUEST -> "Créez un compte pour accéder aux essais de traduction de phrase."
+                                AccessLevel.FREE_ACCOUNT -> "Aucun essai de traduction Premium restant."
+                                else -> "Traduction Premium indisponible."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            )
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            when (selectedMode) {
-                TranslationMode.WORD -> wordContent()
-                TranslationMode.PHRASE -> PhraseTranslateContent(
-                    strings = strings,
-                    accessLevel = accessLevel,
-                    remainingTrials = remainingTrials,
-                    onUseTrial = onUseTrial,
-                    onTranslate = onTranslate
-                )
             }
         }
+
+        phraseResult?.let { result ->
+            Spacer(Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        if (result.isComplete) "Proposition locale" else "Proposition locale incomplète — à vérifier",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0B5D3B)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(result.translation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Fiabilité : ${result.reliability.label}")
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { showDetails = !showDetails }) {
+                        Text(if (showDetails) "Masquer les détails" else "Voir les détails")
+                    }
+                    if (showDetails) {
+                        result.recognizedSegments.forEach { segment ->
+                            Text("${segment.source} → ${segment.matchedSource ?: segment.source} → ${segment.translation}")
+                            segment.alternatives.takeIf { it.isNotEmpty() }?.let {
+                                Text("Autres possibilités : ${it.joinToString(", ")}")
+                            }
+                        }
+                        if (result.untranslatedSegments.isNotEmpty()) {
+                            Text("Éléments à vérifier : ${result.untranslatedSegments.joinToString(", ")}")
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    ResultActionRow(
+                        text = result.shareableText(),
+                        canListen = ttsReady && result.isComplete,
+                        onListen = {
+                            tts.speak(result.translation, TextToSpeech.QUEUE_FLUSH, null, "phrase_result")
+                        }
+                    )
+                }
+            }
+        }
+
+        if (localResult != null || phraseResult != null) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                input = ""; resetResults()
+            }) { Text("Nouvelle recherche / Nouveau texte") }
+        }
+    }
+}
+
+@Composable
+private fun ResultActionRow(
+    text: String,
+    canListen: Boolean,
+    onListen: () -> Unit
+) {
+    val context = LocalContext.current
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("Saamaka Dico", text))
+        }) { Text("Copier") }
+        OutlinedButton(modifier = Modifier.weight(1f), enabled = canListen, onClick = onListen) {
+            Text("Écouter")
+        }
+        OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
+            }
+            context.startActivity(Intent.createChooser(intent, "Partager"))
+        }) { Text("Partager") }
     }
 }
 

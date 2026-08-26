@@ -193,8 +193,6 @@ internal class FrenchFallbackResolver(
         )
 
         val safeFrenchInfinitives = mapOf(
-            "suis" to "etre", "es" to "etre", "est" to "etre",
-            "sommes" to "etre", "etes" to "etre", "sont" to "etre",
             "dors" to "dormir", "dort" to "dormir", "dormons" to "dormir",
             "dormez" to "dormir", "dorment" to "dormir",
             "mange" to "manger", "manges" to "manger", "mangeons" to "manger",
