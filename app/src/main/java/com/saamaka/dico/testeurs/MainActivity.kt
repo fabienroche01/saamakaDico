@@ -1057,6 +1057,14 @@ private fun TesterApp() {
                                 mutableStateOf(false)
                             }
 
+                            var missionFilter by remember {
+                                mutableStateOf(MissionFilter.ALL)
+                            }
+
+                            var missionQuery by remember {
+                                mutableStateOf("")
+                            }
+
                             val missionEntries = remember(selectedMissionCategory) {
                                 if (selectedMissionCategory.isBlank()) {
                                     emptyList()
@@ -1070,7 +1078,44 @@ private fun TesterApp() {
                                 }
                             }
 
-                            LazyColumn {
+                            val localCorrections = remember(correctionStore.all().size) {
+                                correctionStore.all().associateBy { it.entryId }
+                            }
+
+                            val missionClassifications = remember(
+                                validatedCount,
+                                missionEntries,
+                                localCorrections
+                            ) {
+                                classifyMissionEntries(
+                                    entries = missionEntries,
+                                    completedIds = validationStore.ids(),
+                                    correctedIds = localCorrections.keys
+                                )
+                            }
+
+                            val completedMissionCount = missionClassifications.values
+                                .count { it.isCompleted }
+
+                            val filteredMissionEntries = remember(
+                                missionEntries,
+                                missionFilter,
+                                missionQuery,
+                                missionClassifications,
+                                localCorrections
+                            ) {
+                                filterMissionEntries(
+                                    entries = missionEntries,
+                                    filter = missionFilter,
+                                    query = missionQuery,
+                                    classifications = missionClassifications,
+                                    localCorrections = localCorrections
+                                )
+                            }
+
+                            LazyColumn(
+                                contentPadding = PaddingValues(bottom = 28.dp)
+                            ) {
 
                                 item {
 
@@ -1106,6 +1151,35 @@ private fun TesterApp() {
                                             Spacer(
                                                 modifier = Modifier.height(14.dp)
                                             )
+
+                                            Text(
+                                                text = "${missionEntries.size} mots",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            LinearProgressIndicator(
+                                                progress = {
+                                                    if (missionEntries.isEmpty()) 0f
+                                                    else completedMissionCount.toFloat() / missionEntries.size
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                color = Color(0xFFF0C96A),
+                                                trackColor = Color.White.copy(alpha = 0.25f)
+                                            )
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            Text(
+                                                text = "$completedMissionCount sur ${missionEntries.size} terminés",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.White
+                                            )
+
+                                            Spacer(modifier = Modifier.height(14.dp))
 
                                             Box(
                                                 modifier = Modifier.fillMaxWidth()
@@ -1161,91 +1235,56 @@ private fun TesterApp() {
                                         modifier = Modifier.height(8.dp)
                                     )
 
-                                    val doubtfulCount = missionEntries.count {
-                                        it.valide.equals(
-                                            "D",
-                                            ignoreCase = true
-                                        )
-                                    }
+                                    val doubtfulCount = missionClassifications.values
+                                        .count { it.visualStatus.isDoubtful }
 
-                                    val newCount = missionEntries.count {
-                                        it.saamaka.isBlank()
-                                    }
+                                    val toCompleteCount = missionClassifications.values
+                                        .count { it.visualStatus.isToComplete }
+
+                                    val filters = listOf(
+                                        MissionFilter.ALL to missionEntries.size,
+                                        MissionFilter.DOUBTFUL to doubtfulCount,
+                                        MissionFilter.TO_COMPLETE to toCompleteCount,
+                                        MissionFilter.COMPLETED to completedMissionCount
+                                    )
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-
-                                        Card(
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = Color(0xFFF4EFE5)
-                                            ),
-                                            border = BorderStroke(1.dp, Color(0xFFE0D8C9))
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(12.dp)
+                                        filters.forEach { (filter, count) ->
+                                            val selected = missionFilter == filter
+                                            Card(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clickable { missionFilter = filter },
+                                                shape = RoundedCornerShape(16.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (selected) {
+                                                        Color(0xFF0B5D3B)
+                                                    } else {
+                                                        Color(0xFFF4EFE5)
+                                                    }
+                                                ),
+                                                border = BorderStroke(
+                                                    if (selected) 2.dp else 1.dp,
+                                                    if (selected) Color(0xFFF0C96A) else Color(0xFFE0D8C9)
+                                                )
                                             ) {
-                                                Text(
-                                                    text = "${missionEntries.size}",
-                                                    style = MaterialTheme.typography.titleLarge,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-
-                                                Text(
-                                                    text = "Mots",
-                                                    style = MaterialTheme.typography.bodySmall
-                                                )
-                                            }
-                                        }
-
-                                        Card(
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = Color(0xFFFFEFC4)
-                                            ),
-                                            border = BorderStroke(1.dp, Color(0xFFE2CC8B))
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(12.dp)
-                                            ) {
-                                                Text(
-                                                    text = "$doubtfulCount",
-                                                    style = MaterialTheme.typography.titleLarge,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-
-                                                Text(
-                                                    text = "Douteux",
-                                                    style = MaterialTheme.typography.bodySmall
-                                                )
-                                            }
-                                        }
-
-                                        Card(
-                                            modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(16.dp),
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = Color(0xFFDCEEE2)
-                                            ),
-                                            border = BorderStroke(1.dp, Color(0xFFBFD8C6))
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(12.dp)
-                                            ) {
-                                                Text(
-                                                    text = "$newCount",
-                                                    style = MaterialTheme.typography.titleLarge,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-
-                                                Text(
-                                                    text = "À compléter",
-                                                    style = MaterialTheme.typography.bodySmall
-                                                )
+                                                Column(modifier = Modifier.padding(10.dp)) {
+                                                    Text(
+                                                        text = "$count",
+                                                        style = MaterialTheme.typography.titleLarge,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (selected) Color.White else Color(0xFF16372A)
+                                                    )
+                                                    Text(
+                                                        text = filter.label,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        maxLines = 1,
+                                                        color = if (selected) Color.White else Color(0xFF4C554F)
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -1253,19 +1292,38 @@ private fun TesterApp() {
                                     Spacer(
                                         modifier = Modifier.height(14.dp)
                                     )
+
+                                    OutlinedTextField(
+                                        value = missionQuery,
+                                        onValueChange = { missionQuery = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        label = { Text("Rechercher dans la mission") },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Search, contentDescription = null)
+                                        }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
 
-                                if (missionEntries.isEmpty()) {
+                                if (filteredMissionEntries.isEmpty()) {
                                     item {
                                         LibraryEmptyState(
                                             icon = Icons.Default.CheckCircle,
-                                            title = "Mission vide",
-                                            message = "Aucun mot n'est disponible pour cette catégorie."
+                                            title = if (missionEntries.isEmpty()) "Mission vide" else "Aucun résultat",
+                                            message = if (missionEntries.isEmpty()) {
+                                                "Aucun mot n'est disponible pour cette catégorie."
+                                            } else {
+                                                "Aucun mot ne correspond à ce filtre et à cette recherche."
+                                            }
                                         )
                                     }
                                 }
 
-                                items(missionEntries) { entry ->
+                                items(filteredMissionEntries, key = { it.id }) { entry ->
+
+                                    val classification = missionClassifications.getValue(entry.id)
 
                                     Card(
                                         modifier = Modifier
@@ -1318,28 +1376,13 @@ private fun TesterApp() {
                                                 )
 
                                                 Text(
-                                                    text = when {
-
-                                                        entry.valide.equals(
-                                                            "D",
-                                                            ignoreCase = true
-                                                        ) -> "⚠️ Douteux"
-
-                                                        entry.saamaka.isBlank() ->
-                                                            "❓ Traduction manquante"
-
-                                                        entry.valide.isBlank() ->
-                                                            "⬜ Nouveau"
-
-                                                        else ->
-                                                            "✅ Déjà validé"
-                                                    },
+                                                    text = classification.visualStatus.label,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = when {
-                                                        entry.valide.equals("D", ignoreCase = true) ->
+                                                        classification.visualStatus.isDoubtful ->
                                                             Color(0xFF8A6712)
-                                                        entry.saamaka.isBlank() ->
+                                                        classification.visualStatus.isToComplete ->
                                                             Color(0xFF8B2F2F)
                                                         else -> Color(0xFF0B5D3B)
                                                     }
