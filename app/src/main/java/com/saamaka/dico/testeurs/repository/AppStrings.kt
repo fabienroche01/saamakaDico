@@ -101,7 +101,8 @@ data class AppStrings(
     val recordProposalAudio: String,
     val stopProposalAudio: String,
     val proposalAudioRecorded: String,
-    val saamakaRequired: String
+    val saamakaRequired: String,
+    val stopListening: String
 )
 
 fun stringsFor(language: UiLanguage): AppStrings {
@@ -213,6 +214,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             stopProposalAudio = "Stop nanga kibri",
             proposalAudioRecorded = "A taki kibri",
             saamakaRequired = "Saamaka musu de.",
+            stopListening = "Stop a taki",
             instructionSearch = "1. Suku of waka na ini den wootu.",
             instructionValidate = "2. Valide O te wan traaduuku de bun.",
             instructionCorrect = "3. Koreksi te wan traaduuku no de bun.",
@@ -323,6 +325,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             stopProposalAudio = "Arrêter et enregistrer",
             proposalAudioRecorded = "Prononciation enregistrée",
             saamakaRequired = "Le saamaka est obligatoire.",
+            stopListening = "Arrêter la lecture",
             instructionSearch = "1. Rechercher ou parcourir librement les mots.",
             instructionValidate = "2. Valider O lorsqu'une traduction est correcte.",
             instructionCorrect = "3. Corriger lorsqu'une traduction est incorrecte.",
@@ -435,6 +438,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             stopProposalAudio = "Stop and save",
             proposalAudioRecorded = "Pronunciation recorded",
             saamakaRequired = "Saamaka is required.",
+            stopListening = "Stop playback",
             instructionSearch = "1. Search or freely browse the words.",
             instructionValidate = "2. Validate O when a translation is correct.",
             instructionCorrect = "3. Correct a translation when it is incorrect.",
@@ -546,6 +550,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             stopProposalAudio = "Stoppen en opslaan",
             proposalAudioRecorded = "Uitspraak opgenomen",
             saamakaRequired = "Saamaka is verplicht.",
+            stopListening = "Afspelen stoppen",
             instructionSearch = "1. Zoek of blader vrij door de woorden.",
             instructionValidate = "2. Valideer O wanneer een vertaling correct is.",
             instructionCorrect = "3. Corrigeer een vertaling wanneer deze onjuist is.",

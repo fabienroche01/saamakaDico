@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -4349,17 +4350,25 @@ private fun NewEntryProposalDialog(
     var categoryExpanded by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRecording by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(false) }
     var hasAudio by remember(localId, testerName) {
         mutableStateOf(audioStore.hasProposedEntryAudio(localId, testerName))
     }
 
+    DisposableEffect(localId) {
+        onDispose { audioStore.stopPlayback() }
+    }
+
     fun startRecording() {
+        if (isPlaying) return
         audioStore.startProposedEntryRecording(localId, testerName)
         isRecording = true
     }
 
     fun dismiss() {
         if (isRecording) audioStore.stopRecording()
+        audioStore.stopPlayback()
+        isPlaying = false
         if (original == null) audioStore.deleteProposedEntryAudio(localId, testerName)
         onDismiss()
     }
@@ -4412,6 +4421,7 @@ private fun NewEntryProposalDialog(
                 Spacer(Modifier.height(10.dp))
                 Button(
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isPlaying,
                     onClick = {
                         if (isRecording) {
                             audioStore.stopRecording()
@@ -4430,10 +4440,33 @@ private fun NewEntryProposalDialog(
                 }
                 if (hasAudio && !isRecording) {
                     Text(strings.proposalAudioRecorded, color = Color(0xFF0B5D3B))
-                    TextButton(onClick = {
-                        audioStore.deleteProposedEntryAudio(localId, testerName)
-                        hasAudio = false
-                    }) { Text(strings.deleteRedo) }
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            if (isPlaying) {
+                                audioStore.stopPlayback()
+                                isPlaying = false
+                            } else {
+                                isPlaying = true
+                                audioStore.playProposedEntryAudio(localId, testerName) {
+                                    isPlaying = false
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isPlaying) strings.stopListening else strings.listen.replace("▶", "").trim())
+                    }
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isPlaying,
+                        onClick = {
+                            audioStore.stopPlayback()
+                            audioStore.deleteProposedEntryAudio(localId, testerName)
+                            hasAudio = false
+                        }
+                    ) { Text(strings.deleteRedo) }
                 }
                 errorMessage?.let {
                     Text(it, color = MaterialTheme.colorScheme.error)
@@ -4454,8 +4487,10 @@ private fun NewEntryProposalDialog(
                             errorMessage = strings.atLeastOneTranslation
                         category.isBlank() -> errorMessage = strings.category
                         isDuplicate(localId, cleanSaamaka) -> errorMessage = strings.duplicateEntryWarning
-                        else -> onSave(
-                            NewEntryProposal(
+                        else -> {
+                            audioStore.stopPlayback()
+                            isPlaying = false
+                            onSave(NewEntryProposal(
                                 localId = localId,
                                 saamaka = cleanSaamaka,
                                 french = cleanFrench,
@@ -4467,8 +4502,8 @@ private fun NewEntryProposalDialog(
                                 createdAt = original?.createdAt ?: System.currentTimeMillis(),
                                 audioFileName = audioStore.proposedEntryAudioFile(localId, testerName)
                                     .takeIf { it.exists() && it.length() > 0L }?.name
-                            )
-                        )
+                            ))
+                        }
                     }
                 }
             ) { Text(strings.saveProposal) }

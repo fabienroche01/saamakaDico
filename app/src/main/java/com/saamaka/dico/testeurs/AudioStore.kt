@@ -73,6 +73,47 @@ class AudioStore(
         return !file.exists() || file.delete()
     }
 
+    fun playProposedEntryAudio(
+        localId: String,
+        testerName: String,
+        onFinished: () -> Unit
+    ) {
+        val file = proposedEntryAudioFile(localId, testerName)
+        if (!file.exists() || file.length() <= 0L) {
+            Toast.makeText(context, "Audio introuvable : ${file.name}", Toast.LENGTH_LONG).show()
+            onFinished()
+            return
+        }
+        try {
+            stopPlayback()
+            val newPlayer = MediaPlayer().apply {
+                setDataSource(file.absolutePath)
+                setOnPreparedListener { it.start() }
+                setOnCompletionListener {
+                    it.release()
+                    if (player === it) player = null
+                    onFinished()
+                }
+                setOnErrorListener { mediaPlayer, _, _ ->
+                    mediaPlayer.release()
+                    if (player === mediaPlayer) player = null
+                    onFinished()
+                    true
+                }
+            }
+            player = newPlayer
+            newPlayer.prepareAsync()
+        } catch (error: Exception) {
+            stopPlayback()
+            onFinished()
+            Toast.makeText(
+                context,
+                "Impossible de lire l'audio : ${error.message ?: "erreur inconnue"}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     private fun startRecordingTo(file: File) {
 
         currentFile = file
