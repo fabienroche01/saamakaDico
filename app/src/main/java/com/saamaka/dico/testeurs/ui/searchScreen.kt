@@ -893,6 +893,24 @@ fun SearchScreen(
                             key = { it.id }
                         ) { entry ->
 
+                            val selectedTranslation = when (searchLanguageFilter) {
+                                SearchLanguageFilter.ALL -> entry.french.ifBlank {
+                                    entry.english.ifBlank { entry.dutch.ifBlank { "À compléter" } }
+                                }
+                                SearchLanguageFilter.SAAMAKA -> entry.saamaka.ifBlank {
+                                    "Traduction non disponible"
+                                }
+                                SearchLanguageFilter.FRENCH -> entry.french.ifBlank {
+                                    "Traduction non disponible"
+                                }
+                                SearchLanguageFilter.ENGLISH -> entry.english.ifBlank {
+                                    "Traduction non disponible"
+                                }
+                                SearchLanguageFilter.DUTCH -> entry.dutch.ifBlank {
+                                    "Traduction non disponible"
+                                }
+                            }
+
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -929,11 +947,11 @@ fun SearchScreen(
                                         Spacer(Modifier.height(3.dp))
 
                                         Text(
-                                            text = entry.french.ifBlank {
-                                                entry.english.ifBlank { entry.dutch.ifBlank { "À compléter" } }
-                                            },
+                                            text = selectedTranslation,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                alpha = if (selectedTranslation == "Traduction non disponible") 0.65f else 1f
+                                            ),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
