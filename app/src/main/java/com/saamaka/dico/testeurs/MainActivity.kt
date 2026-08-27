@@ -516,6 +516,7 @@ private fun TesterApp() {
 
     Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
                     title = {
@@ -804,6 +805,7 @@ private fun TesterApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .consumeWindowInsets(padding)
                 .padding(horizontal = 16.dp)
         ) {
             when {
