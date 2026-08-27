@@ -3984,6 +3984,25 @@ private fun CorrectionsScreen(
             Spacer(Modifier.height(20.dp))
         }
     }
+
+    pendingCancellation?.let { proposal ->
+        AlertDialog(
+            onDismissRequest = { pendingCancellation = null },
+            title = { Text(strings.cancelDeletionProposal) },
+            text = { Text(strings.cancelDeletionConfirmation) },
+            confirmButton = {
+                Button(onClick = {
+                    onCancelDeletionProposal(proposal)
+                    pendingCancellation = null
+                }) { Text(strings.confirm) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCancellation = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
 }
 
 
@@ -4087,24 +4106,6 @@ private fun LibraryEmptyState(
         }
     }
 
-    pendingCancellation?.let { proposal ->
-        AlertDialog(
-            onDismissRequest = { pendingCancellation = null },
-            title = { Text(strings.cancelDeletionProposal) },
-            text = { Text(strings.cancelDeletionConfirmation) },
-            confirmButton = {
-                Button(onClick = {
-                    onCancelDeletionProposal(proposal)
-                    pendingCancellation = null
-                }) { Text(strings.confirm) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingCancellation = null }) {
-                    Text(strings.cancel)
-                }
-            }
-        )
-    }
 }
 
 @Composable
