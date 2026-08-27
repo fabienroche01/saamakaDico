@@ -48,7 +48,32 @@ class AudioStore(
         entryId: Int,
         testerName: String
     ) {
-        val file = audioFile(entryId, testerName)
+        startRecordingTo(audioFile(entryId, testerName))
+    }
+
+    fun proposedEntryAudioFile(localId: String, testerName: String): File {
+        val audioDir = File(context.filesDir, "audio")
+        if (!audioDir.exists()) audioDir.mkdirs()
+        val safeTester = testerName.trim()
+            .replace("[^A-Za-z0-9_-]".toRegex(), "_")
+            .ifBlank { "inconnu" }
+        val safeId = localId.replace("[^A-Za-z0-9-]".toRegex(), "_")
+        return File(audioDir, "new_${safeId}_${safeTester}.m4a")
+    }
+
+    fun startProposedEntryRecording(localId: String, testerName: String) {
+        startRecordingTo(proposedEntryAudioFile(localId, testerName))
+    }
+
+    fun hasProposedEntryAudio(localId: String, testerName: String): Boolean =
+        proposedEntryAudioFile(localId, testerName).let { it.exists() && it.length() > 0L }
+
+    fun deleteProposedEntryAudio(localId: String, testerName: String): Boolean {
+        val file = proposedEntryAudioFile(localId, testerName)
+        return !file.exists() || file.delete()
+    }
+
+    private fun startRecordingTo(file: File) {
 
         currentFile = file
 

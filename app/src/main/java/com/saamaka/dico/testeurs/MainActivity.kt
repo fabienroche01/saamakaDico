@@ -51,6 +51,7 @@ import com.saamaka.dico.testeurs.database.DictionaryDatabase
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.repository.CorrectionStore
 import com.saamaka.dico.testeurs.repository.DeletionProposalStore
+import com.saamaka.dico.testeurs.repository.NewEntryProposalStore
 import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
@@ -86,6 +87,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 
 private val LightColors = lightColorScheme(
@@ -173,6 +175,8 @@ private fun TesterApp() {
     val correctionStore = remember { CorrectionStore(context) }
     val deletionProposalStore = remember { DeletionProposalStore(context) }
     var deletionProposals by remember { mutableStateOf(deletionProposalStore.all()) }
+    val newEntryProposalStore = remember { NewEntryProposalStore(context) }
+    var newEntryProposals by remember { mutableStateOf(newEntryProposalStore.all()) }
     val translationTrialStore = remember {
         TranslationTrialStore(context)
     }
@@ -3394,8 +3398,12 @@ private fun TesterApp() {
                     MainTab.CORRECTIONS -> CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),
-                        correctionCount = reviewStore.all().size + deletionProposals.size,
+                        correctionCount = reviewStore.all().size + deletionProposals.size + newEntryProposals.size,
                         deletionProposals = deletionProposals,
+                        newEntryProposals = newEntryProposals,
+                        categories = remember { database.categories() },
+                        audioStore = audioStore,
+                        existingEntries = allEntries,
                         validatedCount = validatedCount,
                         total = total,
 
@@ -3407,6 +3415,15 @@ private fun TesterApp() {
                         onCancelDeletionProposal = { proposal ->
                             deletionProposalStore.cancel(proposal.entryId)
                             deletionProposals = deletionProposalStore.all()
+                        },
+                        onSaveNewEntryProposal = { proposal ->
+                            newEntryProposalStore.save(proposal)
+                            newEntryProposals = newEntryProposalStore.all()
+                        },
+                        onCancelNewEntryProposal = { proposal ->
+                            newEntryProposalStore.cancel(proposal.localId)
+                            audioStore.deleteProposedEntryAudio(proposal.localId, proposal.testerName)
+                            newEntryProposals = newEntryProposalStore.all()
                         },
 
                         onTesterNameChange = { name ->
@@ -3424,6 +3441,8 @@ private fun TesterApp() {
                                 appendLine(reviewStore.exportText())
                                 appendLine()
                                 appendLine(deletionProposalStore.exportText())
+                                appendLine()
+                                appendLine(newEntryProposalStore.exportText())
                                 appendLine()
                                 appendLine(audioStore.exportAudioSummary())
                             }
@@ -3724,6 +3743,10 @@ private fun CorrectionsScreen(
     strings: AppStrings,
     correctionCount: Int,
     deletionProposals: List<DeletionProposal>,
+    newEntryProposals: List<NewEntryProposal>,
+    categories: List<String>,
+    audioStore: AudioStore,
+    existingEntries: List<DictionaryEntry>,
     validatedCount: Int,
     total: Int,
     onTesterNameChange: (String) -> Unit,
@@ -3733,9 +3756,14 @@ private fun CorrectionsScreen(
     validatedReviewCount: Int,
     correctedReviewCount: Int,
     onOpenDeletionProposal: (DeletionProposal) -> Unit,
-    onCancelDeletionProposal: (DeletionProposal) -> Unit
+    onCancelDeletionProposal: (DeletionProposal) -> Unit,
+    onSaveNewEntryProposal: (NewEntryProposal) -> Unit,
+    onCancelNewEntryProposal: (NewEntryProposal) -> Unit
 ) {
     var pendingCancellation by remember { mutableStateOf<DeletionProposal?>(null) }
+    var editedNewEntry by remember { mutableStateOf<NewEntryProposal?>(null) }
+    var showNewEntryForm by remember { mutableStateOf(false) }
+    var pendingNewEntryCancellation by remember { mutableStateOf<NewEntryProposal?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -3862,6 +3890,56 @@ private fun CorrectionsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF68736C)
                     )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                onClick = {
+                    editedNewEntry = null
+                    showNewEntryForm = true
+                }
+            ) {
+                Text(strings.proposeNewEntry)
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3)),
+                border = BorderStroke(1.dp, Color(0xFFB8D5C3))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        strings.proposedNewEntries,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0B5D3B)
+                    )
+                    Text("${newEntryProposals.size} ${strings.newEntriesCount}")
+                    if (newEntryProposals.isEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(strings.noProposedNewEntry)
+                    } else {
+                        newEntryProposals.forEach { proposal ->
+                            Spacer(Modifier.height(12.dp))
+                            NewEntryProposalCard(
+                                proposal = proposal,
+                                strings = strings,
+                                canEdit = proposal.testerName.trim().equals(testerName.trim(), true),
+                                onEdit = {
+                                    editedNewEntry = proposal
+                                    showNewEntryForm = true
+                                },
+                                onCancel = { pendingNewEntryCancellation = proposal }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -3998,6 +4076,47 @@ private fun CorrectionsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingCancellation = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
+    if (showNewEntryForm) {
+        NewEntryProposalDialog(
+            strings = strings,
+            testerName = testerName,
+            categories = categories,
+            original = editedNewEntry,
+            audioStore = audioStore,
+            isDuplicate = { localId, saamaka ->
+                val normalized = normalizeEntryText(saamaka)
+                existingEntries.any { normalizeEntryText(it.saamaka) == normalized } ||
+                    newEntryProposals.any {
+                        it.localId != localId && normalizeEntryText(it.saamaka) == normalized
+                    }
+            },
+            onDismiss = { showNewEntryForm = false },
+            onSave = { proposal ->
+                onSaveNewEntryProposal(proposal)
+                showNewEntryForm = false
+            }
+        )
+    }
+
+    pendingNewEntryCancellation?.let { proposal ->
+        AlertDialog(
+            onDismissRequest = { pendingNewEntryCancellation = null },
+            title = { Text(strings.cancelProposal) },
+            text = { Text(strings.cancelNewEntryConfirmation) },
+            confirmButton = {
+                Button(onClick = {
+                    onCancelNewEntryProposal(proposal)
+                    pendingNewEntryCancellation = null
+                }) { Text(strings.confirm) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingNewEntryCancellation = null }) {
                     Text(strings.cancel)
                 }
             }
@@ -4155,6 +4274,207 @@ private fun DeletionProposalCard(
             }
         }
     }
+}
+
+private fun normalizeEntryText(value: String): String =
+    value.trim().replace(Regex("\\s+"), " ").lowercase(Locale.ROOT)
+
+private fun cleanEntryText(value: String): String =
+    value.trim().replace(Regex("\\s+"), " ")
+
+@Composable
+private fun NewEntryProposalCard(
+    proposal: NewEntryProposal,
+    strings: AppStrings,
+    canEdit: Boolean,
+    onEdit: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val formattedDate = remember(proposal.createdAt) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(proposal.createdAt))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFC9DED0))
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(proposal.saamaka, fontWeight = FontWeight.ExtraBold, color = Color(0xFF16372A))
+            if (proposal.french.isNotBlank()) Text("${strings.french} : ${proposal.french}")
+            if (proposal.english.isNotBlank()) Text("${strings.english} : ${proposal.english}")
+            if (proposal.dutch.isNotBlank()) Text("${strings.dutch} : ${proposal.dutch}")
+            Text("${strings.category} : ${proposal.category}", style = MaterialTheme.typography.bodySmall)
+            if (proposal.comment.isNotBlank()) Text("${strings.deletionCommentLabel} : ${proposal.comment}")
+            Text("${strings.deletionTesterLabel} : ${proposal.testerName}")
+            Text("${strings.deletionDateLabel} : $formattedDate")
+            if (proposal.audioFileName != null) {
+                Text(strings.proposalAudioRecorded, color = Color(0xFF0B5D3B))
+            }
+            if (canEdit) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                        Text(strings.editProposal)
+                    }
+                    TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                        Text(strings.cancelProposal, color = Color(0xFF8B2F2F))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewEntryProposalDialog(
+    strings: AppStrings,
+    testerName: String,
+    categories: List<String>,
+    original: NewEntryProposal?,
+    audioStore: AudioStore,
+    isDuplicate: (String, String) -> Boolean,
+    onDismiss: () -> Unit,
+    onSave: (NewEntryProposal) -> Unit
+) {
+    val context = LocalContext.current
+    val localId = remember(original?.localId) { original?.localId ?: UUID.randomUUID().toString() }
+    var saamaka by remember(original) { mutableStateOf(original?.saamaka.orEmpty()) }
+    var french by remember(original) { mutableStateOf(original?.french.orEmpty()) }
+    var english by remember(original) { mutableStateOf(original?.english.orEmpty()) }
+    var dutch by remember(original) { mutableStateOf(original?.dutch.orEmpty()) }
+    var category by remember(original, categories) {
+        mutableStateOf(original?.category ?: categories.firstOrNull().orEmpty())
+    }
+    var comment by remember(original) { mutableStateOf(original?.comment.orEmpty()) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isRecording by remember { mutableStateOf(false) }
+    var hasAudio by remember(localId, testerName) {
+        mutableStateOf(audioStore.hasProposedEntryAudio(localId, testerName))
+    }
+
+    fun startRecording() {
+        audioStore.startProposedEntryRecording(localId, testerName)
+        isRecording = true
+    }
+
+    fun dismiss() {
+        if (isRecording) audioStore.stopRecording()
+        if (original == null) audioStore.deleteProposedEntryAudio(localId, testerName)
+        onDismiss()
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startRecording()
+        else Toast.makeText(context, "Permission microphone refusée", Toast.LENGTH_SHORT).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = { dismiss() },
+        title = { Text(strings.proposeNewEntry) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = saamaka,
+                    onValueChange = { saamaka = it; errorMessage = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("${strings.saamaka} *") },
+                    singleLine = true
+                )
+                OutlinedTextField(french, { french = it }, Modifier.fillMaxWidth(), label = { Text(strings.french) })
+                OutlinedTextField(english, { english = it }, Modifier.fillMaxWidth(), label = { Text(strings.english) })
+                OutlinedTextField(dutch, { dutch = it }, Modifier.fillMaxWidth(), label = { Text(strings.dutch) })
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { categoryExpanded = true }
+                ) { Text("${strings.category} : ${category.ifBlank { strings.notSpecified }}") }
+                DropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    categories.forEach { item ->
+                        DropdownMenuItem(
+                            text = { Text(item) },
+                            onClick = { category = item; categoryExpanded = false }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(strings.optionalComment) },
+                    minLines = 2
+                )
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        if (isRecording) {
+                            audioStore.stopRecording()
+                            isRecording = false
+                            hasAudio = audioStore.hasProposedEntryAudio(localId, testerName)
+                        } else {
+                            val granted = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (granted) startRecording()
+                            else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+                ) {
+                    Text(if (isRecording) strings.stopProposalAudio else strings.recordProposalAudio)
+                }
+                if (hasAudio && !isRecording) {
+                    Text(strings.proposalAudioRecorded, color = Color(0xFF0B5D3B))
+                    TextButton(onClick = {
+                        audioStore.deleteProposedEntryAudio(localId, testerName)
+                        hasAudio = false
+                    }) { Text(strings.deleteRedo) }
+                }
+                errorMessage?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !isRecording,
+                onClick = {
+                    val cleanSaamaka = cleanEntryText(saamaka)
+                    val cleanFrench = cleanEntryText(french)
+                    val cleanEnglish = cleanEntryText(english)
+                    val cleanDutch = cleanEntryText(dutch)
+                    when {
+                        cleanSaamaka.isBlank() -> errorMessage = strings.saamakaRequired
+                        listOf(cleanFrench, cleanEnglish, cleanDutch).all { it.isBlank() } ->
+                            errorMessage = strings.atLeastOneTranslation
+                        category.isBlank() -> errorMessage = strings.category
+                        isDuplicate(localId, cleanSaamaka) -> errorMessage = strings.duplicateEntryWarning
+                        else -> onSave(
+                            NewEntryProposal(
+                                localId = localId,
+                                saamaka = cleanSaamaka,
+                                french = cleanFrench,
+                                english = cleanEnglish,
+                                dutch = cleanDutch,
+                                category = cleanEntryText(category),
+                                comment = cleanEntryText(comment),
+                                testerName = testerName,
+                                createdAt = original?.createdAt ?: System.currentTimeMillis(),
+                                audioFileName = audioStore.proposedEntryAudioFile(localId, testerName)
+                                    .takeIf { it.exists() && it.length() > 0L }?.name
+                            )
+                        )
+                    }
+                }
+            ) { Text(strings.saveProposal) }
+        },
+        dismissButton = { TextButton(onClick = { dismiss() }) { Text(strings.cancel) } }
+    )
 }
 
 @Composable
