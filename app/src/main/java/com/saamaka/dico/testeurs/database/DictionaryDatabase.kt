@@ -11,6 +11,7 @@ import com.saamaka.dico.testeurs.findAttestedPhraseRule
 import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
 import com.saamaka.dico.testeurs.LocalPhraseIndex
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
 import com.saamaka.dico.testeurs.model.TranslationReliability
 import java.io.FileOutputStream
@@ -1165,14 +1166,18 @@ val frenchObject =
             return null
         }
 
-        fun complete(translation: String) = PhraseTranslationResult(
+        fun complete(
+            translation: String,
+            kind: PhraseTranslationKind = PhraseTranslationKind.PROPOSAL
+        ) = PhraseTranslationResult(
             translation = translation,
             recognizedSegments = listOf(
                 RecognizedPhraseSegment(cleanText, translation)
             ),
             untranslatedSegments = emptyList(),
             isComplete = true,
-            reliability = TranslationReliability.HIGH
+            reliability = TranslationReliability.HIGH,
+            kind = kind
         )
 
         // La phrase complète attestée a toujours priorité sur les règles
@@ -1190,7 +1195,7 @@ val frenchObject =
             frenchToSaamaka = frenchToSaamaka
         )
         if (!attestedRule.isNullOrBlank()) {
-            return complete(attestedRule)
+            return complete(attestedRule, PhraseTranslationKind.VALIDATED_RULE)
         }
 
         fun correctionTranslation(segment: String): String? {

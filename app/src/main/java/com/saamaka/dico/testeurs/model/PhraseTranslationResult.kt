@@ -14,12 +14,18 @@ enum class TranslationReliability(val label: String) {
     LOW("Faible")
 }
 
+enum class PhraseTranslationKind {
+    PROPOSAL,
+    VALIDATED_RULE
+}
+
 data class PhraseTranslationResult(
     val translation: String,
     val recognizedSegments: List<RecognizedPhraseSegment>,
     val untranslatedSegments: List<String>,
     val isComplete: Boolean,
-    val reliability: TranslationReliability
+    val reliability: TranslationReliability,
+    val kind: PhraseTranslationKind = PhraseTranslationKind.PROPOSAL
 ) {
     init {
         require(translation.isNotBlank()) { "A valid request must expose a visible proposal" }

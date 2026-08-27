@@ -4,9 +4,27 @@ import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
 
 enum class LocalMatchProvenance(val label: String) {
-    DICTIONARY("Correspondance du dictionnaire"),
+    DICTIONARY("Correspondance exacte du dictionnaire"),
     LOCAL_CORRECTION("Correction locale"),
-    ATTESTED_EXPRESSION("Expression attestée")
+    ATTESTED_EXPRESSION("Traduction construite avec une règle validée")
+}
+
+internal fun relatedExpressionLabel(input: String, candidate: String): String {
+    val inputWords = cleanPhraseInput(input).split(Regex("\\s+")).filter { it.isNotBlank() }
+    val candidateWords = cleanPhraseInput(candidate).split(Regex("\\s+")).filter { it.isNotBlank() }
+    val normalizedInput = inputWords.map(::normalizeAttestedPhraseKey)
+    val normalizedCandidate = candidateWords.map(::normalizeAttestedPhraseKey)
+    if (normalizedInput.isEmpty() || normalizedCandidate.isEmpty()) return "Expression proche"
+    return when {
+        normalizedCandidate == normalizedInput -> "Correspondance exacte du dictionnaire"
+        normalizedCandidate.size > normalizedInput.size &&
+            normalizedCandidate.windowed(normalizedInput.size).any { it == normalizedInput } ->
+            "Expression proche — contient des mots supplémentaires"
+        normalizedCandidate.size < normalizedInput.size &&
+            normalizedInput.windowed(normalizedCandidate.size).any { it == normalizedCandidate } ->
+            "Proposition incomplète"
+        else -> "Expression proche"
+    }
 }
 
 data class LocalExactMatch(

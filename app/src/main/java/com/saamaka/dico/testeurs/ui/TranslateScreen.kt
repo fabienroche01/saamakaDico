@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AccessLevel
 import com.saamaka.dico.testeurs.AppStrings
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.TranslationReliability
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.UnifiedLocalSearchResult
@@ -38,6 +39,7 @@ import com.saamaka.dico.testeurs.unifiedSearchButtonLabel
 import com.saamaka.dico.testeurs.shouldOfferPremiumTranslation
 import com.saamaka.dico.testeurs.shouldConsumeTrialAfterPremiumResult
 import com.saamaka.dico.testeurs.normalizedInputWordCount
+import com.saamaka.dico.testeurs.relatedExpressionLabel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -278,6 +280,15 @@ private fun UnifiedTranslateContent(
                     }
                 ) {
                     Column(Modifier.padding(12.dp)) {
+                        Text(
+                            relatedExpressionLabel(
+                                input,
+                                if (frenchToSaamaka) entry.french else entry.saamaka
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF8A6712)
+                        )
                         Text(entry.french, fontWeight = FontWeight.Bold)
                         Text(entry.saamaka.ifBlank { "Traduction manquante" })
                     }
@@ -364,7 +375,12 @@ private fun UnifiedTranslateContent(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        if (result.isComplete) "Proposition locale" else "Proposition locale incomplète — à vérifier",
+                        when {
+                            result.kind == PhraseTranslationKind.VALIDATED_RULE ->
+                                "Traduction construite avec une règle validée"
+                            result.isComplete -> "Proposition locale"
+                            else -> "Proposition incomplète"
+                        },
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0B5D3B)
                     )
@@ -1061,7 +1077,9 @@ private fun PhraseTranslateContent(
                         ) {
 
                             Text(
-                                text = if (frenchToSaamaka) {
+                                text = if (result.kind == PhraseTranslationKind.VALIDATED_RULE) {
+                                    "Traduction construite avec une règle validée"
+                                } else if (frenchToSaamaka) {
                                     if (result.isComplete) {
                                         "Proposition Saamaka"
                                     } else {
@@ -1107,7 +1125,7 @@ private fun PhraseTranslateContent(
 
                         Spacer(Modifier.height(12.dp))
 
-                        Surface(
+                        if (result.kind != PhraseTranslationKind.VALIDATED_RULE) Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
                             color = cream

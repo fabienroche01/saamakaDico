@@ -31,7 +31,29 @@ class UnifiedTranslationModelsTest {
         )
 
         assertFalse(shouldOfferPremiumTranslation("Passe   le bonjour.", result))
-        assertEquals("Expression attestée", result.exactMatch?.provenance?.label)
+        assertEquals(
+            "Traduction construite avec une règle validée",
+            result.exactMatch?.provenance?.label
+        )
+    }
+
+    @Test
+    fun relatedExpressionsAreClearlyDistinguishedFromExactAndIncompleteResults() {
+        assertEquals(
+            "Correspondance exacte du dictionnaire",
+            relatedExpressionLabel("Passe le bonjour à Fusia", "passe le bonjour a Fusia")
+        )
+        assertEquals(
+            "Expression proche — contient des mots supplémentaires",
+            relatedExpressionLabel(
+                "Passe le bonjour à Fusia",
+                "Passe le bonjour à Fusia de ma part"
+            )
+        )
+        assertEquals(
+            "Proposition incomplète",
+            relatedExpressionLabel("Passe le bonjour à Fusia", "bonjour à Fusia")
+        )
     }
 
     @Test
