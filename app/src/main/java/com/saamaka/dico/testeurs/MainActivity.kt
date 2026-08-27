@@ -212,7 +212,7 @@ private fun TesterApp() {
     }
 
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
-    var detailTranslationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
+    var preferredConsultationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
@@ -479,14 +479,13 @@ private fun TesterApp() {
     }
 
     fun openEntry(entry: DictionaryEntry) {
-        detailTranslationLanguage = preferredDetailLanguage(entry)
         selectedEntry = applyCorrection(entry)
         historyStore.add(entry.id)
         refreshHistory()
     }
 
     fun openSearchEntry(entry: DictionaryEntry, matchedLanguage: AppLanguage) {
-        detailTranslationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {
+        preferredConsultationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {
             preferredDetailLanguage(entry)
         } else {
             matchedLanguage
@@ -890,7 +889,10 @@ private fun TesterApp() {
                     DetailScreen(
                         entry = entry,
                         accessLevel = accessLevel,
-                        initialTranslationLanguage = detailTranslationLanguage,
+                        preferredTranslationLanguage = preferredConsultationLanguage,
+                        onPreferredTranslationLanguageChange = {
+                            preferredConsultationLanguage = it
+                        },
                         audioStore = audioStore,
                         testerName = testerName,
                         initiallyFavorite = favoritesStore.isFavorite(entry.id),
@@ -4797,7 +4799,8 @@ private fun DetailScreen(
     strings: AppStrings,
     accessLevel: AccessLevel,
     entry: DictionaryEntry,
-    initialTranslationLanguage: AppLanguage,
+    preferredTranslationLanguage: AppLanguage,
+    onPreferredTranslationLanguageChange: (AppLanguage) -> Unit,
     audioStore: AudioStore,
     testerName: String,
     initiallyFavorite: Boolean,
@@ -4821,8 +4824,8 @@ private fun DetailScreen(
     ) {
         mutableStateOf(initiallyFavorite)
     }
-    var displayedLanguage by remember(entry.id, initialTranslationLanguage) {
-        mutableStateOf(initialTranslationLanguage)
+    var displayedLanguage by remember(entry.id, preferredTranslationLanguage) {
+        mutableStateOf(effectiveTranslationLanguage(entry, preferredTranslationLanguage))
     }
     var deletionProposal by remember(entry.id, initialDeletionProposal) {
         mutableStateOf(initialDeletionProposal)
@@ -4870,11 +4873,6 @@ private fun DetailScreen(
     }
     val availableLanguages = AppLanguage.entries.filter {
         searchTextForLanguage(entry, it.code).isNotBlank()
-    }
-    LaunchedEffect(entry.id, initialTranslationLanguage, availableLanguages) {
-        if (displayedLanguage !in availableLanguages) {
-            displayedLanguage = availableLanguages.firstOrNull() ?: AppLanguage.SAAMAKA
-        }
     }
 
     if (showDeletionDialog) {
@@ -5048,7 +5046,10 @@ private fun DetailScreen(
                     ) {
                         availableLanguages.forEach { language ->
                             Surface(
-                                modifier = Modifier.clickable { displayedLanguage = language },
+                                modifier = Modifier.clickable {
+                                    displayedLanguage = language
+                                    onPreferredTranslationLanguageChange(language)
+                                },
                                 shape = RoundedCornerShape(50),
                                 color = if (language == displayedLanguage) {
                                     Color(0xFFDCEEE2)

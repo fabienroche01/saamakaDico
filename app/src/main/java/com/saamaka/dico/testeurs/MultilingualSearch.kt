@@ -92,3 +92,16 @@ internal fun preferredTranslationLanguage(
         ?: available.firstOrNull()
         ?: AppLanguage.SAAMAKA
 }
+
+internal fun effectiveTranslationLanguage(
+    entry: DictionaryEntry,
+    preferredLanguage: AppLanguage
+): AppLanguage {
+    val available = AppLanguage.entries.filter {
+        searchTextForLanguage(entry, it.code).isNotBlank()
+    }
+    return preferredLanguage.takeIf { it in available }
+        ?: AppLanguage.FRENCH.takeIf { it in available }
+        ?: available.firstOrNull()
+        ?: AppLanguage.SAAMAKA
+}

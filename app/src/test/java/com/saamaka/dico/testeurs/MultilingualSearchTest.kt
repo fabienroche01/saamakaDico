@@ -89,6 +89,26 @@ class MultilingualSearchTest {
         assertEquals(AppLanguage.FRENCH, preferredTranslationLanguage(swim, UiLanguage.SAAMAKA))
     }
 
+    @Test
+    fun englishPreferenceIsKeptAcrossConsecutiveEntries() {
+        val first = entry(20, french = "premier", english = "first")
+        val second = entry(21, french = "deuxième", english = "second")
+        val preference = AppLanguage.ENGLISH
+        assertEquals(AppLanguage.ENGLISH, effectiveTranslationLanguage(first, preference))
+        assertEquals(AppLanguage.ENGLISH, effectiveTranslationLanguage(second, preference))
+    }
+
+    @Test
+    fun missingEnglishUsesTemporaryFallbackThenReturnsToEnglish() {
+        val first = entry(30, french = "premier", english = "first")
+        val withoutEnglish = entry(31, french = "deuxième", english = "")
+        val third = entry(32, french = "troisième", english = "third")
+        val preference = AppLanguage.ENGLISH
+        assertEquals(AppLanguage.ENGLISH, effectiveTranslationLanguage(first, preference))
+        assertEquals(AppLanguage.FRENCH, effectiveTranslationLanguage(withoutEnglish, preference))
+        assertEquals(AppLanguage.ENGLISH, effectiveTranslationLanguage(third, preference))
+    }
+
     private fun entry(
         id: Int,
         saamaka: String = "srm-$id",
