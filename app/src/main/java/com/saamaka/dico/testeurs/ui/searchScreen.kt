@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Clear
@@ -20,6 +21,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -39,6 +42,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Row
 
+enum class SearchLanguageFilter(val label: String, val language: AppLanguage?) {
+    ALL("Tous", null),
+    SAAMAKA("Saamaka", AppLanguage.SAAMAKA),
+    FRENCH("Français", AppLanguage.FRENCH),
+    ENGLISH("English", AppLanguage.ENGLISH),
+    DUTCH("Nederlands", AppLanguage.DUTCH)
+}
 
 @Composable
 fun SearchScreen(
@@ -66,6 +76,12 @@ fun SearchScreen(
     wordOfDay: DictionaryEntry?,
     onWordOfDayClick: () -> Unit,
     onCategoriesClick: () -> Unit,
+    searchLanguageFilter: SearchLanguageFilter = SearchLanguageFilter.ALL,
+    onSearchLanguageFilterChange: (SearchLanguageFilter) -> Unit = {},
+    hasAudio: (DictionaryEntry) -> Boolean = { false },
+    onPlayAudio: (DictionaryEntry) -> Unit = {},
+    isFavorite: (DictionaryEntry) -> Boolean = { false },
+    onToggleFavorite: (DictionaryEntry) -> Unit = {},
     showHomeContent: Boolean = true
 ) {
     val homeScrollState = rememberScrollState()
@@ -91,7 +107,7 @@ fun SearchScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Card(
+        if (showHomeContent) Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
@@ -218,7 +234,7 @@ fun SearchScreen(
                         color = Color(0xFFF0C96A)
                     ) {
                         Text(
-                            text = "V15",
+                            text = "V16",
                             modifier = Modifier.padding(
                                 horizontal = 10.dp,
                                 vertical = 7.dp
@@ -251,7 +267,7 @@ fun SearchScreen(
 
             placeholder = {
                 Text(
-                    text = "Rechercher un mot...",
+                    text = "Rechercher en Saamaka, Français, English ou Nederlands",
                     fontSize = 13.sp,
                     color = Color(0xFF7A817C)
                 )
@@ -285,6 +301,29 @@ fun SearchScreen(
                 }
             }
         )
+
+        if (!showHomeContent) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                SearchLanguageFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = searchLanguageFilter == filter,
+                        onClick = { onSearchLanguageFilterChange(filter) },
+                        label = { Text(filter.label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF0B5D3B),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color(0xFFF4EFE5)
+                        )
+                    )
+                }
+            }
+        }
 
         if (showHomeContent && query.isBlank()) {
             Spacer(Modifier.height(16.dp))
@@ -870,7 +909,7 @@ fun SearchScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
 
@@ -879,38 +918,23 @@ fun SearchScreen(
                                     ) {
 
                                         Text(
-                                            text = "Français",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Spacer(Modifier.height(2.dp))
-
-                                        Text(
-                                            text = entry.french.ifBlank { "À compléter" },
+                                            text = entry.saamaka.ifBlank { "À compléter" },
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            maxLines = 2,
+                                            color = Color(0xFF16372A),
+                                            maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        Spacer(Modifier.height(10.dp))
+                                        Spacer(Modifier.height(3.dp))
 
                                         Text(
-                                            text = "Saamaka",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Spacer(Modifier.height(2.dp))
-
-                                        Text(
-                                            text = entry.saamaka.ifBlank { "À compléter" },
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            maxLines = 2,
+                                            text = entry.french.ifBlank {
+                                                entry.english.ifBlank { entry.dutch.ifBlank { "À compléter" } }
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
@@ -939,14 +963,23 @@ fun SearchScreen(
                                         }
                                     }
 
-                                    Icon(
-                                        imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .padding(start = 12.dp)
-                                            .size(24.dp)
-                                    )
+                                    IconButton(
+                                        onClick = { onPlayAudio(entry) },
+                                        enabled = hasAudio(entry)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.VolumeUp,
+                                            "Écouter",
+                                            tint = if (hasAudio(entry)) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
+                                        )
+                                    }
+                                    IconButton(onClick = { onToggleFavorite(entry) }) {
+                                        Icon(
+                                            if (isFavorite(entry)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            "Favori",
+                                            tint = if (isFavorite(entry)) Color(0xFFC99A2E) else Color(0xFF68736C)
+                                        )
+                                    }
                                 }
                             }
                         }

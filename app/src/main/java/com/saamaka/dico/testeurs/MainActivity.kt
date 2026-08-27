@@ -54,6 +54,7 @@ import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
 import com.saamaka.dico.testeurs.ui.HomeScreen
+import com.saamaka.dico.testeurs.ui.SearchLanguageFilter
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -75,6 +76,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -204,6 +206,7 @@ private fun TesterApp() {
     var pendingPhraseText by remember { mutableStateOf("") }
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
+    var searchLanguageFilter by remember { mutableStateOf(SearchLanguageFilter.ALL) }
     var status by remember { mutableStateOf("Commence à écrire pour rechercher") }
 
     val searchResults = remember { mutableStateListOf<DictionaryEntry>() }
@@ -353,7 +356,10 @@ private fun TesterApp() {
         )
     }
 
-    fun runSearch(text: String) {
+    fun runSearch(
+        text: String,
+        filter: SearchLanguageFilter = searchLanguageFilter
+    ) {
         searchResults.clear()
         homeExactCompleteMatch = null
 
@@ -364,12 +370,13 @@ private fun TesterApp() {
             return
         }
 
-        val found = database.search(
-            cleaned,
-            selectedLanguage.code
-        ).map { entry ->
-            applyCorrection(entry)
-        }
+        val found = if (filter.language == null) {
+            AppLanguage.entries
+                .flatMap { language -> database.search(cleaned, language.code) }
+                .distinctBy { it.id }
+        } else {
+            database.search(cleaned, filter.language.code)
+        }.map(::applyCorrection)
 
         searchResults.addAll(found)
 
@@ -1186,6 +1193,27 @@ private fun TesterApp() {
                             onWordOfDayClick = {
                                 wordOfDay?.let(::openEntry)
                             },
+                            searchLanguageFilter = searchLanguageFilter,
+                            onSearchLanguageFilterChange = { filter ->
+                                searchLanguageFilter = filter
+                                filter.language?.let { selectedLanguage = it }
+                                if (query.isNotBlank()) runSearch(query, filter)
+                            },
+                            hasAudio = { entry ->
+                                audioStore.hasOfficialAudio(entry.id) ||
+                                    (testerName.isNotBlank() && audioStore.hasAudio(entry.id, testerName))
+                            },
+                            onPlayAudio = { entry ->
+                                if (audioStore.hasOfficialAudio(entry.id)) {
+                                    audioStore.playOfficialAudio(entry.id)
+                                } else if (testerName.isNotBlank()) {
+                                    audioStore.playAudio(entry.id, testerName)
+                                }
+                            },
+                            isFavorite = { favoritesStore.isFavorite(it.id) },
+                            onToggleFavorite = { entry ->
+                                updateFavorite(entry.id, !favoritesStore.isFavorite(entry.id))
+                            },
                             showHomeContent = false
                         )
                         }
@@ -1249,6 +1277,27 @@ private fun TesterApp() {
                             },
 
                             onWordOfDayClick = { },
+                            searchLanguageFilter = searchLanguageFilter,
+                            onSearchLanguageFilterChange = { filter ->
+                                searchLanguageFilter = filter
+                                filter.language?.let { selectedLanguage = it }
+                                if (query.isNotBlank()) runSearch(query, filter)
+                            },
+                            hasAudio = { entry ->
+                                audioStore.hasOfficialAudio(entry.id) ||
+                                    (testerName.isNotBlank() && audioStore.hasAudio(entry.id, testerName))
+                            },
+                            onPlayAudio = { entry ->
+                                if (audioStore.hasOfficialAudio(entry.id)) {
+                                    audioStore.playOfficialAudio(entry.id)
+                                } else if (testerName.isNotBlank()) {
+                                    audioStore.playAudio(entry.id, testerName)
+                                }
+                            },
+                            isFavorite = { favoritesStore.isFavorite(it.id) },
+                            onToggleFavorite = { entry ->
+                                updateFavorite(entry.id, !favoritesStore.isFavorite(entry.id))
+                            },
                             showHomeContent = false
                         )
                     }
@@ -4245,32 +4294,12 @@ private fun DetailScreen(
     val hasOfficialAudio = remember(entry.id) {
         audioStore.hasOfficialAudio(entry.id)
     }
-    val sourceLabel = when (selectedLanguage) {
-        AppLanguage.FRENCH -> "Français"
-        AppLanguage.ENGLISH -> "English"
-        AppLanguage.DUTCH -> "Nederlands"
-        AppLanguage.SAAMAKA -> "Saamaka"
-    }
-
-    val sourceText = when (selectedLanguage) {
-        AppLanguage.FRENCH -> entry.french
-        AppLanguage.SAAMAKA -> entry.saamaka
-        AppLanguage.ENGLISH -> entry.english
-        AppLanguage.DUTCH -> entry.dutch
-    }
-    val translationLabel =
-        if (selectedLanguage == AppLanguage.SAAMAKA) {
-            "Français"
-        } else {
-            "Saamaka"
-        }
-
-    val translationText =
-        if (selectedLanguage == AppLanguage.SAAMAKA) {
-            entry.french
-        } else {
-            entry.saamaka
-        }
+    val availableLanguages = listOfNotNull(
+        "Saamaka".takeIf { entry.saamaka.isNotBlank() },
+        "Français".takeIf { entry.french.isNotBlank() },
+        "English".takeIf { entry.english.isNotBlank() },
+        "Nederlands".takeIf { entry.dutch.isNotBlank() }
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -4338,7 +4367,7 @@ private fun DetailScreen(
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
-                                    text = sourceLabel,
+                                    text = "Saamaka",
                                     modifier = Modifier.padding(
                                         horizontal = 10.dp,
                                         vertical = 4.dp
@@ -4351,12 +4380,27 @@ private fun DetailScreen(
 
                             Spacer(Modifier.height(8.dp))
 
-                            Text(
-                                text = sourceText,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = entry.saamaka.ifBlank { "À compléter" },
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                IconButton(
+                                    onClick = {
+                                        favorite = !favorite
+                                        onFavoriteChange(favorite)
+                                    }
+                                ) {
+                                    Icon(
+                                        if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = if (favorite) strings.removeFavorite else strings.addFavorite,
+                                        tint = Color(0xFFC99A2E)
+                                    )
+                                }
+                            }
 
                             Spacer(Modifier.height(16.dp))
 
@@ -4374,7 +4418,7 @@ private fun DetailScreen(
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
-                                    text = translationLabel,
+                                    text = "Français",
                                     modifier = Modifier.padding(
                                         horizontal = 10.dp,
                                         vertical = 4.dp
@@ -4388,11 +4432,59 @@ private fun DetailScreen(
                             Spacer(Modifier.height(8.dp))
 
                             Text(
-                                text = translationText,
+                                text = entry.french.ifBlank { "À compléter" },
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Text(
+                        text = "Langues disponibles",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF16372A)
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        availableLanguages.forEach { language ->
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (language == selectedLanguage.label) {
+                                    Color(0xFFDCEEE2)
+                                } else {
+                                    Color(0xFFF4EFE5)
+                                }
+                            ) {
+                                Text(
+                                    text = language,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF0B5D3B)
+                                )
+                            }
+                        }
+                    }
+
+                    if (entry.categorie.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Catégorie", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                            Spacer(Modifier.width(8.dp))
+                            Surface(shape = RoundedCornerShape(50), color = Color(0xFFFFEFC4)) {
+                                Text(
+                                    entry.categorie,
+                                    Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF705A1D)
+                                )
+                            }
                         }
                     }
 
@@ -4463,6 +4555,18 @@ private fun DetailScreen(
                     }
 
                     Spacer(Modifier.height(10.dp))
+                    if (hasOfficialAudio) {
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            onClick = { audioStore.playOfficialAudio(entry.id) }
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Écouter la prononciation")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                     if (accessLevel == AccessLevel.TESTER) {
                         if (!isRecording) {
                             Button(
@@ -4594,36 +4698,6 @@ private fun DetailScreen(
                         Spacer(Modifier.width(8.dp))
 
                         Text(strings.nextWord)
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        onClick = {
-                            favorite = !favorite
-                            onFavoriteChange(favorite)
-                        }
-                    ) {
-                        Icon(
-                            if (favorite) {
-                                Icons.Default.Favorite
-                            } else {
-                                Icons.Default.FavoriteBorder
-                            },
-                            contentDescription = null
-                        )
-
-                        Spacer(Modifier.width(8.dp))
-
-                        Text(
-                            if (favorite) {
-                                strings.removeFavorite
-                            } else {
-                                strings.addFavorite
-                            }
-                        )
                     }
 
                     Spacer(Modifier.height(10.dp))
