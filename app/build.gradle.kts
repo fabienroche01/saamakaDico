@@ -14,8 +14,8 @@ android {
         applicationId = "com.saramakadicto"
         minSdk = 24
         targetSdk = 35
-        versionCode = 348
-        versionName = "3.9.0-beta2"
+        versionCode = 349
+        versionName = "3.9.0-beta3"
     }
 
     compileOptions {
