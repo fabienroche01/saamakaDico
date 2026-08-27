@@ -3,6 +3,7 @@ package com.saamaka.dico.testeurs.database
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.saamaka.dico.testeurs.model.DictionaryEntry
+import com.saamaka.dico.testeurs.filterAndRankByLanguage
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.CorrectionProposal
@@ -199,9 +200,6 @@ class DictionaryDatabase(private val context: Context) {
         val db = openDatabase()
         val candidates = mutableListOf<DictionaryEntry>()
 
-        val contains = "%$term%"
-        val starts = "$term%"
-
         try {
             db.rawQuery(
                 """
@@ -212,30 +210,9 @@ class DictionaryDatabase(private val context: Context) {
               AND TRIM(COALESCE($sourceColumn, '')) <> ''
               AND UPPER(TRIM(saamaka)) NOT IN ('#NAME?', '#N/A', 'N/A')
               AND UPPER(TRIM($sourceColumn)) NOT IN ('#NAME?', '#N/A', 'N/A')
-              AND (
-                  saamaka LIKE ? COLLATE NOCASE
-                  OR $sourceColumn LIKE ? COLLATE NOCASE
-              )
-            ORDER BY
-  CASE
-      WHEN saamaka = ? COLLATE NOCASE
-        OR $sourceColumn = ? COLLATE NOCASE THEN 0
-      WHEN saamaka LIKE ? COLLATE NOCASE
-        OR $sourceColumn LIKE ? COLLATE NOCASE THEN 1
-      ELSE 2
-  END,
-  $sourceColumn COLLATE NOCASE
-LIMIT ?
+            ORDER BY $sourceColumn COLLATE NOCASE
 """.trimIndent(),
-                arrayOf(
-                    contains,
-                    contains,
-                    term,
-                    term,
-                    starts,
-                    starts,
-                    limit.toString()
-                )
+                null
             ).use { cursor ->
 
                 while (cursor.moveToNext()) {
@@ -271,64 +248,7 @@ LIMIT ?
             db.close()
         }
 
-        val normalizedQuery = normalizeForSearch(term)
-
-        return candidates
-            .distinctBy { entry ->
-                val sourceText = when (languageCode) {
-                    "en" -> entry.english
-                    "nl" -> entry.dutch
-                    "srm" -> entry.saamaka
-                    else -> entry.french
-
-                }
-
-                normalizeForSearch(sourceText) +
-                        "|" +
-                        normalizeForSearch(entry.saamaka)
-            }
-            .sortedWith(
-                compareBy<DictionaryEntry> { entry ->
-                    val sourceText = when (languageCode) {
-                        "en" -> entry.english
-                        "nl" -> entry.dutch
-                        "srm" -> entry.saamaka
-                        else -> entry.french
-                    }
-
-                    val normalizedSource =
-                        normalizeForSearch(sourceText)
-
-                    val normalizedSaamaka =
-                        normalizeForSearch(entry.saamaka)
-
-                    when {
-
-                        // 1. Entrée exactement identique
-                        normalizedSource == normalizedQuery ||
-                                normalizedSaamaka == normalizedQuery -> 0
-
-                        // 2. Le terme existe comme mot séparé
-                        normalizedSource
-                            .split(Regex("\\s+"))
-                            .contains(normalizedQuery) ||
-                                normalizedSaamaka
-                                    .split(Regex("\\s+"))
-                                    .contains(normalizedQuery) -> 1
-
-                        // 3. L'expression commence par le terme
-                        normalizedSource.startsWith("$normalizedQuery ") ||
-                                normalizedSaamaka.startsWith("$normalizedQuery ") -> 2
-
-                        // 4. Correspondance partielle classique
-                        normalizedSource.contains(normalizedQuery) ||
-                                normalizedSaamaka.contains(normalizedQuery) -> 3
-
-                        else -> 4
-                    }
-                }
-            )
-            .take(limit)
+        return filterAndRankByLanguage(candidates, term, languageCode, limit)
     }
 
     private fun translateExactAlternatives(

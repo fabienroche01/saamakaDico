@@ -382,13 +382,22 @@ private fun TesterApp() {
             return
         }
 
-        val found = if (filter.language == null) {
+        val databaseMatches = if (filter.language == null) {
             AppLanguage.entries
                 .flatMap { language -> database.search(cleaned, language.code) }
                 .distinctBy { it.id }
         } else {
             database.search(cleaned, filter.language.code)
         }.map(::applyCorrection)
+
+        val found = filter.language?.let { language ->
+            filterAndRankByLanguage(databaseMatches, cleaned, language.code)
+        } ?: databaseMatches.filter { entry ->
+            AppLanguage.entries.any { language ->
+                normalizeMultilingualSearch(searchTextForLanguage(entry, language.code))
+                    .contains(normalizeMultilingualSearch(cleaned))
+            }
+        }
 
         searchResults.addAll(found)
 
