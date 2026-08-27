@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.database.DictionaryDatabase
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.repository.CorrectionStore
+import com.saamaka.dico.testeurs.repository.DeletionProposalStore
 import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
@@ -167,6 +168,7 @@ private fun TesterApp() {
     val favoritesStore = remember { FavoritesStore(context) }
     val historyStore = remember { HistoryStore(context) }
     val correctionStore = remember { CorrectionStore(context) }
+    val deletionProposalStore = remember { DeletionProposalStore(context) }
     val translationTrialStore = remember {
         TranslationTrialStore(context)
     }
@@ -861,6 +863,16 @@ private fun TesterApp() {
                             entry = entry,
                             hasLocalValidation = validationStore.isValidated(entry.id)
                         ),
+                        initialDeletionProposal = deletionProposalStore.proposalFor(entry.id),
+                        onDeletionProposal = { reason, comment ->
+                            deletionProposalStore.save(
+                                DeletionProposal(
+                                    entry.id, entry.saamaka, entry.french, entry.english, entry.dutch,
+                                    reason, comment, testerName, System.currentTimeMillis()
+                                )
+                            )
+                        },
+                        onCancelDeletionProposal = { deletionProposalStore.cancel(entry.id) },
                         onValidate = validate@{
                             if (
                                 entry.french.isBlank() ||
@@ -3390,6 +3402,8 @@ private fun TesterApp() {
                             val exportText = buildString {
                                 appendLine(reviewStore.exportText())
                                 appendLine()
+                                appendLine(deletionProposalStore.exportText())
+                                appendLine()
                                 appendLine(audioStore.exportAudioSummary())
                             }
 
@@ -4271,6 +4285,9 @@ private fun DetailScreen(
     testerName: String,
     initiallyFavorite: Boolean,
     classification: MissionEntryClassification,
+    initialDeletionProposal: DeletionProposal?,
+    onDeletionProposal: (String, String) -> Unit,
+    onCancelDeletionProposal: () -> Unit,
     onValidate: () -> Unit,
     onNext: () -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
@@ -4287,6 +4304,10 @@ private fun DetailScreen(
     ) {
         mutableStateOf(initiallyFavorite)
     }
+    var deletionProposal by remember(entry.id, initialDeletionProposal) {
+        mutableStateOf(initialDeletionProposal)
+    }
+    var showDeletionDialog by remember(entry.id) { mutableStateOf(false) }
 
     // Toujours faux à l'ouverture d'une nouvelle fiche.
     // Il passe à true uniquement après appui sur
@@ -4334,6 +4355,22 @@ private fun DetailScreen(
         "Nederlands".takeIf { entry.dutch.isNotBlank() }
     )
 
+    if (showDeletionDialog) {
+        DeletionProposalDialog(
+            strings = strings,
+            onDismiss = { showDeletionDialog = false },
+            onConfirm = { reasonIndex, comment ->
+                val proposal = DeletionProposal(
+                    entry.id, entry.saamaka, entry.french, entry.english, entry.dutch,
+                    DELETION_REASONS_FR[reasonIndex], comment, testerName, System.currentTimeMillis()
+                )
+                onDeletionProposal(proposal.reason, proposal.comment)
+                deletionProposal = proposal
+                showDeletionDialog = false
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
@@ -4349,7 +4386,7 @@ private fun DetailScreen(
 
             Surface(
                 shape = RoundedCornerShape(50),
-                color = when (classification.visualStatus) {
+                color = if (deletionProposal != null) Color(0xFFFFE1E1) else when (classification.visualStatus) {
                     MissionVisualStatus.DOUBTFUL -> Color(0xFFFFEFC4)
                     MissionVisualStatus.TO_COMPLETE -> Color(0xFFFFE1E1)
                     MissionVisualStatus.ALREADY_VALIDATED -> Color(0xFFDCEEE2)
@@ -4357,11 +4394,12 @@ private fun DetailScreen(
                 }
             ) {
                 Text(
-                    text = classification.visualStatus.label,
+                    text = deletionProposal?.let { strings.deletionProposed }
+                        ?: classification.visualStatus.label,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = when (classification.visualStatus) {
+                    color = if (deletionProposal != null) Color(0xFF8B2F2F) else when (classification.visualStatus) {
                         MissionVisualStatus.DOUBTFUL -> Color(0xFF8A6712)
                         MissionVisualStatus.TO_COMPLETE -> Color(0xFF8B2F2F)
                         else -> Color(0xFF0B5D3B)
@@ -4531,6 +4569,36 @@ private fun DetailScreen(
                             onValidate = onValidate,
                             onCorrection = onCorrection
                         )
+
+                        Spacer(Modifier.height(20.dp))
+
+                        if (deletionProposal == null) {
+                            OutlinedButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                onClick = { showDeletionDialog = true },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF8B2F2F))
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(strings.reportDeletion)
+                            }
+                        } else {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color(0xFFFFE1E1)
+                            ) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(strings.deletionProposed, fontWeight = FontWeight.Bold, color = Color(0xFF8B2F2F))
+                                    Text(deletionProposal!!.reason)
+                                    TextButton(onClick = {
+                                        onCancelDeletionProposal()
+                                        deletionProposal = null
+                                    }) { Text(strings.cancelDeletionProposal) }
+                                }
+                            }
+                        }
 
                         Spacer(Modifier.height(20.dp))
                     }
@@ -4779,6 +4847,77 @@ private fun DetailScreen(
             }
         }
     }
+
+private val DELETION_REASONS_FR = listOf(
+    "Expression impossible ou incompréhensible",
+    "Doublon",
+    "Mot ou traduction incorrecte",
+    "Expression trop longue",
+    "Ne correspond pas au saamaka",
+    "Autre motif"
+)
+
+@Composable
+private fun DeletionProposalDialog(
+    strings: AppStrings,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, String) -> Unit
+) {
+    var selectedReason by remember { mutableStateOf<Int?>(null) }
+    var comment by remember { mutableStateOf("") }
+    var asksConfirmation by remember { mutableStateOf(false) }
+    val isOther = selectedReason == strings.deletionReasons.lastIndex
+    val isValid = selectedReason != null && (!isOther || comment.isNotBlank())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (asksConfirmation) strings.confirm else strings.deletionReasonTitle) },
+        text = {
+            if (asksConfirmation) {
+                Text(strings.deletionConfirmation)
+            } else {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    strings.deletionReasons.forEachIndexed { index, reason ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { selectedReason = index },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedReason == index,
+                                onClick = { selectedReason = index }
+                            )
+                            Text(reason, modifier = Modifier.weight(1f))
+                        }
+                    }
+                    if (isOther) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = comment,
+                            onValueChange = { comment = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(strings.deletionOtherExplanation) },
+                            minLines = 3
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = asksConfirmation || isValid,
+                onClick = {
+                    if (asksConfirmation) onConfirm(selectedReason!!, comment.trim())
+                    else asksConfirmation = true
+                }
+            ) { Text(if (asksConfirmation) strings.confirm else strings.continueText) }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                if (asksConfirmation) asksConfirmation = false else onDismiss()
+            }) { Text(if (asksConfirmation) strings.back else strings.cancel) }
+        }
+    )
+}
 
 @Composable
 private fun MissionValidationCard(
