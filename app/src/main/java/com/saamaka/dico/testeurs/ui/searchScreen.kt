@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AppStrings
 import com.saamaka.dico.testeurs.LocalExactMatch
 import com.saamaka.dico.testeurs.homeSearchPresentation
+import com.saamaka.dico.testeurs.matchingLanguageForEntry
+import com.saamaka.dico.testeurs.searchTextForLanguage
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +67,7 @@ fun SearchScreen(
     isValidated: (Int) -> Boolean,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    onOpen: (DictionaryEntry) -> Unit,
+    onOpen: (DictionaryEntry, AppLanguage) -> Unit,
     onTranslateClick: () -> Unit,
     exactCompleteMatch: LocalExactMatch? = null,
     canTranslatePhrase: Boolean = true,
@@ -893,10 +895,14 @@ fun SearchScreen(
                             key = { it.id }
                         ) { entry ->
 
+                            val resultLanguage = matchingLanguageForEntry(
+                                entry = entry,
+                                query = query,
+                                filteredLanguage = searchLanguageFilter.language,
+                                preferredLanguage = selectedLanguage
+                            )
                             val selectedTranslation = when (searchLanguageFilter) {
-                                SearchLanguageFilter.ALL -> entry.french.ifBlank {
-                                    entry.english.ifBlank { entry.dutch.ifBlank { "À compléter" } }
-                                }
+                                SearchLanguageFilter.ALL -> searchTextForLanguage(entry, resultLanguage.code)
                                 SearchLanguageFilter.SAAMAKA -> entry.saamaka.ifBlank {
                                     "Traduction non disponible"
                                 }
@@ -915,7 +921,10 @@ fun SearchScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onOpen(entry)
+                                        onOpen(
+                                            entry,
+                                            resultLanguage
+                                        )
                                     },
                                 shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(

@@ -66,6 +66,29 @@ class MultilingualSearchTest {
         )
     }
 
+    @Test
+    fun resultCarriesTheLanguageThatMatched() {
+        val swim = entries.first { it.id == 1 }
+        val sun = entries.first { it.id == 2 }
+        assertEquals(AppLanguage.ENGLISH, matchingLanguageForEntry(sun, "sun", AppLanguage.ENGLISH))
+        assertEquals("Sun", searchTextForLanguage(sun, AppLanguage.ENGLISH.code))
+        assertEquals(AppLanguage.FRENCH, matchingLanguageForEntry(swim, "nager", AppLanguage.FRENCH))
+        assertEquals("nager", searchTextForLanguage(swim, AppLanguage.FRENCH.code))
+        assertEquals(AppLanguage.DUTCH, matchingLanguageForEntry(swim, "zwemmen", AppLanguage.DUTCH))
+        assertEquals("zwemmen", searchTextForLanguage(swim, AppLanguage.DUTCH.code))
+        assertEquals(AppLanguage.SAAMAKA, matchingLanguageForEntry(swim, "sun", AppLanguage.SAAMAKA))
+        assertEquals("sun", searchTextForLanguage(swim, AppLanguage.SAAMAKA.code))
+        assertEquals(AppLanguage.ENGLISH, matchingLanguageForEntry(sun, "sun", null))
+    }
+
+    @Test
+    fun saamakaSearchUsesInterfaceTranslationWithFrenchFallback() {
+        val swim = entries.first { it.id == 1 }
+        assertEquals(AppLanguage.ENGLISH, preferredTranslationLanguage(swim, UiLanguage.ENGLISH))
+        assertEquals(AppLanguage.DUTCH, preferredTranslationLanguage(swim, UiLanguage.DUTCH))
+        assertEquals(AppLanguage.FRENCH, preferredTranslationLanguage(swim, UiLanguage.SAAMAKA))
+    }
+
     private fun entry(
         id: Int,
         saamaka: String = "srm-$id",

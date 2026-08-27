@@ -55,3 +55,40 @@ internal fun filterAndRankByLanguage(
         .take(limit)
         .toList()
 }
+
+internal fun matchingLanguageForEntry(
+    entry: DictionaryEntry,
+    query: String,
+    filteredLanguage: AppLanguage?,
+    preferredLanguage: AppLanguage = AppLanguage.FRENCH
+): AppLanguage {
+    if (filteredLanguage != null) return filteredLanguage
+    val normalizedQuery = normalizeMultilingualSearch(query)
+    val candidates = AppLanguage.entries.filter {
+        normalizeMultilingualSearch(searchTextForLanguage(entry, it.code)).contains(normalizedQuery)
+    }
+    return candidates.minWithOrNull(
+        compareBy<AppLanguage> {
+            multilingualSearchRank(searchTextForLanguage(entry, it.code), normalizedQuery)
+        }.thenBy { if (it == preferredLanguage) 0 else 1 }
+            .thenBy { it.ordinal }
+    ) ?: preferredLanguage
+}
+
+internal fun preferredTranslationLanguage(
+    entry: DictionaryEntry,
+    uiLanguage: UiLanguage
+): AppLanguage {
+    val preferred = when (uiLanguage) {
+        UiLanguage.FRENCH -> AppLanguage.FRENCH
+        UiLanguage.ENGLISH -> AppLanguage.ENGLISH
+        UiLanguage.DUTCH -> AppLanguage.DUTCH
+        UiLanguage.SAAMAKA -> AppLanguage.FRENCH
+    }
+    val available = listOf(AppLanguage.FRENCH, AppLanguage.ENGLISH, AppLanguage.DUTCH)
+        .filter { searchTextForLanguage(entry, it.code).isNotBlank() }
+    return preferred.takeIf { it in available }
+        ?: AppLanguage.FRENCH.takeIf { it in available }
+        ?: available.firstOrNull()
+        ?: AppLanguage.SAAMAKA
+}

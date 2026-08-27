@@ -212,6 +212,7 @@ private fun TesterApp() {
     }
 
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
+    var detailTranslationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
@@ -473,7 +474,23 @@ private fun TesterApp() {
         activeTab = MainTab.HISTORY
     }
 
+    fun preferredDetailLanguage(entry: DictionaryEntry): AppLanguage {
+        return preferredTranslationLanguage(entry, uiLanguage)
+    }
+
     fun openEntry(entry: DictionaryEntry) {
+        detailTranslationLanguage = preferredDetailLanguage(entry)
+        selectedEntry = applyCorrection(entry)
+        historyStore.add(entry.id)
+        refreshHistory()
+    }
+
+    fun openSearchEntry(entry: DictionaryEntry, matchedLanguage: AppLanguage) {
+        detailTranslationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {
+            preferredDetailLanguage(entry)
+        } else {
+            matchedLanguage
+        }
         selectedEntry = applyCorrection(entry)
         historyStore.add(entry.id)
         refreshHistory()
@@ -873,7 +890,7 @@ private fun TesterApp() {
                     DetailScreen(
                         entry = entry,
                         accessLevel = accessLevel,
-                        selectedLanguage = selectedLanguage,
+                        initialTranslationLanguage = detailTranslationLanguage,
                         audioStore = audioStore,
                         testerName = testerName,
                         initiallyFavorite = favoritesStore.isFavorite(entry.id),
@@ -1213,7 +1230,7 @@ private fun TesterApp() {
                                 status = "Commence à écrire pour rechercher"
                             },
                             strings = appStrings,
-                            onOpen = ::openEntry,
+                            onOpen = ::openSearchEntry,
                             onTranslateClick = {
                                 pendingPhraseText = query
                                 translatePendingPhraseImmediately = true
@@ -1290,7 +1307,7 @@ private fun TesterApp() {
                             },
 
                             strings = appStrings,
-                            onOpen = ::openEntry,
+                            onOpen = ::openSearchEntry,
 
                             onTranslateClick = {
                                 pendingPhraseText = query
@@ -4780,7 +4797,7 @@ private fun DetailScreen(
     strings: AppStrings,
     accessLevel: AccessLevel,
     entry: DictionaryEntry,
-    selectedLanguage: AppLanguage,
+    initialTranslationLanguage: AppLanguage,
     audioStore: AudioStore,
     testerName: String,
     initiallyFavorite: Boolean,
@@ -4803,6 +4820,9 @@ private fun DetailScreen(
         initiallyFavorite
     ) {
         mutableStateOf(initiallyFavorite)
+    }
+    var displayedLanguage by remember(entry.id, initialTranslationLanguage) {
+        mutableStateOf(initialTranslationLanguage)
     }
     var deletionProposal by remember(entry.id, initialDeletionProposal) {
         mutableStateOf(initialDeletionProposal)
@@ -4848,12 +4868,14 @@ private fun DetailScreen(
     val hasOfficialAudio = remember(entry.id) {
         audioStore.hasOfficialAudio(entry.id)
     }
-    val availableLanguages = listOfNotNull(
-        "Saamaka".takeIf { entry.saamaka.isNotBlank() },
-        "Français".takeIf { entry.french.isNotBlank() },
-        "English".takeIf { entry.english.isNotBlank() },
-        "Nederlands".takeIf { entry.dutch.isNotBlank() }
-    )
+    val availableLanguages = AppLanguage.entries.filter {
+        searchTextForLanguage(entry, it.code).isNotBlank()
+    }
+    LaunchedEffect(entry.id, initialTranslationLanguage, availableLanguages) {
+        if (displayedLanguage !in availableLanguages) {
+            displayedLanguage = availableLanguages.firstOrNull() ?: AppLanguage.SAAMAKA
+        }
+    }
 
     if (showDeletionDialog) {
         DeletionProposalDialog(
@@ -4989,7 +5011,7 @@ private fun DetailScreen(
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
-                                    text = "Français",
+                                    text = displayedLanguage.label,
                                     modifier = Modifier.padding(
                                         horizontal = 10.dp,
                                         vertical = 4.dp
@@ -5003,7 +5025,7 @@ private fun DetailScreen(
                             Spacer(Modifier.height(8.dp))
 
                             Text(
-                                text = entry.french.ifBlank { "À compléter" },
+                                text = searchTextForLanguage(entry, displayedLanguage.code),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -5026,18 +5048,28 @@ private fun DetailScreen(
                     ) {
                         availableLanguages.forEach { language ->
                             Surface(
+                                modifier = Modifier.clickable { displayedLanguage = language },
                                 shape = RoundedCornerShape(50),
-                                color = if (language == selectedLanguage.label) {
+                                color = if (language == displayedLanguage) {
                                     Color(0xFFDCEEE2)
                                 } else {
                                     Color(0xFFF4EFE5)
                                 }
                             ) {
                                 Text(
-                                    text = language,
+                                    text = language.label,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = Color(0xFF0B5D3B)
+                                    color = if (language == displayedLanguage) {
+                                        Color(0xFF0B5D3B)
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    fontWeight = if (language == displayedLanguage) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    }
                                 )
                             }
                         }
