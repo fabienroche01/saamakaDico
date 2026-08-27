@@ -53,6 +53,7 @@ import com.saamaka.dico.testeurs.repository.CorrectionStore
 import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
+import com.saamaka.dico.testeurs.ui.HomeScreen
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -1082,6 +1083,58 @@ private fun TesterApp() {
                                 null
                             }
 
+                        if (query.isBlank()) {
+                            val correctedWordOfDay = wordOfDay?.let(::applyCorrection)
+                            val wordOfDayHasOfficialAudio = correctedWordOfDay?.let {
+                                audioStore.hasOfficialAudio(it.id)
+                            } == true
+                            val wordOfDayHasTesterAudio = correctedWordOfDay?.let {
+                                testerName.isNotBlank() && audioStore.hasAudio(it.id, testerName)
+                            } == true
+
+                            HomeScreen(
+                                total = total,
+                                query = query,
+                                onQueryChange = {
+                                    query = it
+                                    runSearch(it)
+                                },
+                                wordOfDay = correctedWordOfDay,
+                                isWordOfDayFavorite = correctedWordOfDay?.let {
+                                    favoritesStore.isFavorite(it.id)
+                                } == true,
+                                hasWordOfDayAudio = wordOfDayHasOfficialAudio || wordOfDayHasTesterAudio,
+                                onPlayWordOfDay = {
+                                    correctedWordOfDay?.let { entry ->
+                                        if (wordOfDayHasOfficialAudio) {
+                                            audioStore.playOfficialAudio(entry.id)
+                                        } else if (wordOfDayHasTesterAudio) {
+                                            audioStore.playAudio(entry.id, testerName)
+                                        }
+                                    }
+                                },
+                                onToggleWordOfDayFavorite = {
+                                    correctedWordOfDay?.let { entry ->
+                                        updateFavorite(entry.id, !favoritesStore.isFavorite(entry.id))
+                                    }
+                                },
+                                onOpenWordOfDay = { correctedWordOfDay?.let(::openEntry) },
+                                learningProgress = (quizQuestionNumber - 1).coerceIn(0, 10) / 10f,
+                                onLearnClick = { activeTab = MainTab.LEARN },
+                                categories = homeCategories,
+                                onTranslateClick = {
+                                    pendingPhraseText = ""
+                                    translatePendingPhraseImmediately = false
+                                    activeTab = MainTab.TRANSLATE
+                                },
+                                onCategoriesClick = { activeTab = MainTab.CATEGORIES },
+                                onFavoritesClick = { openFavorites() },
+                                onHistoryClick = { openHistory() },
+                                isTester = accessLevel == AccessLevel.TESTER,
+                                toVerifyToday = (total - validatedCount).coerceAtLeast(0),
+                                onMissionClick = { activeTab = MainTab.MISSION }
+                            )
+                        } else {
                         SearchScreen(
                             categoryCount = homeCategories.size,
                             wordOfDay = wordOfDay,
@@ -1132,8 +1185,10 @@ private fun TesterApp() {
                             },
                             onWordOfDayClick = {
                                 wordOfDay?.let(::openEntry)
-                            }
+                            },
+                            showHomeContent = false
                         )
+                        }
                     }
 
                     MainTab.SEARCH -> {
