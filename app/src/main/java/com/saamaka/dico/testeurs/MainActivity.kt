@@ -1850,6 +1850,21 @@ private fun TesterApp() {
                             mutableStateOf(0)
                         }
 
+                        val learnedItemCount =
+                            knownWordIds.size + phraseKnownIds.size + matchingTotalCorrect
+                        val learningItemTarget =
+                            (quizEntries.size + phraseEntries.size).coerceAtLeast(1)
+                        val globalLearningProgress =
+                            (learnedItemCount.toFloat() / learningItemTarget).coerceIn(0f, 1f)
+                        val continueSection =
+                            if (reviewWordIds.isNotEmpty()) "WORDS" else learnSection
+                        val continueLabel = when (continueSection) {
+                            "WORDS" -> "Révision des mots"
+                            "PHRASES" -> "Phrases"
+                            "GAMES" -> "Jeu d’association"
+                            else -> "Quiz du jour"
+                        }
+
                         val learnScrollState = rememberScrollState()
 
                         LaunchedEffect(
@@ -1878,9 +1893,15 @@ private fun TesterApp() {
 
                             Text(
                                 text = "Apprendre",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF16372A)
+                            )
+
+                            Text(
+                                text = "Progresse à ton rythme, un mot après l’autre",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF68736C)
                             )
 
                             Spacer(Modifier.height(12.dp))
@@ -1894,7 +1915,7 @@ private fun TesterApp() {
                                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(12.dp)
+                                    modifier = Modifier.padding(18.dp)
                                 ) {
 
                                     Text(
@@ -1914,11 +1935,29 @@ private fun TesterApp() {
 
                                     Spacer(Modifier.height(8.dp))
 
+                                    LinearProgressIndicator(
+                                        progress = { globalLearningProgress },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = Color(0xFFF0C96A),
+                                        trackColor = Color.White.copy(alpha = 0.22f)
+                                    )
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    Text(
+                                        text = "${(globalLearningProgress * 100).toInt()} % du parcours",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White.copy(alpha = 0.86f)
+                                    )
+
+                                    Spacer(Modifier.height(12.dp))
+
                                     val progressStats = listOf(
-                                        knownWordIds.size to "Mots connus",
+                                        knownWordIds.size to "Mots appris",
                                         reviewWordIds.size to "À revoir",
-                                        phraseKnownIds.size to "Phrases",
-                                        matchingPerfectGames to "Parfaites"
+                                        quizQuestionNumber to "Aujourd’hui",
+                                        matchingPerfectGames to "Série parfaite"
                                     )
 
                                     BoxWithConstraints(
@@ -1967,90 +2006,39 @@ private fun TesterApp() {
 
                             Spacer(Modifier.height(12.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { learnSection = continueSection },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4))
                             ) {
-
-                                FilterChip(
-                                    selected = learnSection == "QUIZ",
-                                    onClick = {
-                                        learnSection = "QUIZ"
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = learnSectionChipColors(),
-                                    border = learnSectionChipBorder(
-                                        selected = learnSection == "QUIZ"
-                                    ),
-                                    label = {
-                                        Text(
-                                            text = "Quiz",
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textAlign = TextAlign.Center
-                                        )
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Continuer l’apprentissage", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                                        Text(continueLabel, fontSize = 13.sp, color = Color(0xFF705A1D))
                                     }
-                                )
+                                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF0B5D3B))
+                                }
+                            }
 
-                                FilterChip(
-                                    selected = learnSection == "WORDS",
-                                    onClick = {
-                                        learnSection = "WORDS"
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = learnSectionChipColors(),
-                                    border = learnSectionChipBorder(
-                                        selected = learnSection == "WORDS"
-                                    ),
-                                    label = {
-                                        Text(
-                                            text = "Mots",
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                )
+                            Spacer(Modifier.height(14.dp))
 
-                                FilterChip(
-                                    selected = learnSection == "PHRASES",
-                                    onClick = {
-                                        learnSection = "PHRASES"
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = learnSectionChipColors(),
-                                    border = learnSectionChipBorder(
-                                        selected = learnSection == "PHRASES"
-                                    ),
-                                    label = {
-                                        Text(
-                                            text = "Phrases",
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                )
+                            Text("Choisir une activité", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                            Spacer(Modifier.height(8.dp))
 
-                                FilterChip(
-                                    selected = learnSection == "GAMES",
-                                    onClick = {
-                                        learnSection = "GAMES"
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = learnSectionChipColors(),
-                                    border = learnSectionChipBorder(
-                                        selected = learnSection == "GAMES"
-                                    ),
-                                    label = {
-                                        Text(
-                                            text = "Jeux",
-                                            modifier = Modifier.fillMaxWidth(),
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    LearnAccessCard("Quiz", "Questions rapides", "QUIZ", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard("Révision", "Revoir les mots", "WORDS", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    LearnAccessCard("Phrases", "Expressions utiles", "PHRASES", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard("Jeux", "Associer les mots", "GAMES", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                }
                             }
 
                             Spacer(Modifier.height(18.dp))
@@ -2082,11 +2070,24 @@ private fun TesterApp() {
                                             Spacer(Modifier.height(6.dp))
 
                                             Text(
-                                                text = "Question $quizQuestionNumber • Score : $quizScore",
+                                                text = "Question $quizQuestionNumber",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
                                             )
+
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = Color(0xFFFFEFC4)
+                                            ) {
+                                                Text(
+                                                    text = "Score  $quizScore",
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF705A1D)
+                                                )
+                                            }
 
                                             Text(
                                                 text = "Teste tes connaissances en Saamaka",
@@ -2188,7 +2189,9 @@ private fun TesterApp() {
                                                             }
                                                         }
                                                     },
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .heightIn(min = 52.dp),
                                                     shape = RoundedCornerShape(14.dp),
                                                     colors =
                                                         ButtonDefaults.outlinedButtonColors(
@@ -2356,7 +2359,7 @@ private fun TesterApp() {
                                             ) {
                                                 Column(
                                                     modifier =
-                                                        Modifier.padding(18.dp)
+                                                        Modifier.padding(24.dp)
                                                 ) {
 
                                                     Text(
@@ -2364,7 +2367,7 @@ private fun TesterApp() {
                                                             wordReviewEntry
                                                                 ?.saamaka
                                                                 ?: "—",
-                                                        fontSize = 28.sp,
+                                                        fontSize = 36.sp,
                                                         fontWeight =
                                                             FontWeight.Bold,
                                                         color =
@@ -2386,6 +2389,21 @@ private fun TesterApp() {
                                                         color =
                                                             Color(0xFF2E332F)
                                                     )
+
+                                                    val reviewAudioEntry = wordReviewEntry
+                                                    if (
+                                                        reviewAudioEntry != null &&
+                                                        audioStore.hasOfficialAudio(reviewAudioEntry.id)
+                                                    ) {
+                                                        Spacer(Modifier.height(12.dp))
+                                                        OutlinedButton(
+                                                            onClick = { audioStore.playOfficialAudio(reviewAudioEntry.id) }
+                                                        ) {
+                                                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                                            Spacer(Modifier.width(6.dp))
+                                                            Text("Écouter")
+                                                        }
+                                                    }
                                                 }
                                             }
 
@@ -2839,6 +2857,18 @@ private fun TesterApp() {
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
+                                            )
+
+                                            Spacer(Modifier.height(8.dp))
+
+                                            LinearProgressIndicator(
+                                                progress = {
+                                                    if (matchingEntries.isEmpty()) 0f
+                                                    else matchedEntryIds.size.toFloat() / matchingEntries.size
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                color = Color(0xFF0B5D3B),
+                                                trackColor = Color(0xFFDCEEE2)
                                             )
 
                                             Spacer(Modifier.height(16.dp))
@@ -4830,6 +4860,41 @@ private fun MissionValidationCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LearnAccessCard(
+    title: String,
+    description: String,
+    section: String,
+    selectedSection: String,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit
+) {
+    val selected = section == selectedSection
+    Surface(
+        modifier = modifier.clickable { onSelect(section) },
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) Color(0xFF0B5D3B) else Color(0xFFF4EFE5),
+        border = BorderStroke(
+            1.dp,
+            if (selected) Color(0xFF0B5D3B) else Color(0xFFD2CCC0)
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) Color.White else Color(0xFF16372A)
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = description,
+                fontSize = 11.sp,
+                color = if (selected) Color.White.copy(alpha = 0.78f) else Color(0xFF68736C)
+            )
         }
     }
 }
