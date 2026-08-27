@@ -83,6 +83,9 @@ import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 private val LightColors = lightColorScheme(
@@ -169,6 +172,7 @@ private fun TesterApp() {
     val historyStore = remember { HistoryStore(context) }
     val correctionStore = remember { CorrectionStore(context) }
     val deletionProposalStore = remember { DeletionProposalStore(context) }
+    var deletionProposals by remember { mutableStateOf(deletionProposalStore.all()) }
     val translationTrialStore = remember {
         TranslationTrialStore(context)
     }
@@ -871,10 +875,15 @@ private fun TesterApp() {
                                     reason, comment, testerName, System.currentTimeMillis()
                                 )
                             )
+                            deletionProposals = deletionProposalStore.all()
                         },
-                        onCancelDeletionProposal = { deletionProposalStore.cancel(entry.id) },
+                        onCancelDeletionProposal = {
+                            deletionProposalStore.cancel(entry.id)
+                            deletionProposals = deletionProposalStore.all()
+                        },
                         onValidate = validate@{
                             if (
+                                deletionProposalStore.proposalFor(entry.id) != null ||
                                 entry.french.isBlank() ||
                                 entry.saamaka.isBlank() ||
                                 entry.valide.trim().equals("O", ignoreCase = true) ||
@@ -932,7 +941,11 @@ private fun TesterApp() {
                                 appStrings.shareChooser
                             )
                         },
-                        onCorrection = { correctionEntry = entry },
+                        onCorrection = {
+                            if (deletionProposalStore.proposalFor(entry.id) == null) {
+                                correctionEntry = entry
+                            }
+                        },
                         strings = appStrings,
                         onBack = { selectedEntry = null }
                     )
@@ -3381,12 +3394,20 @@ private fun TesterApp() {
                     MainTab.CORRECTIONS -> CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),
-                        correctionCount = reviewStore.all().size,
+                        correctionCount = reviewStore.all().size + deletionProposals.size,
+                        deletionProposals = deletionProposals,
                         validatedCount = validatedCount,
                         total = total,
 
                         validatedReviewCount = reviewStore.validatedCount(),
                         correctedReviewCount = reviewStore.correctedCount(),
+                        onOpenDeletionProposal = { proposal ->
+                            selectedEntry = database.findByIds(setOf(proposal.entryId)).firstOrNull()
+                        },
+                        onCancelDeletionProposal = { proposal ->
+                            deletionProposalStore.cancel(proposal.entryId)
+                            deletionProposals = deletionProposalStore.all()
+                        },
 
                         onTesterNameChange = { name ->
                             correctionStore.setTesterName(name)
@@ -3702,6 +3723,7 @@ private fun CorrectionsScreen(
     testerName: String,
     strings: AppStrings,
     correctionCount: Int,
+    deletionProposals: List<DeletionProposal>,
     validatedCount: Int,
     total: Int,
     onTesterNameChange: (String) -> Unit,
@@ -3709,8 +3731,11 @@ private fun CorrectionsScreen(
     onClearCorrections: () -> Unit,
     onClearValidations: () -> Unit,
     validatedReviewCount: Int,
-    correctedReviewCount: Int
+    correctedReviewCount: Int,
+    onOpenDeletionProposal: (DeletionProposal) -> Unit,
+    onCancelDeletionProposal: (DeletionProposal) -> Unit
 ) {
+    var pendingCancellation by remember { mutableStateOf<DeletionProposal?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -3837,6 +3862,48 @@ private fun CorrectionsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF68736C)
                     )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4F4)),
+                border = BorderStroke(1.dp, Color(0xFFE9BDBD))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        strings.proposedDeletionsSection,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF8B2F2F)
+                    )
+                    Text(
+                        "${deletionProposals.size} ${strings.proposedDeletionsCount}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (deletionProposals.isEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(strings.noProposedDeletion)
+                    } else {
+                        deletionProposals.forEach { proposal ->
+                            Spacer(Modifier.height(12.dp))
+                            DeletionProposalCard(
+                                proposal = proposal,
+                                strings = strings,
+                                canCancel = proposal.testerName.trim().equals(
+                                    testerName.trim(),
+                                    ignoreCase = true
+                                ),
+                                onOpen = { onOpenDeletionProposal(proposal) },
+                                onCancel = { pendingCancellation = proposal }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -4015,6 +4082,74 @@ private fun LibraryEmptyState(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(actionLabel)
+                }
+            }
+        }
+    }
+
+    pendingCancellation?.let { proposal ->
+        AlertDialog(
+            onDismissRequest = { pendingCancellation = null },
+            title = { Text(strings.cancelDeletionProposal) },
+            text = { Text(strings.cancelDeletionConfirmation) },
+            confirmButton = {
+                Button(onClick = {
+                    onCancelDeletionProposal(proposal)
+                    pendingCancellation = null
+                }) { Text(strings.confirm) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCancellation = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DeletionProposalCard(
+    proposal: DeletionProposal,
+    strings: AppStrings,
+    canCancel: Boolean,
+    onOpen: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val formattedDate = remember(proposal.createdAt) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(proposal.createdAt))
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0xFFE4D6D6))
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(
+                proposal.saamaka,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF16372A)
+            )
+            if (proposal.french.isNotBlank()) {
+                Text(proposal.french, color = MaterialTheme.colorScheme.primary)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("${strings.deletionReasonLabel} : ${proposal.reason}")
+            if (proposal.comment.isNotBlank()) {
+                Text("${strings.deletionCommentLabel} : ${proposal.comment}")
+            }
+            Text("${strings.deletionTesterLabel} : ${proposal.testerName.ifBlank { strings.notSpecified }}")
+            Text("${strings.deletionDateLabel} : $formattedDate")
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
+                    Text(strings.openEntry)
+                }
+                if (canCancel) {
+                    TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                        Text(strings.cancelDeletionProposal, color = Color(0xFF8B2F2F))
+                    }
                 }
             }
         }
@@ -4562,15 +4697,17 @@ private fun DetailScreen(
                     Spacer(Modifier.height(20.dp))
 
                     if (accessLevel == AccessLevel.TESTER) {
-                        MissionValidationCard(
-                            strings = strings,
-                            entry = entry,
-                            classification = classification,
-                            onValidate = onValidate,
-                            onCorrection = onCorrection
-                        )
+                        if (deletionProposal == null) {
+                            MissionValidationCard(
+                                strings = strings,
+                                entry = entry,
+                                classification = classification,
+                                onValidate = onValidate,
+                                onCorrection = onCorrection
+                            )
 
-                        Spacer(Modifier.height(20.dp))
+                            Spacer(Modifier.height(20.dp))
+                        }
 
                         if (deletionProposal == null) {
                             OutlinedButton(
