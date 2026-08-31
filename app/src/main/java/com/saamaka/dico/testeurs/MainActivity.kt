@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.database.DictionaryDatabase
+import com.saamaka.dico.testeurs.billing.PremiumBillingManager
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.repository.CorrectionStore
 import com.saamaka.dico.testeurs.repository.DeletionProposalStore
@@ -127,8 +128,12 @@ private val DarkColors = darkColorScheme(
 )
 
 class MainActivity : ComponentActivity() {
+    private lateinit var premiumBillingManager: PremiumBillingManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        premiumBillingManager = PremiumBillingManager(applicationContext)
+        premiumBillingManager.connect()
         setContent {
             MaterialTheme(
                 colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors
@@ -138,6 +143,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::premiumBillingManager.isInitialized) {
+            premiumBillingManager.restorePurchases()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::premiumBillingManager.isInitialized) {
+            premiumBillingManager.close()
+        }
+        super.onDestroy()
     }
 }
 
@@ -4303,6 +4322,7 @@ private fun DeletionProposalCard(
             }
         }
     }
+
 }
 
 private fun normalizeEntryText(value: String): String =
@@ -4352,6 +4372,7 @@ private fun NewEntryProposalCard(
             }
         }
     }
+
 }
 
 @Composable
