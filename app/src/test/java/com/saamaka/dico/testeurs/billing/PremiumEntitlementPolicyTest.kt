@@ -19,7 +19,7 @@ class PremiumEntitlementPolicyTest {
     fun purchasedTargetSubscriptionGrantsPremium() {
         val state = PremiumEntitlementPolicy.fromGooglePlay(
             purchases = listOf(
-                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), isPurchased = true)
+                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), PremiumPurchaseStatus.PURCHASED)
             ),
             verifiedAtMillis = 123L
         )
@@ -33,10 +33,21 @@ class PremiumEntitlementPolicyTest {
     fun pendingOrUnrelatedPurchasesDoNotGrantPremium() {
         val state = PremiumEntitlementPolicy.fromGooglePlay(
             purchases = listOf(
-                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), isPurchased = false),
-                PremiumPurchase(setOf("another_product"), isPurchased = true)
+                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), PremiumPurchaseStatus.PENDING),
+                PremiumPurchase(setOf("another_product"), PremiumPurchaseStatus.PURCHASED)
             ),
             verifiedAtMillis = 456L
+        )
+
+        assertFalse(state.isPremium)
+        assertEquals(PremiumVerification.PENDING, state.verification)
+    }
+
+    @Test
+    fun missingPurchaseAfterSuccessfulRestoreMeansExpiredOrInactive() {
+        val state = PremiumEntitlementPolicy.fromGooglePlay(
+            purchases = emptyList(),
+            verifiedAtMillis = 654L
         )
 
         assertFalse(state.isPremium)
@@ -47,7 +58,7 @@ class PremiumEntitlementPolicyTest {
     fun billingFailureRevokesUnverifiedAccessButKeepsLastKnownSignal() {
         val previouslyVerified = PremiumEntitlementPolicy.fromGooglePlay(
             purchases = listOf(
-                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), isPurchased = true)
+                PremiumPurchase(setOf(PREMIUM_PRODUCT_ID), PremiumPurchaseStatus.PURCHASED)
             ),
             verifiedAtMillis = 789L
         )

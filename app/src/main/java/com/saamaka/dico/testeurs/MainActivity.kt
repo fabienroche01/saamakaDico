@@ -1,10 +1,12 @@
 package com.saamaka.dico.testeurs
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.net.Uri
 import android.util.Log
 import java.util.zip.ZipFile
 import android.widget.Toast
@@ -50,6 +52,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.database.DictionaryDatabase
 import com.saamaka.dico.testeurs.billing.PremiumBillingManager
+import com.saamaka.dico.testeurs.billing.PREMIUM_PRODUCT_ID
+import com.saamaka.dico.testeurs.billing.PremiumEntitlementState
+import com.saamaka.dico.testeurs.billing.PremiumPlan
+import com.saamaka.dico.testeurs.billing.PremiumVerification
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.repository.CorrectionStore
 import com.saamaka.dico.testeurs.repository.DeletionProposalStore
@@ -58,6 +64,7 @@ import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
 import com.saamaka.dico.testeurs.ui.HomeScreen
+import com.saamaka.dico.testeurs.ui.PremiumScreen
 import com.saamaka.dico.testeurs.ui.SearchLanguageFilter
 import android.Manifest
 import android.content.pm.PackageManager
@@ -139,7 +146,7 @@ class MainActivity : ComponentActivity() {
                 colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TesterApp()
+                    TesterApp(premiumBillingManager)
                 }
             }
         }
@@ -166,6 +173,7 @@ enum class MainTab {
     FAVORITES,
     LEARN,
     MORE,
+    PREMIUM,
 
     TRANSLATE,
     CATEGORIES,
@@ -176,7 +184,7 @@ enum class MainTab {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TesterApp() {
+private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var uiLanguage by remember {mutableStateOf(UiLanguage.FRENCH) }
     var languageMenuExpanded by remember {mutableStateOf(false)}
     var accessMenuExpanded by remember {
@@ -185,6 +193,15 @@ private fun TesterApp() {
     val appStrings = stringsFor(uiLanguage)
     var accessLevel by remember {
         mutableStateOf(AccessLevel.TESTER)
+    }
+    var premiumState by remember(premiumBillingManager) {
+        mutableStateOf(premiumBillingManager.state)
+    }
+
+    DisposableEffect(premiumBillingManager) {
+        val listener: (PremiumEntitlementState) -> Unit = { premiumState = it }
+        premiumBillingManager.addListener(listener)
+        onDispose { premiumBillingManager.removeListener(listener) }
     }
 
 
@@ -470,6 +487,22 @@ private fun TesterApp() {
         )
     }
 
+    LaunchedEffect(premiumState.verification, accessLevel) {
+        if (accessLevel != AccessLevel.TESTER) {
+            accessLevel = when (premiumState.verification) {
+                PremiumVerification.VERIFIED_ACTIVE -> AccessLevel.PREMIUM
+                PremiumVerification.CHECKING,
+                PremiumVerification.PENDING,
+                PremiumVerification.VERIFIED_INACTIVE,
+                PremiumVerification.UNAVAILABLE -> if (accessLevel == AccessLevel.PREMIUM) {
+                    AccessLevel.FREE_ACCOUNT
+                } else {
+                    accessLevel
+                }
+            }
+        }
+    }
+
     fun updateFavorite(id: Int, favorite: Boolean) {
         favoritesStore.setFavorite(id, favorite)
         refreshFavorites()
@@ -717,7 +750,7 @@ private fun TesterApp() {
                             DropdownMenuItem(
                                 text = { Text("👑 Premium") },
                                 onClick = {
-                                    accessLevel = AccessLevel.PREMIUM
+                                    activeTab = MainTab.PREMIUM
                                     accessMenuExpanded = false
                                 }
                             )
@@ -831,6 +864,7 @@ private fun TesterApp() {
                     // Plus
                     NavigationBarItem(
                         selected = activeTab == MainTab.MORE ||
+                            activeTab == MainTab.PREMIUM ||
                             activeTab == MainTab.TRANSLATE ||
                             activeTab == MainTab.HISTORY ||
                             activeTab == MainTab.MISSION ||
@@ -1004,6 +1038,26 @@ private fun TesterApp() {
                 }
 
                 else -> when (activeTab) {
+                    MainTab.PREMIUM -> PremiumScreen(
+                        state = premiumState,
+                        onSubscribe = { plan: PremiumPlan ->
+                            val activity = context as? Activity
+                            val result = activity?.let {
+                                premiumBillingManager.launchSubscription(it, plan)
+                            }
+                            if (activity == null || result == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Cette formule est temporairement indisponible.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
+                        onRestorePurchases = premiumBillingManager::restorePurchases,
+                        onManageSubscription = { openPremiumSubscriptionManagement(context) },
+                        onBack = { activeTab = MainTab.MORE }
+                    )
+
                     MainTab.TRANSLATE -> {
                         TranslateScreen(
                             strings = appStrings,
@@ -3369,6 +3423,17 @@ private fun TesterApp() {
                                 description = "Retrouver les mots consultés",
                                 badge = historyCount.toString(),
                                 onClick = ::openHistory
+                            )
+
+                            MoreAccessCard(
+                                icon = Icons.Default.Favorite,
+                                title = "DicoSaam Premium",
+                                description = if (premiumState.isPremium) {
+                                    "Abonnement actif"
+                                } else {
+                                    "Mensuel ou annuel"
+                                },
+                                onClick = { activeTab = MainTab.PREMIUM }
                             )
 
                             if (accessLevel == AccessLevel.TESTER) {
@@ -6405,4 +6470,20 @@ private fun shareText(
     context.startActivity(
         Intent.createChooser(intent, chooserTitle)
     )
+}
+
+private fun openPremiumSubscriptionManagement(context: Context) {
+    val uri = Uri.parse(
+        "https://play.google.com/store/account/subscriptions" +
+            "?sku=$PREMIUM_PRODUCT_ID&package=${context.packageName}"
+    )
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+    } catch (_: Exception) {
+        Toast.makeText(
+            context,
+            "Impossible d’ouvrir la gestion des abonnements Google Play.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
 }

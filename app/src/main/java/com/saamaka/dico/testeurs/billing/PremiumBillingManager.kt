@@ -27,14 +27,19 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
     private var productDetails: ProductDetails? = null
 
     @Volatile
+    private var availableOffers: List<PremiumOffer> = emptyList()
+
+    @Volatile
     private var connectionStarted = false
 
     private val billingClient = BillingClient.newBuilder(context.applicationContext)
         .setListener { billingResult, purchases ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                processPurchases(purchases.orEmpty())
-            } else if (billingResult.responseCode != BillingClient.BillingResponseCode.USER_CANCELED) {
-                publishUnavailable(billingResult)
+            when (billingResult.responseCode) {
+                BillingClient.BillingResponseCode.OK -> processPurchases(purchases.orEmpty())
+                BillingClient.BillingResponseCode.USER_CANCELED ->
+                    publish(state.copy(message = "Achat annulé"))
+                BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> restorePurchases()
+                else -> publishUnavailable(billingResult)
             }
         }
         .enablePendingPurchases(
@@ -63,7 +68,13 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
         }
         if (connectionStarted) return
         connectionStarted = true
-        publish(state.copy(verification = PremiumVerification.CHECKING, message = null))
+        publish(
+            state.copy(
+                isPremium = false,
+                verification = PremiumVerification.CHECKING,
+                message = null
+            )
+        )
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 connectionStarted = false
@@ -78,7 +89,14 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
 
             override fun onBillingServiceDisconnected() {
                 connectionStarted = false
-                publish(state.copy(isBillingConnected = false))
+                publish(
+                    state.copy(
+                        isPremium = false,
+                        verification = PremiumVerification.UNAVAILABLE,
+                        isBillingConnected = false,
+                        message = "Connexion à Google Play interrompue"
+                    )
+                )
                 // Billing 9 reconnecte automatiquement lors du prochain appel API.
             }
         })
@@ -89,7 +107,13 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
             connect()
             return
         }
-        publish(state.copy(verification = PremiumVerification.CHECKING, message = null))
+        publish(
+            state.copy(
+                isPremium = false,
+                verification = PremiumVerification.CHECKING,
+                message = null
+            )
+        )
         val params = QueryPurchasesParams.newBuilder()
             .setProductType(BillingClient.ProductType.SUBS)
             .build()
@@ -102,18 +126,18 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
         }
     }
 
-    fun launchSubscription(activity: Activity): BillingResult? {
+    fun availablePlans(): Set<PremiumPlan> = state.availablePlans.keys
+
+    fun launchSubscription(activity: Activity, plan: PremiumPlan): BillingResult? {
         val details = productDetails ?: run {
             queryPremiumProduct()
             return null
         }
-        val offerToken = details.subscriptionOfferDetails
-            ?.firstOrNull()
-            ?.offerToken
+        val offer = PremiumOfferSelector.select(plan, availableOffers)
             ?: return null
         val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
-            .setOfferToken(offerToken)
+            .setOfferToken(offer.offerToken)
             .build()
         return billingClient.launchBillingFlow(
             activity,
@@ -137,6 +161,29 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 productDetails = detailsResult.productDetailsList
                     .firstOrNull { it.productId == PREMIUM_PRODUCT_ID }
+                availableOffers = productDetails
+                    ?.subscriptionOfferDetails
+                    .orEmpty()
+                    .map { offer ->
+                        PremiumOffer(
+                            productId = PREMIUM_PRODUCT_ID,
+                            basePlanId = offer.basePlanId,
+                            offerId = offer.offerId,
+                            offerToken = offer.offerToken,
+                            localizedPrice = offer.pricingPhases.pricingPhaseList
+                                .lastOrNull { it.priceAmountMicros > 0L }
+                                ?.formattedPrice
+                                .orEmpty()
+                        )
+                    }
+                publish(
+                    state.copy(
+                        availablePlans = PremiumOfferSelector.planDetails(availableOffers),
+                        message = null
+                    )
+                )
+            } else {
+                publish(state.copy(message = result.debugMessage))
             }
         }
     }
@@ -147,11 +194,15 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
             purchases = premiumPurchases.map { purchase ->
                 PremiumPurchase(
                     productIds = purchase.products.toSet(),
-                    isPurchased = purchase.purchaseState == Purchase.PurchaseState.PURCHASED
+                    status = when (purchase.purchaseState) {
+                        Purchase.PurchaseState.PURCHASED -> PremiumPurchaseStatus.PURCHASED
+                        Purchase.PurchaseState.PENDING -> PremiumPurchaseStatus.PENDING
+                        else -> PremiumPurchaseStatus.OTHER
+                    }
                 )
             },
             verifiedAtMillis = System.currentTimeMillis()
-        )
+        ).copy(availablePlans = state.availablePlans)
         publish(verified)
         store.saveVerified(verified)
 
@@ -191,6 +242,8 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
 
     override fun close() {
         connectionStarted = false
+        productDetails = null
+        availableOffers = emptyList()
         billingClient.endConnection()
         publish(state.copy(isBillingConnected = false))
         listeners.clear()

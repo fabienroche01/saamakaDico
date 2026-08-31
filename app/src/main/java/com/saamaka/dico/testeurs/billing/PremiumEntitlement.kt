@@ -4,6 +4,7 @@ const val PREMIUM_PRODUCT_ID = "dicosaam_premium"
 
 enum class PremiumVerification {
     CHECKING,
+    PENDING,
     VERIFIED_ACTIVE,
     VERIFIED_INACTIVE,
     UNAVAILABLE
@@ -15,12 +16,19 @@ data class PremiumEntitlementState(
     val wasPremiumLastKnown: Boolean = false,
     val isBillingConnected: Boolean = false,
     val lastVerifiedAtMillis: Long? = null,
+    val availablePlans: Map<PremiumPlan, PremiumPlanDetails> = emptyMap(),
     val message: String? = null
 )
 
+enum class PremiumPurchaseStatus {
+    PURCHASED,
+    PENDING,
+    OTHER
+}
+
 data class PremiumPurchase(
     val productIds: Set<String>,
-    val isPurchased: Boolean
+    val status: PremiumPurchaseStatus
 )
 
 object PremiumEntitlementPolicy {
@@ -37,18 +45,24 @@ object PremiumEntitlementPolicy {
         isBillingConnected: Boolean = true
     ): PremiumEntitlementState {
         val active = purchases.any { purchase ->
-            purchase.isPurchased && PREMIUM_PRODUCT_ID in purchase.productIds
+            purchase.status == PremiumPurchaseStatus.PURCHASED &&
+                PREMIUM_PRODUCT_ID in purchase.productIds
+        }
+        val pending = !active && purchases.any { purchase ->
+            purchase.status == PremiumPurchaseStatus.PENDING &&
+                PREMIUM_PRODUCT_ID in purchase.productIds
         }
         return PremiumEntitlementState(
             isPremium = active,
-            verification = if (active) {
-                PremiumVerification.VERIFIED_ACTIVE
-            } else {
-                PremiumVerification.VERIFIED_INACTIVE
+            verification = when {
+                active -> PremiumVerification.VERIFIED_ACTIVE
+                pending -> PremiumVerification.PENDING
+                else -> PremiumVerification.VERIFIED_INACTIVE
             },
             wasPremiumLastKnown = active,
             isBillingConnected = isBillingConnected,
-            lastVerifiedAtMillis = verifiedAtMillis
+            lastVerifiedAtMillis = verifiedAtMillis,
+            message = if (pending) "Achat en attente de confirmation" else null
         )
     }
 
