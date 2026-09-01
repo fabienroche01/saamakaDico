@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.saamaka.dico.testeurs"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.saramakadicto"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 353
-        versionName = "3.9.0-beta7"
+        targetSdk = 36
+        versionCode = 354
+        versionName = "3.9.0-beta8"
     }
 
     compileOptions {
