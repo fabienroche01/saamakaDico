@@ -3,7 +3,12 @@ package com.saamaka.dico.testeurs.database
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import com.saamaka.dico.testeurs.model.DictionaryEntry
-import com.saamaka.dico.testeurs.filterAndRankByLanguage
+import com.saamaka.dico.testeurs.filterAndRankByLanguageNormalized
+import com.saamaka.dico.testeurs.filterAndRankAcrossLanguages
+import com.saamaka.dico.testeurs.normalizeMultilingualSearch
+import com.saamaka.dico.testeurs.accentInsensitiveGlob
+import com.saamaka.dico.testeurs.requireBackgroundSearch
+import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.CorrectionProposal
@@ -181,22 +186,39 @@ class DictionaryDatabase(private val context: Context) {
 
     fun search(
         query: String,
-        languageCode: String = "fr",
+        languageCode: String? = "fr",
         limit: Int = 100
     ): List<DictionaryEntry> {
 
-        val term = query.trim()
+        requireBackgroundSearch(Looper.myLooper() == Looper.getMainLooper())
+        val normalizedQuery = normalizeMultilingualSearch(query)
 
-        if (term.isBlank()) {
+        if (normalizedQuery.isBlank()) {
             return emptyList()
         }
 
-        val sourceColumn = when (languageCode) {
-            "en" -> "english"
-            "nl" -> "nederlands"
-            "srm" -> "saamaka"
-            else -> "francais"
-        }
+        val columns = if (languageCode == null) {
+            listOf("saamaka", "francais", "english", "nederlands")
+        } else listOf(
+            when (languageCode) {
+                "en" -> "english"
+                "nl" -> "nederlands"
+                "srm" -> "saamaka"
+                else -> "francais"
+            }
+        )
+        val languageCodes = if (languageCode == null) listOf("srm", "fr", "en", "nl") else listOf(languageCode)
+        val glob = accentInsensitiveGlob(normalizedQuery)
+        val exactClause = columns.joinToString(" OR ") { "$it GLOB ?" }
+        val prefixClause = columns.joinToString(" OR ") { "$it GLOB ?" }
+        val containsClause = columns.joinToString(" OR ") { "$it GLOB ?" }
+        val candidateLimit = (limit * 4).coerceAtLeast(limit)
+        val args = buildList {
+            repeat(columns.size) { add("*$glob*") }
+            repeat(columns.size) { add(glob) }
+            repeat(columns.size) { add("$glob*") }
+            add(candidateLimit.toString())
+        }.toTypedArray()
 
         val db = openDatabase()
         val candidates = mutableListOf<DictionaryEntry>()
@@ -208,12 +230,16 @@ class DictionaryDatabase(private val context: Context) {
                 FROM dictionnaire
             WHERE id > 1
               AND TRIM(COALESCE(saamaka, '')) <> ''
-              AND TRIM(COALESCE($sourceColumn, '')) <> ''
               AND UPPER(TRIM(saamaka)) NOT IN ('#NAME?', '#N/A', 'N/A')
-              AND UPPER(TRIM($sourceColumn)) NOT IN ('#NAME?', '#N/A', 'N/A')
-            ORDER BY $sourceColumn COLLATE NOCASE
+              AND ($containsClause)
+            ORDER BY CASE
+                WHEN $exactClause THEN 0
+                WHEN $prefixClause THEN 1
+                ELSE 2
+            END, id
+            LIMIT ?
 """.trimIndent(),
-                null
+                args
             ).use { cursor ->
 
                 while (cursor.moveToNext()) {
@@ -249,7 +275,11 @@ class DictionaryDatabase(private val context: Context) {
             db.close()
         }
 
-        return filterAndRankByLanguage(candidates, term, languageCode, limit)
+        return if (languageCode == null) {
+            filterAndRankAcrossLanguages(candidates, normalizedQuery, languageCodes, limit)
+        } else {
+            filterAndRankByLanguageNormalized(candidates, normalizedQuery, languageCode, limit)
+        }
     }
 
     private fun translateExactAlternatives(

@@ -45,6 +45,10 @@ class CorrectionStore(context: Context) {
         return all().firstOrNull { it.entryId == entryId }
     }
 
+    fun latestByEntry(): Map<Int, CorrectionProposal> = buildMap {
+        all().forEach { proposal -> putIfAbsent(proposal.entryId, proposal) }
+    }
+
     fun clear() {
         preferences.edit().remove(KEY_CORRECTIONS).apply()
     }

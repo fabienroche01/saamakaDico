@@ -53,6 +53,34 @@ class MultilingualSearchTest {
     }
 
     @Test
+    fun oneMultilingualRankingPassFindsEveryColumn() {
+        assertEquals(listOf(4), filterAndRankAcrossLanguages(entries, normalizeMultilingualSearch("wata")).map { it.id })
+        assertEquals(listOf(4), filterAndRankAcrossLanguages(entries, normalizeMultilingualSearch("eau")).map { it.id })
+        assertEquals(listOf(2), filterAndRankAcrossLanguages(entries, normalizeMultilingualSearch("zon")).map { it.id })
+    }
+
+    @Test
+    fun accentInsensitiveSqlPatternCoversAccentedText() {
+        val pattern = Regex(accentInsensitiveGlob("ecole").replace("[", "[").replace("*", ".*"))
+        assertTrue(pattern.matches("École"))
+        assertTrue(accentInsensitiveGlob("wata").contains("á"))
+    }
+
+    @Test
+    fun candidateRankingIsExactThenPrefixThenContainsAndLimited() {
+        val ranked = listOf(
+            entry(40, french = "une maison"),
+            entry(41, french = "maison haute"),
+            entry(42, french = "maison"),
+            entry(43, french = "maison basse")
+        )
+        assertEquals(
+            listOf(42, 41),
+            filterAndRankAcrossLanguages(ranked, normalizeMultilingualSearch("maison"), listOf("fr"), limit = 2).map { it.id }
+        )
+    }
+
+    @Test
     fun normalizationAndRankingArePreserved() {
         val ranked = listOf(
             entry(10, english = "sunshine"),

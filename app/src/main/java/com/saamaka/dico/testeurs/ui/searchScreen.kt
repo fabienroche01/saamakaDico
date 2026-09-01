@@ -901,6 +901,9 @@ fun SearchScreen(
                                 filteredLanguage = searchLanguageFilter.language,
                                 preferredLanguage = selectedLanguage
                             )
+                            val audioAvailable = hasAudio(entry)
+                            val favorite = isFavorite(entry)
+                            val validated = isValidated(entry.id)
                             val selectedTranslation = when (searchLanguageFilter) {
                                 SearchLanguageFilter.ALL -> searchTextForLanguage(entry, resultLanguage.code)
                                 SearchLanguageFilter.SAAMAKA -> entry.saamaka.ifBlank {
@@ -965,7 +968,7 @@ fun SearchScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        if (isValidated(entry.id)) {
+                                        if (validated) {
 
                                             Spacer(Modifier.height(7.dp))
 
@@ -992,19 +995,19 @@ fun SearchScreen(
 
                                     IconButton(
                                         onClick = { onPlayAudio(entry) },
-                                        enabled = hasAudio(entry)
+                                        enabled = audioAvailable
                                     ) {
                                         Icon(
                                             Icons.Default.VolumeUp,
                                             "Écouter",
-                                            tint = if (hasAudio(entry)) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
+                                            tint = if (audioAvailable) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
                                         )
                                     }
                                     IconButton(onClick = { onToggleFavorite(entry) }) {
                                         Icon(
-                                            if (isFavorite(entry)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                             "Favori",
-                                            tint = if (isFavorite(entry)) Color(0xFFC99A2E) else Color(0xFF68736C)
+                                            tint = if (favorite) Color(0xFFC99A2E) else Color(0xFF68736C)
                                         )
                                     }
                                 }

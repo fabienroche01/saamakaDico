@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -93,6 +94,7 @@ import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -258,7 +260,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var searchLanguageFilter by remember { mutableStateOf(SearchLanguageFilter.ALL) }
     var status by remember { mutableStateOf("Commence à écrire pour rechercher") }
 
-    val searchResults = remember { mutableStateListOf<DictionaryEntry>() }
+    var searchResults by remember { mutableStateOf(emptyList<DictionaryEntry>()) }
     val favoriteResults = remember { mutableStateListOf<DictionaryEntry>() }
     val historyResults = remember { mutableStateListOf<DictionaryEntry>() }
     val total = remember { database.countEntries() }
@@ -405,78 +407,55 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         )
     }
 
-    fun runSearch(
-        text: String,
-        filter: SearchLanguageFilter = searchLanguageFilter
-    ) {
-        searchResults.clear()
-        homeExactCompleteMatch = null
+    suspend fun executeSearch(request: SearchRequest): SearchOutcome {
+        val cleaned = request.text.trim()
+        if (cleaned.isBlank()) return SearchOutcome(cleaned, emptyList(), null)
 
-        val cleaned = text.trim()
-
-        if (cleaned.isEmpty()) {
-            status = "Commence à écrire pour rechercher"
-            return
-        }
-
-        val databaseMatches = if (filter.language == null) {
-            AppLanguage.entries
-                .flatMap { language -> database.search(cleaned, language.code) }
-                .distinctBy { it.id }
-        } else {
-            database.search(cleaned, filter.language.code)
-        }.map(::applyCorrection)
-
-        val found = filter.language?.let { language ->
-            filterAndRankByLanguage(databaseMatches, cleaned, language.code)
-        } ?: databaseMatches.filter { entry ->
-            AppLanguage.entries.any { language ->
-                normalizeMultilingualSearch(searchTextForLanguage(entry, language.code))
-                    .contains(normalizeMultilingualSearch(cleaned))
+        val correctedResults = withContext(Dispatchers.IO) {
+            val corrections = correctionStore.latestByEntry()
+            database.search(cleaned, request.languageCode).map { entry ->
+                corrections[entry.id]?.let { correction ->
+                    entry.copy(
+                        french = correction.frenchProposed.ifBlank { entry.french },
+                        saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
+                    )
+                } ?: entry
             }
         }
-
-        searchResults.addAll(found)
-
         val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
-        if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
-            homeExactCompleteMatch = findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let {
-                LocalExactMatch(
-                    source = cleaned,
-                    translation = it,
-                    provenance = LocalMatchProvenance.ATTESTED_EXPRESSION
+        var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
+            findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let {
+                LocalExactMatch(cleaned, it, LocalMatchProvenance.ATTESTED_EXPRESSION)
+            }
+        } else null
+        if (exactMatch == null && (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA)) {
+            correctedResults.firstOrNull { entry ->
+                val source = if (frenchToSaamaka) entry.french else entry.saamaka
+                normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
+            }?.let { entry ->
+                exactMatch = LocalExactMatch(
+                    cleaned,
+                    if (frenchToSaamaka) entry.saamaka else entry.french,
+                    LocalMatchProvenance.DICTIONARY
                 )
             }
-            if (homeExactCompleteMatch == null) {
-                found.firstOrNull { entry ->
-                    val source = if (frenchToSaamaka) entry.french else entry.saamaka
-                    normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
-                }?.let { entry ->
-                    homeExactCompleteMatch = LocalExactMatch(
-                        source = cleaned,
-                        translation = if (frenchToSaamaka) entry.saamaka else entry.french,
-                        provenance = LocalMatchProvenance.DICTIONARY
-                    )
+        }
+        return SearchOutcome(cleaned, correctedResults, exactMatch)
+    }
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { SearchRequest(query, searchLanguageFilter.language?.code) }
+            .debouncedSearch(::executeSearch)
+            .collectLatest { outcome ->
+                searchResults = outcome.results
+                homeExactCompleteMatch = outcome.exactMatch
+                status = when {
+                    outcome.text.isBlank() -> "Commence à écrire pour rechercher"
+                    outcome.results.isEmpty() -> "Aucun résultat trouvé"
+                    outcome.results.size == 1 -> "1 résultat"
+                    else -> "${outcome.results.size} résultats"
                 }
             }
-        }
-
-        val presentation = homeSearchPresentation(
-            text = cleaned,
-            localResultCount = found.size,
-            hasExactCompleteMatch = homeExactCompleteMatch != null
-        )
-        Log.d(
-            "HomeSearch",
-            "normalized='${presentation.normalizedText}', words=${presentation.wordCount}, " +
-                "localResults=${found.size}, showPhraseCta=${presentation.showPhraseCta}"
-        )
-
-        status = when (found.size) {
-            0 -> "Aucun résultat trouvé"
-            1 -> "1 résultat"
-            else -> "${found.size} résultats"
-        }
     }
 
     fun refreshFavorites() {
@@ -1238,7 +1217,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 query = query,
                                 onQueryChange = {
                                     query = it
-                                    runSearch(it)
                                 },
                                 wordOfDay = correctedWordOfDay,
                                 isWordOfDayFavorite = correctedWordOfDay?.let {
@@ -1285,7 +1263,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             waiting = (total - 76 - 990).coerceAtLeast(0),
                             query = query,
                             status = status,
-                            entries = searchResults.map { applyCorrection(it) },
+                            entries = searchResults,
                             isValidated = validationStore::isValidated,
                             selectedLanguage = selectedLanguage,
                             onLanguageChange = { selectedLanguage = it },
@@ -1296,11 +1274,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
-                                runSearch(it)
                             },
                             onClear = {
                                 query = ""
-                                searchResults.clear()
+                                searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = "Commence à écrire pour rechercher"
                             },
@@ -1331,7 +1308,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onSearchLanguageFilterChange = { filter ->
                                 searchLanguageFilter = filter
                                 filter.language?.let { selectedLanguage = it }
-                                if (query.isNotBlank()) runSearch(query, filter)
                             },
                             hasAudio = { entry ->
                                 audioStore.hasOfficialAudio(entry.id) ||
@@ -1364,19 +1340,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             waiting = (total - 76 - 990).coerceAtLeast(0),
                             query = query,
                             status = status,
-                            entries = searchResults.map { applyCorrection(it) },
+                            entries = searchResults,
                             isValidated = validationStore::isValidated,
                             selectedLanguage = selectedLanguage,
                             onLanguageChange = { selectedLanguage = it },
 
                             onQueryChange = {
                                 query = it
-                                runSearch(it)
                             },
 
                             onClear = {
                                 query = ""
-                                searchResults.clear()
+                                searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = "Commence à écrire pour rechercher"
                             },
@@ -1415,7 +1390,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onSearchLanguageFilterChange = { filter ->
                                 searchLanguageFilter = filter
                                 filter.language?.let { selectedLanguage = it }
-                                if (query.isNotBlank()) runSearch(query, filter)
                             },
                             hasAudio = { entry ->
                                 audioStore.hasOfficialAudio(entry.id) ||

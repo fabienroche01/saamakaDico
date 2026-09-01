@@ -14,8 +14,8 @@ android {
         applicationId = "com.saramakadicto"
         minSdk = 24
         targetSdk = 35
-        versionCode = 352
-        versionName = "3.9.0-beta6"
+        versionCode = 353
+        versionName = "3.9.0-beta7"
     }
 
     compileOptions {
@@ -52,4 +52,5 @@ dependencies {
     implementation("com.android.billingclient:billing:9.1.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }

@@ -18,6 +18,28 @@ internal fun normalizeMultilingualSearch(value: String): String =
         .lowercase(Locale.ROOT)
         .replace(Regex("\\s+"), " ")
 
+internal fun accentInsensitiveGlob(value: String): String = buildString {
+    normalizeMultilingualSearch(value).forEach { character ->
+        append(
+            when (character) {
+                'a' -> "[aAàÀáÁâÂãÃäÄåÅāĀăĂąĄ]"
+                'c' -> "[cCçÇćĆčČ]"
+                'e' -> "[eEèÈéÉêÊëËēĒĕĔėĖęĘěĚ]"
+                'i' -> "[iIìÌíÍîÎïÏĩĨīĪĭĬįĮı]"
+                'n' -> "[nNñÑńŃňŇ]"
+                'o' -> "[oOòÒóÓôÔõÕöÖøØōŌŏŎőŐ]"
+                's' -> "[sSśŚšŠşŞ]"
+                'u' -> "[uUùÙúÚûÛüÜũŨūŪŭŬůŮűŰųŲ]"
+                'y' -> "[yYýÝÿŸ]"
+                'z' -> "[zZźŹžŽżŻ]"
+                '*', '?', '[', ']' -> "[$character]"
+                in 'a'..'z' -> "[$character${character.uppercaseChar()}]"
+                else -> character.toString()
+            }
+        )
+    }
+}
+
 internal fun multilingualSearchRank(text: String, query: String): Int {
     val normalizedText = normalizeMultilingualSearch(text)
     val normalizedQuery = normalizeMultilingualSearch(query)
@@ -30,6 +52,37 @@ internal fun multilingualSearchRank(text: String, query: String): Int {
     }
 }
 
+internal fun multilingualSearchRankNormalized(text: String, normalizedQuery: String): Int {
+    val normalizedText = normalizeMultilingualSearch(text)
+    return when {
+        normalizedText == normalizedQuery -> 0
+        normalizedText.startsWith(normalizedQuery) -> 1
+        normalizedText.contains(normalizedQuery) -> 2
+        else -> 3
+    }
+}
+
+internal fun filterAndRankAcrossLanguages(
+    entries: List<DictionaryEntry>,
+    normalizedQuery: String,
+    languageCodes: List<String> = listOf("srm", "fr", "en", "nl"),
+    limit: Int = 100
+): List<DictionaryEntry> {
+    if (normalizedQuery.isBlank()) return emptyList()
+    return entries.asSequence()
+        .mapNotNull { entry ->
+            val rank = languageCodes.minOfOrNull { languageCode ->
+                multilingualSearchRankNormalized(searchTextForLanguage(entry, languageCode), normalizedQuery)
+            } ?: 3
+            entry.takeIf { rank < 3 }?.let { it to rank }
+        }
+        .distinctBy { it.first.id }
+        .sortedWith(compareBy<Pair<DictionaryEntry, Int>> { it.second }.thenBy { it.first.id })
+        .take(limit)
+        .map { it.first }
+        .toList()
+}
+
 internal fun filterAndRankByLanguage(
     entries: List<DictionaryEntry>,
     query: String,
@@ -37,6 +90,15 @@ internal fun filterAndRankByLanguage(
     limit: Int = 100
 ): List<DictionaryEntry> {
     val normalizedQuery = normalizeMultilingualSearch(query)
+    return filterAndRankByLanguageNormalized(entries, normalizedQuery, languageCode, limit)
+}
+
+internal fun filterAndRankByLanguageNormalized(
+    entries: List<DictionaryEntry>,
+    normalizedQuery: String,
+    languageCode: String,
+    limit: Int = 100
+): List<DictionaryEntry> {
     if (normalizedQuery.isBlank()) return emptyList()
     return entries.asSequence()
         .filter { searchTextForLanguage(it, languageCode).isNotBlank() }
