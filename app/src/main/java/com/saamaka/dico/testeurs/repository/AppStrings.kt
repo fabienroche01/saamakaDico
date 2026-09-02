@@ -1,6 +1,7 @@
 package com.saamaka.dico.testeurs
 
 data class AppStrings(
+    val uiLanguage: UiLanguage,
     val speaker: String,
     val guest: String,
     val freeAccount: String,
@@ -109,6 +110,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
     return when (language) {
 
         UiLanguage.SAAMAKA -> AppStrings(
+            uiLanguage = UiLanguage.SAAMAKA,
             dictionaryTitle = "Saamaka Woordenboek",
             speaker = "Takiman",
             guest = "Invité",
@@ -222,6 +224,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
         )
 
         UiLanguage.FRENCH -> AppStrings(
+            uiLanguage = UiLanguage.FRENCH,
             dictionaryTitle = "Dictionnaire Saamaka",
             language = "Langue",
             guest = "Invité",
@@ -334,6 +337,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
 
 
         UiLanguage.ENGLISH -> AppStrings(
+            uiLanguage = UiLanguage.ENGLISH,
             dictionaryTitle = "Saamaka Dictionary",
             language = "Language",
             wordsAvailable = "words available",
@@ -447,6 +451,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
 
 
         UiLanguage.DUTCH -> AppStrings(
+            uiLanguage = UiLanguage.DUTCH,
             dictionaryTitle = "Saamaka Woordenboek",
             language = "Taal",
             correctionSaved = "Correctie opgeslagen",

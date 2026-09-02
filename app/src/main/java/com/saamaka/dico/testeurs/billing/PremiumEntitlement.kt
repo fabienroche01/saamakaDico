@@ -17,6 +17,8 @@ data class PremiumEntitlementState(
     val isBillingConnected: Boolean = false,
     val lastVerifiedAtMillis: Long? = null,
     val availablePlans: Map<PremiumPlan, PremiumPlanDetails> = emptyMap(),
+    val isLoadingPlans: Boolean = false,
+    val plansMessage: String? = null,
     val message: String? = null
 )
 

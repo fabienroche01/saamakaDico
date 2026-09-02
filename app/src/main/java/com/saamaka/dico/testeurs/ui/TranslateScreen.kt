@@ -30,6 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AccessLevel
 import com.saamaka.dico.testeurs.AppStrings
+import com.saamaka.dico.testeurs.UiCopyKey
+import com.saamaka.dico.testeurs.ui
+import com.saamaka.dico.testeurs.provenanceLabel
+import com.saamaka.dico.testeurs.reliabilityLabel
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
 import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.TranslationReliability
@@ -48,6 +52,34 @@ import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+private fun localizedRelatedExpressionLabel(label: String, strings: AppStrings): String = when (label) {
+    "Correspondance exacte du dictionnaire" -> strings.ui(UiCopyKey.EXACT_DICTIONARY_MATCH)
+    "Expression proche — contient des mots supplémentaires" -> strings.ui(UiCopyKey.CLOSE_EXPRESSION_EXTRA)
+    "Proposition incomplète" -> strings.ui(UiCopyKey.INCOMPLETE_SUGGESTION)
+    else -> strings.ui(UiCopyKey.CLOSE_EXPRESSION)
+}
+
+private fun localizedShareableText(
+    result: PhraseTranslationResult,
+    strings: AppStrings
+): String = if (result.reliability == TranslationReliability.HIGH) {
+    result.translation
+} else {
+    buildString {
+        appendLine(strings.ui(UiCopyKey.APPROXIMATE_REVIEW))
+        appendLine(result.translation)
+        result.recognizedSegments.mapNotNull { it.detail }.forEach(::appendLine)
+        if (result.untranslatedSegments.isNotEmpty()) {
+            append(
+                strings.ui(
+                    UiCopyKey.ITEMS_TO_REVIEW,
+                    result.untranslatedSegments.joinToString(", ")
+                )
+            )
+        }
+    }
+}
 
 @Composable
 fun TranslateScreen(
@@ -138,7 +170,7 @@ private fun UnifiedTranslateContent(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Throwable) {
-                if (currentId == requestId) error = "La recherche a échoué. Réessayez."
+                if (currentId == requestId) error = strings.ui(UiCopyKey.TRANSLATION_FAILED_RETRY)
             } finally {
                 if (currentId == requestId) isLoading = false
             }
@@ -219,8 +251,8 @@ private fun UnifiedTranslateContent(
             value = input,
             onValueChange = { input = it; resetResults() },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Rechercher ou traduire") },
-            placeholder = { Text("Écris un mot, une expression ou une phrase") },
+            label = { Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)) },
+            placeholder = { Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE_HINT)) },
             minLines = 2,
             maxLines = 6,
             shape = RoundedCornerShape(18.dp)
@@ -241,7 +273,11 @@ private fun UnifiedTranslateContent(
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                 Spacer(Modifier.width(8.dp))
             }
-            Text(if (isLoading) "Recherche…" else unifiedSearchButtonLabel(input))
+            Text(
+                if (isLoading) strings.ui(UiCopyKey.SEARCHING)
+                else if (normalizedInputWordCount(input) >= 2) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
+                else strings.ui(UiCopyKey.SEARCH_ACTION)
+            )
         }
 
         error?.let {
@@ -253,12 +289,13 @@ private fun UnifiedTranslateContent(
             Spacer(Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(match.provenance.label, fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
+                    Text(strings.provenanceLabel(match.provenance), fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
                     Spacer(Modifier.height(8.dp))
                     Text(match.translation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Fiabilité : Élevée", style = MaterialTheme.typography.labelLarge)
+                    Text(strings.ui(UiCopyKey.RELIABILITY_HIGH), style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(10.dp))
                     ResultActionRow(
+                        strings = strings,
                         text = match.translation,
                         canListen = ttsReady,
                         onListen = {
@@ -272,7 +309,7 @@ private fun UnifiedTranslateContent(
         val usefulEntries = localResult?.usefulEntries.orEmpty()
         if (usefulEntries.isNotEmpty() && localResult?.exactMatch == null) {
             Spacer(Modifier.height(16.dp))
-            Text("Résultats du dictionnaire", fontWeight = FontWeight.Bold)
+            Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
             usefulEntries.take(20).forEach { entry ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
@@ -281,16 +318,19 @@ private fun UnifiedTranslateContent(
                 ) {
                     Column(Modifier.padding(12.dp)) {
                         Text(
-                            relatedExpressionLabel(
-                                input,
-                                if (frenchToSaamaka) entry.french else entry.saamaka
+                            localizedRelatedExpressionLabel(
+                                relatedExpressionLabel(
+                                    input,
+                                    if (frenchToSaamaka) entry.french else entry.saamaka
+                                ),
+                                strings
                             ),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF8A6712)
                         )
                         Text(entry.french, fontWeight = FontWeight.Bold)
-                        Text(entry.saamaka.ifBlank { "Traduction manquante" })
+                        Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.MISSING_TRANSLATION) })
                     }
                 }
             }
@@ -304,7 +344,7 @@ private fun UnifiedTranslateContent(
         ) {
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Aucun résultat trouvé",
+                text = strings.noResult,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -319,7 +359,7 @@ private fun UnifiedTranslateContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Traduire cette phrase",
+                            text = strings.ui(UiCopyKey.TRANSLATE_THIS_PHRASE),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -328,7 +368,7 @@ private fun UnifiedTranslateContent(
                             color = Color(0xFFFFEFC4)
                         ) {
                             Text(
-                                text = "Premium",
+                                text = strings.premium,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF6D5312)
@@ -337,7 +377,7 @@ private fun UnifiedTranslateContent(
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Aucune expression complète trouvée dans le dictionnaire",
+                        text = strings.ui(UiCopyKey.NO_COMPLETE_EXPRESSION),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(12.dp))
@@ -352,15 +392,15 @@ private fun UnifiedTranslateContent(
                     ) {
                         Icon(Icons.Default.WorkspacePremium, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Traduire la phrase")
+                        Text(strings.ui(UiCopyKey.TRANSLATE_PHRASE))
                     }
                     if (!canUsePremium) {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = when (accessLevel) {
-                                AccessLevel.GUEST -> "Créez un compte pour accéder aux essais de traduction de phrase."
-                                AccessLevel.FREE_ACCOUNT -> "Aucun essai de traduction Premium restant."
-                                else -> "Traduction Premium indisponible."
+                        AccessLevel.GUEST -> strings.ui(UiCopyKey.CREATE_ACCOUNT_FOR_TRIALS)
+                        AccessLevel.FREE_ACCOUNT -> strings.ui(UiCopyKey.NO_TRIALS_LEFT)
+                        else -> strings.ui(UiCopyKey.PREMIUM_TRANSLATION_UNAVAILABLE)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -377,34 +417,35 @@ private fun UnifiedTranslateContent(
                     Text(
                         when {
                             result.kind == PhraseTranslationKind.VALIDATED_RULE ->
-                                "Traduction construite avec une règle validée"
+                                strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
                             result.isComplete -> "Proposition locale"
-                            else -> "Proposition incomplète"
+                            else -> strings.ui(UiCopyKey.INCOMPLETE_SUGGESTION)
                         },
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0B5D3B)
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(result.translation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Fiabilité : ${result.reliability.label}")
+                    Text(strings.ui(UiCopyKey.RELIABILITY, strings.reliabilityLabel(result.reliability)))
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { showDetails = !showDetails }) {
-                        Text(if (showDetails) "Masquer les détails" else "Voir les détails")
+                        Text(if (showDetails) strings.ui(UiCopyKey.HIDE_DETAILS) else strings.ui(UiCopyKey.SHOW_DETAILS))
                     }
                     if (showDetails) {
                         result.recognizedSegments.forEach { segment ->
                             Text("${segment.source} → ${segment.matchedSource ?: segment.source} → ${segment.translation}")
                             segment.alternatives.takeIf { it.isNotEmpty() }?.let {
-                                Text("Autres possibilités : ${it.joinToString(", ")}")
+                                Text(strings.ui(UiCopyKey.OTHER_POSSIBILITIES, it.joinToString(", ")))
                             }
                         }
                         if (result.untranslatedSegments.isNotEmpty()) {
-                            Text("Éléments à vérifier : ${result.untranslatedSegments.joinToString(", ")}")
+                            Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, result.untranslatedSegments.joinToString(", ")))
                         }
                     }
                     Spacer(Modifier.height(10.dp))
                     ResultActionRow(
-                        text = result.shareableText(),
+                        strings = strings,
+                        text = localizedShareableText(result, strings),
                         canListen = ttsReady && result.isComplete,
                         onListen = {
                             tts.speak(result.translation, TextToSpeech.QUEUE_FLUSH, null, "phrase_result")
@@ -418,13 +459,14 @@ private fun UnifiedTranslateContent(
             Spacer(Modifier.height(12.dp))
             OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
                 input = ""; resetResults()
-            }) { Text("Nouvelle recherche / Nouveau texte") }
+            }) { Text(strings.ui(UiCopyKey.NEW_SEARCH)) }
         }
     }
 }
 
 @Composable
 private fun ResultActionRow(
+    strings: AppStrings,
     text: String,
     canListen: Boolean,
     onListen: () -> Unit
@@ -434,16 +476,16 @@ private fun ResultActionRow(
         OutlinedButton(modifier = Modifier.weight(1f), onClick = {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("Saamaka Dico", text))
-        }) { Text("Copier") }
+        }) { Text(strings.ui(UiCopyKey.COPY_ACTION)) }
         OutlinedButton(modifier = Modifier.weight(1f), enabled = canListen, onClick = onListen) {
-            Text("Écouter")
+            Text(strings.ui(UiCopyKey.LISTEN))
         }
         OutlinedButton(modifier = Modifier.weight(1f), onClick = {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
             }
             context.startActivity(Intent.createChooser(intent, "Partager"))
-        }) { Text("Partager") }
+        }) { Text(strings.ui(UiCopyKey.SHARE_ACTION)) }
     }
 }
 
@@ -536,7 +578,7 @@ private fun PhraseTranslateContent(
                             color = Color.White
                         )
                         Text(
-                            text = "Français ↔ Saamaka",
+                            text = "${strings.french} ↔ ${strings.saamaka}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = gold
@@ -547,7 +589,7 @@ private fun PhraseTranslateContent(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "Traduisez des phrases et des textes complets. Les mots et expressions du dictionnaire restent gratuits.",
+                    text = strings.ui(UiCopyKey.TRANSLATOR_INTRO),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.84f)
                 )
@@ -580,7 +622,7 @@ private fun PhraseTranslateContent(
                             Icon(Icons.Default.Lock, null, tint = forestGreen)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Créez votre compte gratuitement",
+                                text = strings.ui(UiCopyKey.CREATE_FREE_ACCOUNT),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = darkText
@@ -589,7 +631,7 @@ private fun PhraseTranslateContent(
 
                         Spacer(Modifier.height(8.dp))
 
-                        Text("Profitez de 3 traductions de phrases ou textes complets offertes.")
+                        Text(strings.ui(UiCopyKey.FREE_TRANSLATION_TRIALS))
 
                         Spacer(Modifier.height(14.dp))
 
@@ -601,7 +643,7 @@ private fun PhraseTranslateContent(
                                 // Compte réel plus tard
                             }
                         ) {
-                            Text("Créer mon compte gratuitement")
+                            Text(strings.ui(UiCopyKey.CREATE_MY_FREE_ACCOUNT))
                         }
                     }
                 }
@@ -623,7 +665,7 @@ private fun PhraseTranslateContent(
                             Icon(Icons.Default.WorkspacePremium, null, tint = Color(0xFF8A6712))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Saamaka Premium",
+                                text = strings.ui(UiCopyKey.PREMIUM_TITLE),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = darkText
@@ -633,7 +675,7 @@ private fun PhraseTranslateContent(
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "Traductions illimitées, textes plus longs, apprentissage, quiz et fonctions avancées."
+                            text = strings.ui(UiCopyKey.PREMIUM_BENEFITS)
                         )
 
                         Spacer(Modifier.height(14.dp))
@@ -646,7 +688,7 @@ private fun PhraseTranslateContent(
                                 // Écran Premium plus tard
                             }
                         ) {
-                            Text("Découvrir Premium")
+                            Text(strings.ui(UiCopyKey.DISCOVER_PREMIUM))
                         }
                     }
                 }
@@ -670,7 +712,7 @@ private fun PhraseTranslateContent(
                             Icon(Icons.Default.CardGiftcard, null, tint = forestGreen)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "$remainingTrials traduction(s) restante(s)",
+                                text = strings.ui(UiCopyKey.REMAINING_TRANSLATIONS, remainingTrials),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = darkText
@@ -680,7 +722,7 @@ private fun PhraseTranslateContent(
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "Votre compte gratuit permet d'essayer le traducteur Saamaka."
+                            text = strings.ui(UiCopyKey.FREE_ACCOUNT_TRIAL_INFO)
                         )
 
                         Spacer(Modifier.height(14.dp))
@@ -696,7 +738,7 @@ private fun PhraseTranslateContent(
                                 }
                             }
                         ) {
-                            Text("Commencer une traduction")
+                            Text(strings.ui(UiCopyKey.START_TRANSLATION))
                         }
                     }
                 }
@@ -704,7 +746,7 @@ private fun PhraseTranslateContent(
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "Premium : traductions illimitées",
+                    text = strings.ui(UiCopyKey.PREMIUM_UNLIMITED),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -727,7 +769,7 @@ private fun PhraseTranslateContent(
                             Icon(Icons.Default.WorkspacePremium, null, tint = Color(0xFF8A6712))
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Premium",
+                                text = strings.premium,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = darkText
@@ -737,7 +779,7 @@ private fun PhraseTranslateContent(
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "Traductions de phrases et textes sans limite."
+                            text = strings.ui(UiCopyKey.UNLIMITED_SENTENCE_TRANSLATIONS)
                         )
 
                         Spacer(Modifier.height(14.dp))
@@ -750,7 +792,7 @@ private fun PhraseTranslateContent(
                                 showTranslator = true
                             }
                         ) {
-                            Text("Traduire maintenant")
+                            Text(strings.ui(UiCopyKey.TRANSLATE_NOW))
                         }
                     }
                 }
@@ -774,7 +816,7 @@ private fun PhraseTranslateContent(
                             Icon(Icons.Default.Science, null, tint = forestGreen)
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Mode testeur",
+                                text = strings.ui(UiCopyKey.TESTER_MODE),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = darkText
@@ -784,7 +826,7 @@ private fun PhraseTranslateContent(
                         Spacer(Modifier.height(8.dp))
 
                         Text(
-                            text = "Traducteur complet activé pour les tests."
+                            text = strings.ui(UiCopyKey.TEST_TRANSLATOR_ENABLED)
                         )
 
                         Spacer(Modifier.height(14.dp))
@@ -797,7 +839,7 @@ private fun PhraseTranslateContent(
                                 showTranslator = true
                             }
                         ) {
-                            Text("Tester une traduction")
+                            Text(strings.ui(UiCopyKey.TEST_TRANSLATION))
                         }
                     }
                 }
@@ -838,7 +880,7 @@ private fun PhraseTranslateContent(
                         Icon(Icons.Default.Translate, null, tint = forestGreen)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Traduire une phrase",
+                            text = strings.ui(UiCopyKey.TRANSLATE_A_PHRASE),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = darkText
@@ -939,14 +981,14 @@ private fun PhraseTranslateContent(
                 label = {
                     Text(
                         if (frenchToSaamaka) {
-                            "Phrase en français"
+                            strings.ui(UiCopyKey.FRENCH_PHRASE)
                         } else {
                             "Phrase en Saamaka"
                         }
                     )
                 },
                 placeholder = {
-                    Text("Écrivez votre phrase ici…")
+                    Text(strings.ui(UiCopyKey.WRITE_PHRASE_HINT))
                 },
                 minLines = 4,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -990,13 +1032,13 @@ private fun PhraseTranslateContent(
                                     onUseTrial()
                                 }
                             } else if (requestId == translationRequestId) {
-                                translationError = "Aucun résultat disponible. Réessayez."
+                                translationError = strings.ui(UiCopyKey.NO_RESULT_RETRY)
                             }
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (_: Throwable) {
                             if (requestId == translationRequestId) {
-                                translationError = "La traduction a échoué. Réessayez."
+                                translationError = strings.ui(UiCopyKey.TRANSLATION_FAILED_RETRY)
                             }
                         } finally {
                             if (requestId == translationRequestId) {
@@ -1013,11 +1055,11 @@ private fun PhraseTranslateContent(
                         color = Color.White
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Traduction…", fontWeight = FontWeight.Bold)
+                    Text(strings.ui(UiCopyKey.TRANSLATING), fontWeight = FontWeight.Bold)
                 } else {
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Traduire", fontWeight = FontWeight.Bold)
+                    Text(strings.translate, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -1052,7 +1094,7 @@ private fun PhraseTranslateContent(
                 ) {
                     Icon(Icons.Default.Refresh, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Nouvelle phrase")
+                    Text(strings.ui(UiCopyKey.NEW_PHRASE))
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -1078,18 +1120,18 @@ private fun PhraseTranslateContent(
 
                             Text(
                                 text = if (result.kind == PhraseTranslationKind.VALIDATED_RULE) {
-                                    "Traduction construite avec une règle validée"
+                                    strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
                                 } else if (frenchToSaamaka) {
                                     if (result.isComplete) {
                                         "Proposition Saamaka"
                                     } else {
-                                        "Proposition locale incomplète — à vérifier"
+                                        strings.ui(UiCopyKey.LOCAL_INCOMPLETE_SUGGESTION)
                                     }
                                 } else {
                                     if (result.isComplete) {
-                                        "Proposition française"
+                                        strings.ui(UiCopyKey.FRENCH_SUGGESTION)
                                     } else {
-                                        "Proposition locale incomplète — à vérifier"
+                                        strings.ui(UiCopyKey.LOCAL_INCOMPLETE_SUGGESTION)
                                     }
                                 },
                                 modifier = Modifier.padding(
@@ -1113,7 +1155,7 @@ private fun PhraseTranslateContent(
                         Spacer(Modifier.height(6.dp))
 
                         Text(
-                            text = "Fiabilité : ${result.reliability.label}",
+                            text = strings.ui(UiCopyKey.RELIABILITY, strings.reliabilityLabel(result.reliability)),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = if (result.reliability == TranslationReliability.LOW) {
@@ -1132,14 +1174,14 @@ private fun PhraseTranslateContent(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "À vérifier",
+                                    text = strings.toReview,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF8A6712)
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    text = "Proposition locale construite à partir du dictionnaire.",
+                                    text = strings.ui(UiCopyKey.LOCAL_DICTIONARY_SUGGESTION),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = darkText
                                 )
@@ -1155,7 +1197,7 @@ private fun PhraseTranslateContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 onClick = { showTranslationDetails = !showTranslationDetails }
                             ) {
-                                Text(if (showTranslationDetails) "Masquer les détails" else "Voir les détails")
+                                Text(if (showTranslationDetails) strings.ui(UiCopyKey.HIDE_DETAILS) else strings.ui(UiCopyKey.SHOW_DETAILS))
                             }
 
                             if (showTranslationDetails) {
@@ -1179,7 +1221,7 @@ private fun PhraseTranslateContent(
 
                                     if (segment.alternatives.isNotEmpty()) {
                                         Text(
-                                            text = "Autres possibilités : ${segment.alternatives.joinToString(", ")}",
+                                            text = strings.ui(UiCopyKey.OTHER_POSSIBILITIES, segment.alternatives.joinToString(", ")),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1190,7 +1232,7 @@ private fun PhraseTranslateContent(
 
                                 if (result.untranslatedSegments.isNotEmpty()) {
                                     Spacer(Modifier.height(10.dp))
-                                    Text("Éléments à vérifier", fontWeight = FontWeight.Bold, color = darkText)
+                                    Text(strings.toReview, fontWeight = FontWeight.Bold, color = darkText)
                                     Text(
                                         text = result.untranslatedSegments.joinToString(", "),
                                         style = MaterialTheme.typography.bodyMedium,
@@ -1217,16 +1259,16 @@ private fun PhraseTranslateContent(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = forestGreen),
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val copyText = result.shareableText()
+                                    val copyText = localizedShareableText(result, strings)
                                     clipboard.setPrimaryClip(
                                         ClipData.newPlainText("Traduction Saamaka Dico", copyText)
                                     )
-                                    Toast.makeText(context, "Traduction copiée", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, strings.ui(UiCopyKey.TRANSLATION_COPIED), Toast.LENGTH_SHORT).show()
                                 }
                             ) {
                                 Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Copier", maxLines = 1)
+                                Text(strings.ui(UiCopyKey.COPY_ACTION), maxLines = 1)
                             }
 
                             OutlinedButton(
@@ -1249,7 +1291,7 @@ private fun PhraseTranslateContent(
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.VolumeUp, null, modifier = Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Écouter", maxLines = 1)
+                                Text(strings.ui(UiCopyKey.LISTEN), maxLines = 1)
                             }
 
                             OutlinedButton(
@@ -1261,14 +1303,14 @@ private fun PhraseTranslateContent(
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_SUBJECT, "Saamaka Dico")
-                                        putExtra(Intent.EXTRA_TEXT, result.shareableText())
+                                        putExtra(Intent.EXTRA_TEXT, localizedShareableText(result, strings))
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "Partager la traduction"))
+                                    context.startActivity(Intent.createChooser(intent, strings.ui(UiCopyKey.SHARE_TRANSLATION)))
                                 }
                             ) {
                                 Icon(Icons.Default.Share, null, modifier = Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Partager", maxLines = 1)
+                                Text(strings.ui(UiCopyKey.SHARE_ACTION), maxLines = 1)
                             }
                         }
                     }

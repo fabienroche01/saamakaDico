@@ -29,6 +29,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saamaka.dico.testeurs.AppStrings
+import com.saamaka.dico.testeurs.UiCopyKey
+import com.saamaka.dico.testeurs.ui
+import com.saamaka.dico.testeurs.provenanceLabel
 import com.saamaka.dico.testeurs.LocalExactMatch
 import com.saamaka.dico.testeurs.homeSearchPresentation
 import com.saamaka.dico.testeurs.matchingLanguageForEntry
@@ -37,6 +40,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
@@ -51,6 +55,9 @@ enum class SearchLanguageFilter(val label: String, val language: AppLanguage?) {
     ENGLISH("English", AppLanguage.ENGLISH),
     DUTCH("Nederlands", AppLanguage.DUTCH)
 }
+
+const val QUICK_SEARCH_TEST_TAG = "quick_search_field"
+const val SEARCH_RESULT_TEST_TAG = "search_result"
 
 @Composable
 fun SearchScreen(
@@ -138,7 +145,7 @@ fun SearchScreen(
                     ) {
 
                         Text(
-                            text = "SAAMAKA TONGO",
+                            text = strings.saamaka.uppercase(),
                             fontSize = 23.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
@@ -147,7 +154,7 @@ fun SearchScreen(
                         Spacer(Modifier.height(2.dp))
 
                         Text(
-                            text = "DICTIONNAIRE",
+                            text = strings.dictionaryTitle.uppercase(),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFF0C96A),
@@ -171,7 +178,7 @@ fun SearchScreen(
                 Spacer(Modifier.height(10.dp))
 
                 Text(
-                    text = "Français ↔ Saamaka",
+                    text = "${strings.french} ↔ ${strings.saamaka}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
@@ -180,7 +187,7 @@ fun SearchScreen(
                 Spacer(Modifier.height(4.dp))
 
                 Text(
-                    text = "Apprendre • Comprendre • Préserver",
+                    text = strings.ui(UiCopyKey.LEARN_UNDERSTAND_PRESERVE),
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.88f)
                 )
@@ -188,7 +195,7 @@ fun SearchScreen(
                 Spacer(Modifier.height(2.dp))
 
                 Text(
-                    text = "Notre langue, notre patrimoine",
+                    text = strings.ui(UiCopyKey.HERITAGE_TAGLINE),
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = 0.72f)
                 )
@@ -222,7 +229,7 @@ fun SearchScreen(
                             Spacer(Modifier.width(5.dp))
 
                             Text(
-                                text = "$total mots et expressions",
+                                text = strings.ui(UiCopyKey.WORDS_AND_EXPRESSIONS, total),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF0B5D3B),
@@ -255,7 +262,9 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(QUICK_SEARCH_TEST_TAG),
             singleLine = true,
             shape = RoundedCornerShape(24.dp),
 
@@ -269,7 +278,7 @@ fun SearchScreen(
 
             placeholder = {
                 Text(
-                    text = "Rechercher en Saamaka, Français, English ou Nederlands",
+                    text = strings.ui(UiCopyKey.SEARCH_ALL_LANGUAGES_HINT),
                     fontSize = 13.sp,
                     color = Color(0xFF7A817C)
                 )
@@ -282,7 +291,7 @@ fun SearchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Rechercher",
+                        contentDescription = strings.ui(UiCopyKey.SEARCH_ACTION),
                         tint = Color(0xFF0B5D3B),
                         modifier = Modifier.padding(8.dp)
                     )
@@ -296,7 +305,7 @@ fun SearchScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Clear,
-                            contentDescription = "Effacer",
+                            contentDescription = strings.ui(UiCopyKey.CLEAR),
                             tint = Color(0xFF52645B)
                         )
                     }
@@ -316,7 +325,12 @@ fun SearchScreen(
                     FilterChip(
                         selected = searchLanguageFilter == filter,
                         onClick = { onSearchLanguageFilterChange(filter) },
-                        label = { Text(filter.label) },
+                        label = {
+                            Text(
+                                if (filter == SearchLanguageFilter.ALL) strings.ui(UiCopyKey.ALL)
+                                else filter.label
+                            )
+                        },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFF0B5D3B),
                             selectedLabelColor = Color.White,
@@ -331,7 +345,7 @@ fun SearchScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Accès rapide",
+                text = strings.ui(UiCopyKey.QUICK_ACCESS_TITLE),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF16372A)
@@ -383,7 +397,7 @@ fun SearchScreen(
                                 color = Color.White.copy(alpha = 0.14f)
                             ) {
                                 Text(
-                                    text = "$categoryCount thèmes",
+                                    text = strings.ui(UiCopyKey.CATEGORIES_COUNT, categoryCount),
                                     modifier = Modifier.padding(
                                         horizontal = 7.dp,
                                         vertical = 3.dp
@@ -397,14 +411,14 @@ fun SearchScreen(
                         Spacer(Modifier.height(7.dp))
 
                         Text(
-                            text = "Catégories",
+                            text = strings.ui(UiCopyKey.CATEGORIES),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
 
                         Text(
-                            text = "Explorer par thème",
+                            text = strings.ui(UiCopyKey.EXPLORE_BY_THEME),
                             fontSize = 10.sp,
                             color = Color.White.copy(alpha = 0.78f)
                         )
@@ -412,7 +426,7 @@ fun SearchScreen(
                         Spacer(Modifier.weight(1f))
 
                         Text(
-                            text = "Explorer →",
+                            text = strings.ui(UiCopyKey.EXPLORE_ACTION),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFF0C96A)
@@ -459,7 +473,7 @@ fun SearchScreen(
                                 color = Color.White.copy(alpha = 0.14f)
                             ) {
                                 Text(
-                                    text = "Mes mots",
+                                    text = strings.ui(UiCopyKey.MY_WORDS),
                                     modifier = Modifier.padding(
                                         horizontal = 7.dp,
                                         vertical = 3.dp
@@ -473,14 +487,14 @@ fun SearchScreen(
                         Spacer(Modifier.height(7.dp))
 
                         Text(
-                            text = "Favoris",
+                            text = strings.favorites,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
 
                         Text(
-                            text = "Retrouver mes mots",
+                            text = strings.ui(UiCopyKey.FIND_MY_WORDS),
                             fontSize = 10.sp,
                             color = Color.White.copy(alpha = 0.78f)
                         )
@@ -488,7 +502,7 @@ fun SearchScreen(
                         Spacer(Modifier.weight(1f))
 
                         Text(
-                            text = "Voir mes mots →",
+                            text = strings.ui(UiCopyKey.SEE_MY_WORDS),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFF0C96A)
@@ -543,7 +557,7 @@ fun SearchScreen(
                                     color = Color.White.copy(alpha = 0.65f)
                                 ) {
                                     Text(
-                                        text = "Aujourd'hui",
+                                        text = strings.ui(UiCopyKey.TODAY),
                                         modifier = Modifier.padding(
                                             horizontal = 7.dp,
                                             vertical = 3.dp
@@ -558,7 +572,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(7.dp))
 
                             Text(
-                                text = "Mot du jour",
+                                text = strings.ui(UiCopyKey.WORD_OF_DAY),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF3B3014)
@@ -624,7 +638,7 @@ fun SearchScreen(
                                     color = Color(0xFFDCEEE2)
                                 ) {
                                     Text(
-                                        text = "Progression",
+                                        text = strings.ui(UiCopyKey.PROGRESSION),
                                         modifier = Modifier.padding(
                                             horizontal = 7.dp,
                                             vertical = 3.dp
@@ -639,7 +653,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(7.dp))
 
                             Text(
-                                text = "Apprendre",
+                                text = strings.ui(UiCopyKey.LEARN),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF16372A)
@@ -648,7 +662,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(4.dp))
 
                             Text(
-                                text = "Quiz • Mots • Phrases • Jeux",
+                                text = strings.ui(UiCopyKey.LEARNING_ACTIVITIES),
                                 fontSize = 10.sp,
                                 color = Color(0xFF68736C),
                                 maxLines = 1
@@ -657,7 +671,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(3.dp))
 
                             Text(
-                                text = "Continuer →",
+                                text = "${strings.ui(UiCopyKey.CONTINUE_ACTION)} →",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF0B5D3B)
@@ -786,7 +800,7 @@ fun SearchScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
                             Text(
-                                exactCompleteMatch.provenance.label,
+                                strings.provenanceLabel(exactCompleteMatch.provenance),
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0B5D3B)
                             )
@@ -796,7 +810,7 @@ fun SearchScreen(
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
-                            Text("Fiabilité : Élevée")
+                            Text(strings.ui(UiCopyKey.RELIABILITY_HIGH))
                         }
                     }
                 }
@@ -812,7 +826,7 @@ fun SearchScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Traduire cette phrase", fontWeight = FontWeight.Bold)
+                                Text(strings.ui(UiCopyKey.TRANSLATE_THIS_PHRASE), fontWeight = FontWeight.Bold)
                                 Surface(
                                     shape = RoundedCornerShape(50),
                                     color = Color(0xFFFFEFC4)
@@ -826,14 +840,14 @@ fun SearchScreen(
                                 }
                             }
                             Spacer(Modifier.height(6.dp))
-                            Text("Aucune expression complète trouvée dans le dictionnaire")
+                            Text(strings.ui(UiCopyKey.NO_COMPLETE_EXPRESSION))
                             Spacer(Modifier.height(12.dp))
                             Button(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = canTranslatePhrase,
                                 onClick = onTranslateClick
                             ) {
-                                Text("Traduire la phrase")
+                                Text(strings.ui(UiCopyKey.TRANSLATE_PHRASE))
                             }
                         }
                     }
@@ -907,22 +921,23 @@ fun SearchScreen(
                             val selectedTranslation = when (searchLanguageFilter) {
                                 SearchLanguageFilter.ALL -> searchTextForLanguage(entry, resultLanguage.code)
                                 SearchLanguageFilter.SAAMAKA -> entry.saamaka.ifBlank {
-                                    "Traduction non disponible"
+                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
                                 }
                                 SearchLanguageFilter.FRENCH -> entry.french.ifBlank {
-                                    "Traduction non disponible"
+                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
                                 }
                                 SearchLanguageFilter.ENGLISH -> entry.english.ifBlank {
-                                    "Traduction non disponible"
+                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
                                 }
                                 SearchLanguageFilter.DUTCH -> entry.dutch.ifBlank {
-                                    "Traduction non disponible"
+                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
                                 }
                             }
 
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .testTag(SEARCH_RESULT_TEST_TAG)
                                     .clickable {
                                         onOpen(
                                             entry,
@@ -948,7 +963,7 @@ fun SearchScreen(
                                     ) {
 
                                         Text(
-                                            text = entry.saamaka.ifBlank { "À compléter" },
+                                            text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF16372A),
@@ -962,7 +977,7 @@ fun SearchScreen(
                                             text = selectedTranslation,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = if (selectedTranslation == "Traduction non disponible") 0.65f else 1f
+                                                alpha = if (selectedTranslation == strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)) 0.65f else 1f
                                             ),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -999,7 +1014,7 @@ fun SearchScreen(
                                     ) {
                                         Icon(
                                             Icons.Default.VolumeUp,
-                                            "Écouter",
+                                            strings.ui(UiCopyKey.LISTEN),
                                             tint = if (audioAvailable) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
                                         )
                                     }

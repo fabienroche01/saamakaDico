@@ -45,6 +45,24 @@ class PremiumOfferSelectorTest {
     }
 
     @Test
+    fun annualDetailsWithoutEligibleTrialUseTheLocalizedBasePlanPrice() {
+        val withoutTrial = offers.filter { it.offerId != PREMIUM_ANNUAL_TRIAL_OFFER_ID }
+        val details = PremiumOfferSelector.planDetails(withoutTrial).getValue(PremiumPlan.ANNUAL)
+
+        assertEquals("49,99 €", details.localizedPrice)
+        assertEquals(false, details.hasSevenDayTrial)
+    }
+
+    @Test
+    fun monthlyDetailsNeverUseAPromotionalOffer() {
+        val details = PremiumOfferSelector.planDetails(offers).getValue(PremiumPlan.MONTHLY)
+
+        assertEquals("4,99 €", details.localizedPrice)
+        assertEquals(false, details.hasSevenDayTrial)
+        assertEquals("monthly", PremiumOfferSelector.select(PremiumPlan.MONTHLY, offers)?.offerToken)
+    }
+
+    @Test
     fun planDetailsContainOnlyGooglePlayLocalizedPrices() {
         val details = PremiumOfferSelector.planDetails(offers)
 

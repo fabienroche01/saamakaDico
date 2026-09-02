@@ -64,7 +64,7 @@ import com.saamaka.dico.testeurs.repository.NewEntryProposalStore
 import com.saamaka.dico.testeurs.repository.FavoritesStore
 import com.saamaka.dico.testeurs.repository.HistoryStore
 import com.saamaka.dico.testeurs.ui.SearchScreen
-import com.saamaka.dico.testeurs.ui.HomeScreen
+import com.saamaka.dico.testeurs.ui.BottomNavigationLabel
 import com.saamaka.dico.testeurs.ui.PremiumScreen
 import com.saamaka.dico.testeurs.ui.SearchLanguageFilter
 import android.Manifest
@@ -87,6 +87,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
@@ -187,7 +189,13 @@ enum class MainTab {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
-    var uiLanguage by remember {mutableStateOf(UiLanguage.FRENCH) }
+    val context = LocalContext.current
+    val uiLanguageStore = remember(context) { UiLanguageStore(context) }
+    var uiLanguage by remember { mutableStateOf(uiLanguageStore.load()) }
+    fun selectUiLanguage(language: UiLanguage) {
+        uiLanguage = language
+        uiLanguageStore.save(language)
+    }
     var languageMenuExpanded by remember {mutableStateOf(false)}
     var accessMenuExpanded by remember {
         mutableStateOf(false)
@@ -207,7 +215,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
 
-    val context = LocalContext.current
     val database = remember { DictionaryDatabase(context) }
     val favoritesStore = remember { FavoritesStore(context) }
     val historyStore = remember { HistoryStore(context) }
@@ -230,7 +237,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
     val validationStore = remember { ValidationStore(context) }
     val reviewStore = remember { ReviewStore(context) }
-    val audioStore = remember { AudioStore(context) }
+    val audioStore = remember { AudioStore(context, appStrings) }
+    audioStore.updateStrings(appStrings)
 
     var validatedCount by remember { mutableStateOf(validationStore.count()) }
     var activeTab by remember {
@@ -258,7 +266,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
     var searchLanguageFilter by remember { mutableStateOf(SearchLanguageFilter.ALL) }
-    var status by remember { mutableStateOf("Commence à écrire pour rechercher") }
+    var status by remember { mutableStateOf(appStrings.startSearching) }
 
     var searchResults by remember { mutableStateOf(emptyList<DictionaryEntry>()) }
     val favoriteResults = remember { mutableStateListOf<DictionaryEntry>() }
@@ -443,17 +451,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         return SearchOutcome(cleaned, correctedResults, exactMatch)
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(appStrings) {
         snapshotFlow { SearchRequest(query, searchLanguageFilter.language?.code) }
             .debouncedSearch(::executeSearch)
             .collectLatest { outcome ->
                 searchResults = outcome.results
                 homeExactCompleteMatch = outcome.exactMatch
                 status = when {
-                    outcome.text.isBlank() -> "Commence à écrire pour rechercher"
-                    outcome.results.isEmpty() -> "Aucun résultat trouvé"
-                    outcome.results.size == 1 -> "1 résultat"
-                    else -> "${outcome.results.size} résultats"
+                    outcome.text.isBlank() -> appStrings.startSearching
+                    outcome.results.isEmpty() -> appStrings.noResult
+                    else -> "${outcome.results.size} ${appStrings.results}"
                 }
             }
     }
@@ -537,7 +544,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
         if (availableEntries.isEmpty()) {
             selectedEntry = null
-            Toast.makeText(context, "Aucun autre mot à vérifier", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, appStrings.ui(UiCopyKey.NO_OTHER_WORD), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -593,7 +600,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 text = when {
                                     correctionEntry != null -> appStrings.proposeCorrection
                                     selectedEntry != null -> appStrings.wordDetails
-                                    else -> "Dictionnaire Saamaka"
+                                    else -> appStrings.dictionaryTitle
                                 },
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.ExtraBold,
@@ -607,11 +614,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     context.packageManager
                                         .getPackageInfo(context.packageName, 0)
                                         .versionName
+                                        ?: appStrings.notSpecified
 
                                 Spacer(Modifier.height(1.dp))
 
                                 Text(
-                                    text = "$total entrées • version $versionName",
+                                    text = "${appStrings.ui(UiCopyKey.ENTRIES, total)} • ${appStrings.ui(UiCopyKey.VERSION, versionName)}",
                                     fontSize = 10.sp,
                                     color = Color(0xFF68736C)
                                 )
@@ -638,6 +646,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     // -------------------------
                     Box {
                         IconButton(
+                            modifier = Modifier.semantics {
+                                contentDescription = appStrings.ui(UiCopyKey.LANGUAGE_MENU)
+                            },
                             onClick = { languageMenuExpanded = true }
                         ) {
                             Text(
@@ -653,33 +664,33 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("🇸🇷 Saamaka") },
+                                text = { Text("🇸🇷 ${appStrings.saamaka}") },
                                 onClick = {
-                                    uiLanguage = UiLanguage.SAAMAKA
+                                    selectUiLanguage(UiLanguage.SAAMAKA)
                                     languageMenuExpanded = false
                                 }
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🇫🇷 Français") },
+                                text = { Text("🇫🇷 ${appStrings.french}") },
                                 onClick = {
-                                    uiLanguage = UiLanguage.FRENCH
+                                    selectUiLanguage(UiLanguage.FRENCH)
                                     languageMenuExpanded = false
                                 }
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🇬🇧 English") },
+                                text = { Text("🇬🇧 ${appStrings.english}") },
                                 onClick = {
-                                    uiLanguage = UiLanguage.ENGLISH
+                                    selectUiLanguage(UiLanguage.ENGLISH)
                                     languageMenuExpanded = false
                                 }
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🇳🇱 Nederlands") },
+                                text = { Text("🇳🇱 ${appStrings.dutch}") },
                                 onClick = {
-                                    uiLanguage = UiLanguage.DUTCH
+                                    selectUiLanguage(UiLanguage.DUTCH)
                                     languageMenuExpanded = false
                                 }
                             )
@@ -691,6 +702,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     // -------------------------
                     Box {
                         IconButton(
+                            modifier = Modifier.semantics {
+                                contentDescription = appStrings.ui(UiCopyKey.ACCESS_MENU)
+                            },
                             onClick = { accessMenuExpanded = true }
                         ) {
                             Text(
@@ -711,7 +725,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("👤 Invité") },
+                                text = { Text("👤 ${appStrings.guest}") },
                                 onClick = {
                                     accessLevel = AccessLevel.GUEST
                                     accessMenuExpanded = false
@@ -719,7 +733,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🔐 Compte gratuit") },
+                                text = { Text("🔐 ${appStrings.freeAccount}") },
                                 onClick = {
                                     accessLevel = AccessLevel.FREE_ACCOUNT
                                     accessMenuExpanded = false
@@ -727,7 +741,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             )
 
                             DropdownMenuItem(
-                                text = { Text("👑 Premium") },
+                                text = { Text("👑 ${appStrings.premium}") },
                                 onClick = {
                                     activeTab = MainTab.PREMIUM
                                     accessMenuExpanded = false
@@ -735,7 +749,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🧪 Testeur") },
+                                text = { Text("🧪 ${appStrings.tester}") },
                                 onClick = {
                                     accessLevel = AccessLevel.TESTER
                                     accessMenuExpanded = false
@@ -769,6 +783,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     // Recherche : tout le monde
                     // Accueil
                     NavigationBarItem(
+                        modifier = Modifier.weight(1f),
                         selected = activeTab == MainTab.HOME ||
                             activeTab == MainTab.CATEGORIES,
                         onClick = {
@@ -778,16 +793,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         icon = {
                             Icon(
                                 Icons.Default.Home,
-                                contentDescription = null
+                                contentDescription = appStrings.ui(UiCopyKey.HOME_DESCRIPTION)
                             )
                         },
                         label = {
-                            Text("Accueil")
+                            BottomNavigationLabel(appStrings.ui(UiCopyKey.HOME))
                         }
                     )
 
                     // Recherche
                     NavigationBarItem(
+                        modifier = Modifier.weight(1f),
                         selected = activeTab == MainTab.SEARCH,
                         onClick = {
                             activeTab = MainTab.SEARCH
@@ -796,16 +812,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         icon = {
                             Icon(
                                 Icons.Default.Search,
-                                contentDescription = null
+                                contentDescription = appStrings.ui(UiCopyKey.SEARCH_DESCRIPTION)
                             )
                         },
                         label = {
-                            Text(appStrings.search)
+                            BottomNavigationLabel(appStrings.search)
                         }
                     )
 
                     // Favoris
                     NavigationBarItem(
+                        modifier = Modifier.weight(1f),
                         selected = activeTab == MainTab.FAVORITES,
                         onClick = {
                             openFavorites()
@@ -814,16 +831,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         icon = {
                             Icon(
                                 Icons.Default.Favorite,
-                                contentDescription = null
+                                contentDescription = appStrings.ui(UiCopyKey.FAVORITES_DESCRIPTION)
                             )
                         },
                         label = {
-                            Text(appStrings.favorites)
+                            BottomNavigationLabel(appStrings.favorites)
                         }
                     )
 
                     // Apprendre
                     NavigationBarItem(
+                        modifier = Modifier.weight(1f),
                         selected = activeTab == MainTab.LEARN,
                         onClick = {
                             activeTab = MainTab.LEARN
@@ -832,16 +850,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         icon = {
                             Icon(
                                 Icons.Default.School,
-                                contentDescription = null
+                                contentDescription = appStrings.ui(UiCopyKey.LEARN_DESCRIPTION)
                             )
                         },
                         label = {
-                            Text("Apprendre")
+                            BottomNavigationLabel(appStrings.ui(UiCopyKey.LEARN))
                         }
                     )
 
                     // Plus
                     NavigationBarItem(
+                        modifier = Modifier.weight(1f),
                         selected = activeTab == MainTab.MORE ||
                             activeTab == MainTab.PREMIUM ||
                             activeTab == MainTab.TRANSLATE ||
@@ -855,11 +874,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         icon = {
                             Icon(
                                 Icons.Default.MoreHoriz,
-                                contentDescription = null
+                                contentDescription = appStrings.ui(UiCopyKey.MORE_DESCRIPTION)
                             )
                         },
                         label = {
-                            Text("Plus")
+                            BottomNavigationLabel(appStrings.ui(UiCopyKey.MORE))
                         }
                     )
 
@@ -982,7 +1001,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             Toast.makeText(
                                 context,
-                                "Mot validé par $reviewerName",
+                                appStrings.ui(UiCopyKey.VALIDATED_BY, reviewerName),
                                 Toast.LENGTH_SHORT
                             ).show()
 
@@ -1018,6 +1037,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                 else -> when (activeTab) {
                     MainTab.PREMIUM -> PremiumScreen(
+                        strings = appStrings,
                         state = premiumState,
                         onSubscribe = { plan: PremiumPlan ->
                             val activity = context as? Activity
@@ -1027,13 +1047,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             if (activity == null || result == null) {
                                 Toast.makeText(
                                     context,
-                                    "Cette formule est temporairement indisponible.",
+                                    appStrings.ui(UiCopyKey.PLAN_UNAVAILABLE),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
                         },
                         onRestorePurchases = premiumBillingManager::restorePurchases,
-                        onManageSubscription = { openPremiumSubscriptionManagement(context) },
+                        onRetryBilling = premiumBillingManager::refreshProductDetails,
+                        onManageSubscription = { openPremiumSubscriptionManagement(context, appStrings) },
                         onBack = { activeTab = MainTab.MORE }
                     )
 
@@ -1160,6 +1181,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                     MainTab.CATEGORIES -> {
                         CategoriesScreen(
+                            strings = appStrings,
                             database = database,
                             onBack = {
                                 activeTab = MainTab.SEARCH
@@ -1203,57 +1225,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 null
                             }
 
-                        if (query.isBlank()) {
-                            val correctedWordOfDay = wordOfDay?.let(::applyCorrection)
-                            val wordOfDayHasOfficialAudio = correctedWordOfDay?.let {
-                                audioStore.hasOfficialAudio(it.id)
-                            } == true
-                            val wordOfDayHasTesterAudio = correctedWordOfDay?.let {
-                                testerName.isNotBlank() && audioStore.hasAudio(it.id, testerName)
-                            } == true
-
-                            HomeScreen(
-                                total = total,
-                                query = query,
-                                onQueryChange = {
-                                    query = it
-                                },
-                                wordOfDay = correctedWordOfDay,
-                                isWordOfDayFavorite = correctedWordOfDay?.let {
-                                    favoritesStore.isFavorite(it.id)
-                                } == true,
-                                hasWordOfDayAudio = wordOfDayHasOfficialAudio || wordOfDayHasTesterAudio,
-                                onPlayWordOfDay = {
-                                    correctedWordOfDay?.let { entry ->
-                                        if (wordOfDayHasOfficialAudio) {
-                                            audioStore.playOfficialAudio(entry.id)
-                                        } else if (wordOfDayHasTesterAudio) {
-                                            audioStore.playAudio(entry.id, testerName)
-                                        }
-                                    }
-                                },
-                                onToggleWordOfDayFavorite = {
-                                    correctedWordOfDay?.let { entry ->
-                                        updateFavorite(entry.id, !favoritesStore.isFavorite(entry.id))
-                                    }
-                                },
-                                onOpenWordOfDay = { correctedWordOfDay?.let(::openEntry) },
-                                learningProgress = (quizQuestionNumber - 1).coerceIn(0, 10) / 10f,
-                                onLearnClick = { activeTab = MainTab.LEARN },
-                                categories = homeCategories,
-                                onTranslateClick = {
-                                    pendingPhraseText = ""
-                                    translatePendingPhraseImmediately = false
-                                    activeTab = MainTab.TRANSLATE
-                                },
-                                onCategoriesClick = { activeTab = MainTab.CATEGORIES },
-                                onFavoritesClick = { openFavorites() },
-                                onHistoryClick = { openHistory() },
-                                isTester = accessLevel == AccessLevel.TESTER,
-                                toVerifyToday = (total - validatedCount).coerceAtLeast(0),
-                                onMissionClick = { activeTab = MainTab.MISSION }
-                            )
-                        } else {
                         SearchScreen(
                             categoryCount = homeCategories.size,
                             wordOfDay = wordOfDay,
@@ -1279,7 +1250,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 query = ""
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
-                                status = "Commence à écrire pour rechercher"
+                                status = appStrings.startSearching
                             },
                             strings = appStrings,
                             onOpen = ::openSearchEntry,
@@ -1324,9 +1295,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onToggleFavorite = { entry ->
                                 updateFavorite(entry.id, !favoritesStore.isFavorite(entry.id))
                             },
-                            showHomeContent = false
+                            showHomeContent = true
                         )
-                        }
                     }
 
                     MainTab.SEARCH -> {
@@ -1353,7 +1323,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 query = ""
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
-                                status = "Commence à écrire pour rechercher"
+                                status = appStrings.startSearching
                             },
 
                             strings = appStrings,
@@ -1509,7 +1479,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         ) {
 
                                             Text(
-                                                text = "Mission de $testerName",
+                                            text = appStrings.ui(UiCopyKey.MISSION_OF, testerName),
                                                 style = MaterialTheme.typography.headlineSmall,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = Color.White
@@ -1520,7 +1490,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             )
 
                                             Text(
-                                                text = "Valide, corrige et complète les mots de ta mission.",
+                                            text = appStrings.ui(UiCopyKey.MISSION_GUIDANCE),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = Color.White.copy(alpha = 0.82f)
                                             )
@@ -1530,7 +1500,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             )
 
                                             Text(
-                                                text = "${missionEntries.size} mots",
+                                                text = appStrings.ui(UiCopyKey.WORD_COUNT, missionEntries.size),
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color.White
@@ -1551,7 +1521,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(modifier = Modifier.height(6.dp))
 
                                             Text(
-                                                text = "$completedMissionCount sur ${missionEntries.size} terminés",
+                                            text = appStrings.ui(UiCopyKey.COMPLETED_COUNT, completedMissionCount, missionEntries.size),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = Color.White
                                             )
@@ -1575,9 +1545,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
                                                     Text(
                                                         if (selectedMissionCategory.isBlank()) {
-                                                            "Choisir une catégorie"
+                                                            appStrings.ui(UiCopyKey.CHOOSE_CATEGORY)
                                                         } else {
-                                                            "Catégorie : $selectedMissionCategory"
+                                                            appStrings.ui(UiCopyKey.CATEGORY_VALUE, selectedMissionCategory)
                                                         }
                                                     )
                                                 }
@@ -1656,7 +1626,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         color = if (selected) Color.White else Color(0xFF16372A)
                                                     )
                                                     Text(
-                                                        text = filter.label,
+                                                        text = appStrings.missionFilterLabel(filter),
                                                         style = MaterialTheme.typography.labelSmall,
                                                         maxLines = 1,
                                                         color = if (selected) Color.White else Color(0xFF4C554F)
@@ -1675,7 +1645,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         onValueChange = { missionQuery = it },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
-                                        label = { Text("Rechercher dans la mission") },
+                                        label = { Text(appStrings.ui(UiCopyKey.MISSION_SEARCH)) },
                                         leadingIcon = {
                                             Icon(Icons.Default.Search, contentDescription = null)
                                         }
@@ -1688,11 +1658,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     item {
                                         LibraryEmptyState(
                                             icon = Icons.Default.CheckCircle,
-                                            title = if (missionEntries.isEmpty()) "Mission vide" else "Aucun résultat",
+                                            title = if (missionEntries.isEmpty()) appStrings.ui(UiCopyKey.EMPTY_MISSION) else appStrings.ui(UiCopyKey.NO_FILTER_RESULT),
                                             message = if (missionEntries.isEmpty()) {
-                                                "Aucun mot n'est disponible pour cette catégorie."
+                                                appStrings.ui(UiCopyKey.NO_CATEGORY_WORD)
                                             } else {
-                                                "Aucun mot ne correspond à ce filtre et à cette recherche."
+                                                appStrings.ui(UiCopyKey.NO_SEARCH_FILTER_RESULT)
                                             }
                                         )
                                     }
@@ -1741,7 +1711,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 Text(
                                                     text = if (entry.saamaka.isBlank()) {
-                                                        "Saamaka : à compléter"
+                                                        appStrings.ui(UiCopyKey.SAAMAKA_TO_COMPLETE)
                                                     } else {
                                                         "Saamaka : ${entry.saamaka}"
                                                     },
@@ -1753,7 +1723,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 )
 
                                                 Text(
-                                                    text = classification.visualStatus.label,
+                                                    text = appStrings.missionStatusLabel(classification.visualStatus),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = when {
@@ -1780,10 +1750,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     }
 
                     MainTab.FAVORITES -> SavedScreen(
+                        strings = appStrings,
                         title = if (favoriteResults.isEmpty()) {
-                            "Aucun favori"
+                            appStrings.ui(UiCopyKey.NO_FAVORITE)
                         } else {
-                            "${favoriteResults.size} favori(s)"
+                            appStrings.ui(UiCopyKey.FAVORITES_COUNT, favoriteResults.size)
                         },
                         entries = favoriteResults,
                         onOpen = ::openEntry,
@@ -1792,8 +1763,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             coroutineScope.launch {
                                 val result = snackbarHostState.showSnackbar(
-                                    message = "Retiré des favoris",
-                                    actionLabel = "Annuler",
+                                    message = appStrings.ui(UiCopyKey.REMOVED_FROM_FAVORITES),
+                                    actionLabel = appStrings.cancel,
                                     withDismissAction = true,
                                     duration = SnackbarDuration.Long
                                 )
@@ -1809,6 +1780,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
 
                     MainTab.HISTORY -> HistoryScreen(
+                        strings = appStrings,
                         entries = historyResults,
                         onClear = {
                             historyStore.clear()
@@ -1823,8 +1795,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                 coroutineScope.launch {
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "Retiré de l’historique",
-                                        actionLabel = "Annuler",
+                                        message = appStrings.ui(UiCopyKey.REMOVED_FROM_HISTORY),
+                                        actionLabel = appStrings.cancel,
                                         withDismissAction = true,
                                         duration = SnackbarDuration.Long
                                     )
@@ -1966,7 +1938,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         val continueSection =
                             if (reviewWordIds.isNotEmpty()) "WORDS" else learnSection
                         val continueLabel = when (continueSection) {
-                            "WORDS" -> "Révision des mots"
+                            "WORDS" -> appStrings.ui(UiCopyKey.WORD_REVIEW)
                             "PHRASES" -> "Phrases"
                             "GAMES" -> "Jeu d’association"
                             else -> "Quiz du jour"
@@ -1999,14 +1971,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         ) {
 
                             Text(
-                                text = "Apprendre",
+                                text = appStrings.ui(UiCopyKey.LEARN),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF16372A)
                             )
 
                             Text(
-                                text = "Progresse à ton rythme, un mot après l’autre",
+                                text = appStrings.ui(UiCopyKey.LEARN_AT_YOUR_PACE),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color(0xFF68736C)
                             )
@@ -2026,7 +1998,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 ) {
 
                                     Text(
-                                        text = "Ma progression",
+                                        text = appStrings.ui(UiCopyKey.MY_PROGRESS),
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color.White
@@ -2035,7 +2007,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     Spacer(Modifier.height(4.dp))
 
                                     Text(
-                                        text = "Ton parcours d'apprentissage",
+                                        text = appStrings.ui(UiCopyKey.LEARNING_PATH),
                                         fontSize = 12.sp,
                                         color = Color.White.copy(alpha = 0.78f)
                                     )
@@ -2052,7 +2024,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     Spacer(Modifier.height(6.dp))
 
                                     Text(
-                                        text = "${(globalLearningProgress * 100).toInt()} % du parcours",
+                                        text = appStrings.ui(UiCopyKey.PATH_PERCENT, (globalLearningProgress * 100).toInt()),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Color.White.copy(alpha = 0.86f)
@@ -2062,9 +2034,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                     val progressStats = listOf(
                                         knownWordIds.size to "Mots appris",
-                                        reviewWordIds.size to "À revoir",
+                                        reviewWordIds.size to appStrings.ui(UiCopyKey.REVIEW),
                                         quizQuestionNumber to "Aujourd’hui",
-                                        matchingPerfectGames to "Série parfaite"
+                                        matchingPerfectGames to appStrings.ui(UiCopyKey.PERFECT_STREAK)
                                     )
 
                                     BoxWithConstraints(
@@ -2125,7 +2097,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("Continuer l’apprentissage", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                                        Text(appStrings.ui(UiCopyKey.CONTINUE_LEARNING), fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
                                         Text(continueLabel, fontSize = 13.sp, color = Color(0xFF705A1D))
                                     }
                                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF0B5D3B))
@@ -2134,17 +2106,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             Spacer(Modifier.height(14.dp))
 
-                            Text("Choisir une activité", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                            Text(appStrings.ui(UiCopyKey.CHOOSE_ACTIVITY), fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
                             Spacer(Modifier.height(8.dp))
 
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    LearnAccessCard("Quiz", "Questions rapides", "QUIZ", learnSection, Modifier.weight(1f)) { learnSection = it }
-                                    LearnAccessCard("Révision", "Revoir les mots", "WORDS", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.QUIZ), appStrings.ui(UiCopyKey.QUICK_QUESTIONS), "QUIZ", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.REVIEW_ACTIVITY), appStrings.ui(UiCopyKey.REVIEW_WORDS), "WORDS", learnSection, Modifier.weight(1f)) { learnSection = it }
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    LearnAccessCard("Phrases", "Expressions utiles", "PHRASES", learnSection, Modifier.weight(1f)) { learnSection = it }
-                                    LearnAccessCard("Jeux", "Associer les mots", "GAMES", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.PHRASES), appStrings.ui(UiCopyKey.USEFUL_EXPRESSIONS), "PHRASES", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.GAMES), appStrings.ui(UiCopyKey.MATCH_WORDS), "GAMES", learnSection, Modifier.weight(1f)) { learnSection = it }
                                 }
                             }
 
@@ -2168,7 +2140,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         ) {
 
                                             Text(
-                                                text = "Quiz du jour",
+                                                text = appStrings.ui(UiCopyKey.TODAY_QUIZ),
                                                 fontSize = 20.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF16372A)
@@ -2177,7 +2149,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(6.dp))
 
                                             Text(
-                                                text = "Question $quizQuestionNumber",
+                                                text = appStrings.ui(UiCopyKey.QUESTION_NUMBER, quizQuestionNumber),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
@@ -2188,7 +2160,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 color = Color(0xFFFFEFC4)
                                             ) {
                                                 Text(
-                                                    text = "Score  $quizScore",
+                                                    text = appStrings.ui(UiCopyKey.SCORE_VALUE, quizScore),
                                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
@@ -2197,7 +2169,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             }
 
                                             Text(
-                                                text = "Teste tes connaissances en Saamaka",
+                                                text = appStrings.ui(UiCopyKey.TEST_KNOWLEDGE),
                                                 fontSize = 13.sp,
                                                 color = Color(0xFF68736C)
                                             )
@@ -2214,7 +2186,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
 
                                                     Text(
-                                                        text = "Que signifie ce mot ?",
+                                                        text = appStrings.ui(UiCopyKey.WHAT_DOES_WORD_MEAN),
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF68736C)
                                                     )
@@ -2347,7 +2319,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
 
                                                     Text(
-                                                        text = "✅ Bonne réponse",
+                                                        text = appStrings.ui(UiCopyKey.GOOD_ANSWER),
                                                         fontSize = 13.sp,
                                                         fontWeight =
                                                             FontWeight.SemiBold,
@@ -2358,7 +2330,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 } else {
 
                                                     Text(
-                                                        text = "❌ Mauvaise réponse",
+                                                        text = appStrings.ui(UiCopyKey.WRONG_ANSWER),
                                                         fontSize = 13.sp,
                                                         fontWeight =
                                                             FontWeight.SemiBold,
@@ -2372,7 +2344,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                     Text(
                                                         text =
-                                                            "✅ Réponse correcte : $correctAnswer",
+                                                        appStrings.ui(UiCopyKey.CORRECT_ANSWER, correctAnswer),
                                                         fontSize = 13.sp,
                                                         fontWeight =
                                                             FontWeight.SemiBold,
@@ -2409,7 +2381,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         )
                                                 ) {
                                                     Text(
-                                                        text = "Suivant",
+                                                        text = appStrings.ui(UiCopyKey.NEXT),
                                                         color = Color.White
                                                     )
                                                 }
@@ -2434,7 +2406,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         ) {
 
                                             Text(
-                                                text = "Révision des mots",
+                                                text = appStrings.ui(UiCopyKey.WORD_REVIEW),
                                                 fontSize = 20.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF16372A)
@@ -2443,7 +2415,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(6.dp))
 
                                             Text(
-                                                text = "Révise ton vocabulaire Saamaka",
+                                                text = appStrings.ui(UiCopyKey.REVIEW_VOCABULARY),
                                                 fontSize = 13.sp,
                                                 color = Color(0xFF68736C)
                                             )
@@ -2451,7 +2423,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(8.dp))
 
                                             Text(
-                                                text = "✅ Je connais : $knownWordsCount   •   🔁 À revoir : $reviewWordsCount",
+                                                text = appStrings.ui(UiCopyKey.I_KNOW_REVIEW, knownWordsCount, reviewWordsCount),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
@@ -2508,7 +2480,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         ) {
                                                             Icon(Icons.Default.PlayArrow, contentDescription = null)
                                                             Spacer(Modifier.width(6.dp))
-                                                            Text("Écouter")
+                                                    Text(appStrings.ui(UiCopyKey.LISTEN))
                                                         }
                                                     }
                                                 }
@@ -2591,7 +2563,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     shape =
                                                         RoundedCornerShape(14.dp)
                                                 ) {
-                                                    Text("À revoir")
+                                                    Text(appStrings.ui(UiCopyKey.REVIEW))
                                                 }
 
                                                 Button(
@@ -2669,7 +2641,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         )
                                                 ) {
                                                     Text(
-                                                        text = "Je connais",
+                                                        text = appStrings.ui(UiCopyKey.I_KNOW),
                                                         color = Color.White
                                                     )
                                                 }
@@ -2694,7 +2666,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         ) {
 
                                             Text(
-                                                text = "Phrases",
+                                                text = appStrings.ui(UiCopyKey.PHRASES),
                                                 fontSize = 20.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF16372A)
@@ -2703,7 +2675,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(6.dp))
 
                                             Text(
-                                                text = "Découvre des expressions courtes en Saamaka",
+                                                text = appStrings.ui(UiCopyKey.SHORT_EXPRESSIONS),
                                                 fontSize = 13.sp,
                                                 color = Color(0xFF68736C)
                                             )
@@ -2711,7 +2683,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(8.dp))
 
                                             Text(
-                                                text = "✅ Je connais : ${phraseKnownIds.size}   •   🔁 À revoir : ${phraseReviewIds.size}",
+                                                text = appStrings.ui(UiCopyKey.I_KNOW_REVIEW, phraseKnownIds.size, phraseReviewIds.size),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
@@ -2809,7 +2781,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     modifier = Modifier.weight(1f),
                                                     shape = RoundedCornerShape(14.dp)
                                                 ) {
-                                                    Text("À revoir")
+                                                    Text(appStrings.ui(UiCopyKey.REVIEW))
                                                 }
 
                                                 Button(
@@ -2872,7 +2844,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     )
                                                 ) {
                                                     Text(
-                                                        text = "Je connais",
+                                                        text = appStrings.ui(UiCopyKey.I_KNOW),
                                                         color = Color.White
                                                     )
                                                 }
@@ -2897,7 +2869,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         ) {
 
                                             Text(
-                                                text = "🧩 Associer les mots",
+                                                text = appStrings.ui(UiCopyKey.MATCH_WORDS_TITLE),
                                                 fontSize = 16.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF16372A)
@@ -2915,7 +2887,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
 
                                                     Text(
-                                                        text = "Mes statistiques",
+                                                        text = appStrings.ui(UiCopyKey.MY_STATISTICS),
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Color(0xFF16372A)
@@ -2924,25 +2896,25 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     Spacer(Modifier.height(6.dp))
 
                                                     Text(
-                                                        text = "🎮 Parties : $matchingGamesPlayed",
+                                                        text = appStrings.ui(UiCopyKey.GAMES_COUNT, matchingGamesPlayed),
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF2E332F)
                                                     )
 
                                                     Text(
-                                                        text = "✅ Associations réussies : $matchingTotalCorrect",
+                                                        text = appStrings.ui(UiCopyKey.CORRECT_MATCHES, matchingTotalCorrect),
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF2E332F)
                                                     )
 
                                                     Text(
-                                                        text = "❌ Erreurs : $matchingTotalErrors",
+                                                        text = appStrings.ui(UiCopyKey.ERRORS_STAT, matchingTotalErrors),
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF2E332F)
                                                     )
 
                                                     Text(
-                                                        text = "🏆 Parties parfaites : $matchingPerfectGames",
+                                                        text = appStrings.ui(UiCopyKey.PERFECT_GAMES, matchingPerfectGames),
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF2E332F)
                                                     )
@@ -2952,7 +2924,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(4.dp))
 
                                             Text(
-                                                text = "Choisis un mot Saamaka puis sa traduction",
+                                                text = appStrings.ui(UiCopyKey.CHOOSE_SAAMAKA_THEN_TRANSLATION),
                                                 fontSize = 12.sp,
                                                 color = Color(0xFF68736C)
                                             )
@@ -2960,7 +2932,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(8.dp))
 
                                             Text(
-                                                text = "Score : ${matchedEntryIds.size}/${matchingEntries.size} • Erreurs : $matchingErrors",
+                                                text = appStrings.ui(UiCopyKey.GAME_SCORE, matchedEntryIds.size, matchingEntries.size, matchingErrors),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = Color(0xFF0B5D3B)
@@ -2998,7 +2970,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
 
                                                     Text(
-                                                        text = "Saamaka",
+                                                        text = appStrings.saamaka,
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Color(0xFF16372A)
@@ -3063,7 +3035,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 ) {
 
                                                     Text(
-                                                        text = "Français",
+                                                        text = appStrings.french,
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Color(0xFF16372A)
@@ -3087,7 +3059,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                                     if (saamakaSelection == null) {
 
                                                                         matchingFeedback =
-                                                                            "ℹ️ Choisis d'abord un mot Saamaka."
+                                                                appStrings.ui(UiCopyKey.CHOOSE_SAAMAKA_FIRST)
 
                                                                     } else if (
                                                                         saamakaSelection.id == entry.id
@@ -3189,7 +3161,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     ) {
 
                                                     Text(
-                                                        text = "🎉 Partie terminée !",
+                                                        text = appStrings.ui(UiCopyKey.GAME_FINISHED),
                                                         fontSize = 15.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Color(0xFF0B5D3B)
@@ -3198,7 +3170,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     Spacer(Modifier.height(4.dp))
 
                                                     Text(
-                                                        text = "✅ ${matchedEntryIds.size}/${matchingEntries.size} associations réussies",
+                                                        text = appStrings.ui(UiCopyKey.SUCCESSFUL_MATCHES, matchedEntryIds.size, matchingEntries.size),
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.SemiBold,
                                                         color = Color(0xFF0B5D3B)
@@ -3207,7 +3179,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     Spacer(Modifier.height(2.dp))
 
                                                     Text(
-                                                        text = "❌ $matchingErrors erreur(s)",
+                                                        text = appStrings.ui(UiCopyKey.ERRORS_COUNT, matchingErrors),
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.SemiBold,
                                                         color = if (matchingErrors == 0) {
@@ -3222,13 +3194,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     Text(
                                                         text = when {
                                                             matchingErrors == 0 ->
-                                                                "Excellent ! Aucune erreur 👏"
+                                                                appStrings.ui(UiCopyKey.EXCELLENT_NO_ERROR)
 
                                                             matchingErrors <= 2 ->
-                                                                "Très bien ! Continue comme ça 👍"
+                                                                appStrings.ui(UiCopyKey.VERY_GOOD)
 
                                                             else ->
-                                                                "Bien joué ! Encore un peu d'entraînement 💪"
+                                                                appStrings.ui(UiCopyKey.WELL_DONE)
                                                         },
                                                         fontSize = 12.sp,
                                                         color = Color(0xFF68736C)
@@ -3282,7 +3254,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     )
                                                 ) {
                                                     Text(
-                                                        text = "Nouvelle partie",
+                                                        text = appStrings.ui(UiCopyKey.NEW_GAME),
                                                         color = Color.White
                                                     )
                                                 }
@@ -3297,12 +3269,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     MainTab.MORE -> {
                         val historyCount = historyStore.ids().size
                         val correctionsCount = reviewStore.all().size
-                        val versionName = remember(context) {
+                        val installedVersionName = remember(context) {
                             context.packageManager
                                 .getPackageInfo(context.packageName, 0)
                                 .versionName
-                                .orEmpty()
                         }
+                        val versionName = installedVersionName ?: appStrings.notSpecified
                         var showAboutDialog by remember {
                             mutableStateOf(false)
                         }
@@ -3319,21 +3291,21 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 },
                                 title = {
                                     Text(
-                                        text = "Dictionnaire Saamaka",
+                                        text = appStrings.dictionaryTitle,
                                         fontWeight = FontWeight.Bold
                                     )
                                 },
                                 text = {
                                     Column {
                                         Text(
-                                            text = "Version $versionName",
+                                            text = appStrings.ui(UiCopyKey.VERSION, versionName),
                                             style = MaterialTheme.typography.bodyMedium
                                         )
 
                                         Spacer(Modifier.height(12.dp))
 
                                         Text(
-                                            text = "© 2026 Fabien Roche. Tous droits réservés.",
+                                        text = appStrings.ui(UiCopyKey.COPYRIGHT),
                                             style = MaterialTheme.typography.bodyMedium
                                         )
                                     }
@@ -3342,7 +3314,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     TextButton(
                                         onClick = { showAboutDialog = false }
                                     ) {
-                                        Text("Fermer")
+                                        Text(appStrings.ui(UiCopyKey.CLOSE))
                                     }
                                 }
                             )
@@ -3356,14 +3328,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "Plus",
+                                text = appStrings.ui(UiCopyKey.MORE),
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF16372A)
                             )
 
                             Text(
-                                text = "Outils, historique et espace testeur",
+                                text = appStrings.ui(UiCopyKey.MORE_SUBTITLE),
                                 fontSize = 13.sp,
                                 color = Color(0xFF68736C)
                             )
@@ -3371,7 +3343,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             Spacer(Modifier.height(4.dp))
 
                             Text(
-                                text = "Explorer",
+                                text = appStrings.ui(UiCopyKey.EXPLORE),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF16372A)
@@ -3379,33 +3351,33 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             MoreAccessCard(
                                 icon = Icons.Default.Translate,
-                                title = "Traduire",
-                                description = "Français ↔ Saamaka",
+                                title = appStrings.translate,
+                                description = appStrings.ui(UiCopyKey.TRANSLATE_SUBTITLE),
                                 onClick = { activeTab = MainTab.TRANSLATE }
                             )
 
                             MoreAccessCard(
                                 icon = Icons.AutoMirrored.Filled.MenuBook,
-                                title = "Catégories",
-                                description = "Explorer les mots par thème",
+                                title = appStrings.ui(UiCopyKey.CATEGORIES),
+                                description = appStrings.ui(UiCopyKey.CATEGORIES_SUBTITLE),
                                 onClick = { activeTab = MainTab.CATEGORIES }
                             )
 
                             MoreAccessCard(
                                 icon = Icons.Default.History,
-                                title = "Historique",
-                                description = "Retrouver les mots consultés",
+                                title = appStrings.history,
+                                description = appStrings.ui(UiCopyKey.HISTORY_SUBTITLE),
                                 badge = historyCount.toString(),
                                 onClick = ::openHistory
                             )
 
                             MoreAccessCard(
                                 icon = Icons.Default.Favorite,
-                                title = "DicoSaam Premium",
+                                title = appStrings.ui(UiCopyKey.PREMIUM_TITLE),
                                 description = if (premiumState.isPremium) {
-                                    "Abonnement actif"
+                                    appStrings.ui(UiCopyKey.SUBSCRIPTION_ACTIVE)
                                 } else {
-                                    "Mensuel ou annuel"
+                                    appStrings.ui(UiCopyKey.MONTHLY_OR_ANNUAL)
                                 },
                                 onClick = { activeTab = MainTab.PREMIUM }
                             )
@@ -3427,7 +3399,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "Espace testeur",
+                                                text = appStrings.ui(UiCopyKey.TESTER_SPACE),
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFF16372A)
@@ -3440,7 +3412,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 color = Color(0xFFFFEFC4)
                                             ) {
                                                 Text(
-                                                    text = "TESTEUR",
+                                                    text = appStrings.tester.uppercase(Locale.ROOT),
                                                     modifier = Modifier.padding(
                                                         horizontal = 8.dp,
                                                         vertical = 3.dp
@@ -3454,16 +3426,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                         MoreAccessCard(
                                             icon = Icons.Default.CheckCircle,
-                                            title = "Mission testeur",
-                                            description = "Valider et corriger les mots",
+                                            title = appStrings.ui(UiCopyKey.TESTER_MISSION),
+                                            description = appStrings.ui(UiCopyKey.TESTER_MISSION_SUBTITLE),
                                             containerColor = Color(0xFFFFFBF3),
                                             onClick = { activeTab = MainTab.MISSION }
                                         )
 
                                         MoreAccessCard(
                                             icon = Icons.Default.Settings,
-                                            title = "Corrections",
-                                            description = "Exports et travail testeur",
+                                            title = appStrings.corrections,
+                                            description = appStrings.ui(UiCopyKey.TESTER_EXPORTS),
                                             badge = correctionsCount.toString(),
                                             containerColor = Color(0xFFFFFBF3),
                                             onClick = { activeTab = MainTab.CORRECTIONS }
@@ -3476,8 +3448,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             MoreAccessCard(
                                 icon = Icons.Default.Info,
-                                title = "À propos",
-                                description = "Dictionnaire Saamaka • version $versionName",
+                                title = appStrings.ui(UiCopyKey.ABOUT),
+                                description = "${appStrings.dictionaryTitle} • ${appStrings.ui(UiCopyKey.VERSION, versionName)}",
                                 onClick = { showAboutDialog = true }
                             )
                         }
@@ -3547,6 +3519,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             )
 
                             shareFile(
+                                strings = appStrings,
                                 context = context,
                                 file = zipFile,
                                 subject = "Travail testeur Saamaka Dico",
@@ -3559,7 +3532,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             correctionStore.clear()
                             Toast.makeText(
                                 context,
-                                "Corrections locales effacées",
+                                appStrings.ui(UiCopyKey.LOCAL_CORRECTIONS_CLEARED),
                                 Toast.LENGTH_SHORT
                             ).show()
                         },
@@ -3568,7 +3541,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             validatedCount = 0
                             Toast.makeText(
                                 context,
-                                "Validations effacées",
+                                appStrings.ui(UiCopyKey.LOCAL_VALIDATIONS_CLEARED),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -3596,7 +3569,7 @@ private fun TesterNameSetupScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "Bienvenue dans Saamaka Dico",
+            strings.ui(UiCopyKey.WELCOME),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -3604,8 +3577,7 @@ private fun TesterNameSetupScreen(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            "Avant de commencer, indiquez votre nom. " +
-                    "Il sera associé à vos validations, corrections et enregistrements audio."
+            strings.ui(UiCopyKey.ENTER_NAME_INTRO)
         )
 
         Spacer(Modifier.height(20.dp))
@@ -3637,6 +3609,7 @@ private fun TesterNameSetupScreen(
 
 @Composable
 private fun SavedScreen(
+    strings: AppStrings,
     title: String,
     entries: List<DictionaryEntry>,
     onOpen: (DictionaryEntry) -> Unit,
@@ -3675,7 +3648,7 @@ private fun SavedScreen(
 
                 Column {
                     Text(
-                        text = "Mes favoris",
+                        text = strings.ui(UiCopyKey.MY_FAVORITES),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -3694,13 +3667,14 @@ private fun SavedScreen(
         if (entries.isEmpty()) {
             LibraryEmptyState(
                 icon = Icons.Default.FavoriteBorder,
-                title = "Aucun favori",
-                message = "Ajoute des mots à tes favoris pour les retrouver ici.",
-                actionLabel = "Rechercher un mot",
+                title = strings.ui(UiCopyKey.NO_FAVORITE),
+                message = strings.ui(UiCopyKey.FAVORITES_EMPTY_HELP),
+                actionLabel = strings.searchPlaceholder,
                 onAction = onSearch
             )
         } else {
             FavoritesList(
+                strings = strings,
                 entries = entries,
                 onOpen = onOpen,
                 onRemove = onRemove
@@ -3712,6 +3686,7 @@ private fun SavedScreen(
 
 @Composable
 private fun HistoryScreen(
+    strings: AppStrings,
     entries: List<DictionaryEntry>,
     onClear: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit,
@@ -3723,11 +3698,11 @@ private fun HistoryScreen(
     if (showClearConfirmation) {
         AlertDialog(
             onDismissRequest = { showClearConfirmation = false },
-            title = { Text("Effacer l’historique ?") },
-            text = { Text("Tous les mots consultés seront supprimés.") },
+            title = { Text(strings.ui(UiCopyKey.CLEAR_HISTORY_TITLE)) },
+            text = { Text(strings.ui(UiCopyKey.CLEAR_HISTORY_MESSAGE)) },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmation = false }) {
-                    Text("Annuler")
+                    Text(strings.cancel)
                 }
             },
             confirmButton = {
@@ -3740,7 +3715,7 @@ private fun HistoryScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Tout effacer")
+                    Text(strings.ui(UiCopyKey.CLEAR_ALL))
                 }
             }
         )
@@ -3771,7 +3746,7 @@ private fun HistoryScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Historique",
+                        text = strings.history,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -3781,9 +3756,9 @@ private fun HistoryScreen(
 
                     Text(
                         text = if (entries.isEmpty()) {
-                            "Aucun mot consulté récemment"
+                            strings.ui(UiCopyKey.NO_RECENT_WORDS)
                         } else {
-                            "${entries.size} mot(s) récent(s)"
+                            strings.ui(UiCopyKey.RECENT_WORDS, entries.size)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.8f)
@@ -3798,7 +3773,7 @@ private fun HistoryScreen(
                         disabledContentColor = Color.White.copy(alpha = 0.35f)
                     )
                 ) {
-                    Text(text = "Tout effacer", fontWeight = FontWeight.SemiBold)
+                    Text(text = strings.ui(UiCopyKey.CLEAR_ALL), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -3808,13 +3783,14 @@ private fun HistoryScreen(
         if (entries.isEmpty()) {
             LibraryEmptyState(
                 icon = Icons.Default.History,
-                title = "Historique vide",
-                message = "Les mots que tu consulteras apparaîtront ici.",
-                actionLabel = "Rechercher un mot",
+                title = strings.history,
+                message = strings.ui(UiCopyKey.EMPTY_HISTORY_HELP),
+                actionLabel = strings.searchPlaceholder,
                 onAction = onSearch
             )
         } else {
             HistoryList(
+                strings = strings,
                 entries = entries,
                 onOpen = onOpen,
                 onRemove = onRemove
@@ -3869,7 +3845,7 @@ private fun CorrectionsScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Espace corrections",
+                        text = strings.ui(UiCopyKey.CORRECTIONS_SPACE),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -3878,7 +3854,7 @@ private fun CorrectionsScreen(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Valide, corrige et exporte ton travail de testeur.",
+                        text = strings.ui(UiCopyKey.TESTER_WORK_GUIDANCE),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.82f)
                     )
@@ -3893,10 +3869,10 @@ private fun CorrectionsScreen(
                 onValueChange = { },
                 modifier = Modifier.fillMaxWidth(),
                 label = {
-                    Text("Testeur")
+                    Text(strings.tester)
                 },
                 supportingText = {
-                    Text("Identité enregistrée et protégée")
+                    Text(strings.ui(UiCopyKey.SAVED_IDENTITY))
                 },
                 singleLine = true,
                 readOnly = true,
@@ -3924,7 +3900,7 @@ private fun CorrectionsScreen(
                 ) {
 
                     Text(
-                        text = "Résumé du travail",
+                        text = strings.ui(UiCopyKey.WORK_SUMMARY),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF16372A)
@@ -3973,7 +3949,7 @@ private fun CorrectionsScreen(
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "$validatedCount validation(s) locale(s)",
+                        text = strings.ui(UiCopyKey.LOCAL_VALIDATIONS_COUNT, validatedCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF68736C)
                     )
@@ -4088,7 +4064,7 @@ private fun CorrectionsScreen(
 
                 Spacer(Modifier.width(8.dp))
 
-                Text("Exporter mon travail")
+                Text(strings.ui(UiCopyKey.EXPORT_MY_WORK))
             }
 
             Spacer(Modifier.height(8.dp))
@@ -4098,7 +4074,7 @@ private fun CorrectionsScreen(
                 shape = RoundedCornerShape(14.dp),
                 onClick = onClearCorrections
             ) {
-                Text("Effacer les corrections locales")
+                Text(strings.ui(UiCopyKey.CLEAR_LOCAL_CORRECTIONS))
             }
 
             Spacer(Modifier.height(8.dp))
@@ -4108,7 +4084,7 @@ private fun CorrectionsScreen(
                 shape = RoundedCornerShape(14.dp),
                 onClick = onClearValidations
             ) {
-                Text("Effacer les validations locales")
+                Text(strings.ui(UiCopyKey.CLEAR_LOCAL_VALIDATIONS))
             }
 
             Spacer(Modifier.height(18.dp))
@@ -4125,7 +4101,7 @@ private fun CorrectionsScreen(
                 ) {
 
                     Text(
-                        text = "Consignes",
+                        text = strings.ui(UiCopyKey.INSTRUCTIONS),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF16372A)
@@ -4465,7 +4441,7 @@ private fun NewEntryProposalDialog(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) startRecording()
-        else Toast.makeText(context, "Permission microphone refusée", Toast.LENGTH_SHORT).show()
+        else Toast.makeText(context, strings.ui(UiCopyKey.MICROPHONE_DENIED), Toast.LENGTH_SHORT).show()
     }
 
     AlertDialog(
@@ -4602,6 +4578,7 @@ private fun NewEntryProposalDialog(
 
 @Composable
 private fun FavoritesList(
+    strings: AppStrings,
     entries: List<DictionaryEntry>,
     onOpen: (DictionaryEntry) -> Unit,
     onRemove: (DictionaryEntry) -> Unit
@@ -4635,14 +4612,14 @@ private fun FavoritesList(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Français",
+                            text = strings.french,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = entry.french.ifBlank { "À compléter" },
+                            text = entry.french.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF16372A),
@@ -4651,14 +4628,14 @@ private fun FavoritesList(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            text = "Saamaka",
+                            text = strings.saamaka,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = entry.saamaka.ifBlank { "À compléter" },
+                            text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color(0xFF0B5D3B),
                             maxLines = 2,
@@ -4672,7 +4649,7 @@ private fun FavoritesList(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Favorite,
-                            contentDescription = "Retirer des favoris",
+                            contentDescription = strings.removeFavorite,
                             tint = Color(0xFF0B5D3B)
                         )
                     }
@@ -4684,6 +4661,7 @@ private fun FavoritesList(
 
 @Composable
 private fun HistoryList(
+    strings: AppStrings,
     entries: List<DictionaryEntry>,
     onOpen: (DictionaryEntry) -> Unit,
     onRemove: (DictionaryEntry) -> Unit
@@ -4717,14 +4695,14 @@ private fun HistoryList(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Français",
+                            text = strings.french,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = entry.french.ifBlank { "À compléter" },
+                            text = entry.french.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF16372A),
@@ -4733,14 +4711,14 @@ private fun HistoryList(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            text = "Saamaka",
+                            text = strings.saamaka,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = entry.saamaka.ifBlank { "À compléter" },
+                            text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color(0xFF0B5D3B),
                             maxLines = 2,
@@ -4754,7 +4732,7 @@ private fun HistoryList(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Retirer de l’historique",
+                            contentDescription = strings.ui(UiCopyKey.REMOVE_FROM_HISTORY),
                             tint = Color(0xFF68736C),
                             modifier = Modifier.size(20.dp)
                         )
@@ -4774,6 +4752,7 @@ private fun HistoryList(
 
 @Composable
 private fun EntryList(
+    strings: AppStrings,
     entries: List<DictionaryEntry>,
     selectedLanguage: AppLanguage,
     onOpen: (DictionaryEntry) -> Unit,
@@ -4838,7 +4817,7 @@ private fun EntryList(
                     if (isValidated(entry.id)) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Validé",
+                            contentDescription = strings.verified,
                             tint = MaterialTheme.colorScheme.primary
                         )
                     } else {
@@ -4922,7 +4901,7 @@ private fun DetailScreen(
             if (!granted) {
                 Toast.makeText(
                     context,
-                    "Permission microphone refusée",
+                    strings.ui(UiCopyKey.MICROPHONE_DENIED),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -4975,7 +4954,7 @@ private fun DetailScreen(
             ) {
                 Text(
                     text = deletionProposal?.let { strings.deletionProposed }
-                        ?: classification.visualStatus.label,
+                        ?: strings.missionStatusLabel(classification.visualStatus),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
@@ -5018,7 +4997,7 @@ private fun DetailScreen(
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
-                                    text = "Saamaka",
+                                    text = strings.saamaka,
                                     modifier = Modifier.padding(
                                         horizontal = 10.dp,
                                         vertical = 4.dp
@@ -5033,7 +5012,7 @@ private fun DetailScreen(
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = entry.saamaka.ifBlank { "À compléter" },
+                                    text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
                                     modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.headlineLarge,
                                     fontWeight = FontWeight.ExtraBold,
@@ -5094,7 +5073,7 @@ private fun DetailScreen(
                     Spacer(Modifier.height(14.dp))
 
                     Text(
-                        text = "Langues disponibles",
+                        text = strings.ui(UiCopyKey.AVAILABLE_LANGUAGES),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF16372A)
@@ -5139,7 +5118,7 @@ private fun DetailScreen(
                     if (entry.categorie.isNotBlank()) {
                         Spacer(Modifier.height(12.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Catégorie", fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                            Text(strings.category, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
                             Spacer(Modifier.width(8.dp))
                             Surface(shape = RoundedCornerShape(50), color = Color(0xFFFFEFC4)) {
                                 Text(
@@ -5241,7 +5220,7 @@ private fun DetailScreen(
                                     Spacer(Modifier.height(2.dp))
 
                                     Text(
-                                        text = "Locuteur : $testerName",
+                                        text = strings.ui(UiCopyKey.SPEAKER_VALUE, testerName),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -5259,7 +5238,7 @@ private fun DetailScreen(
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Écouter la prononciation")
+                            Text(strings.ui(UiCopyKey.LISTEN_PRONUNCIATION))
                         }
                         Spacer(Modifier.height(8.dp))
                     }
@@ -5551,8 +5530,11 @@ private fun MissionValidationCard(
 
             Text(
                 text = when {
-                    isValidated -> "Cette entrée est déjà validée. Une seconde validation identique est désactivée."
-                    policy.missingMessage != null -> "${policy.missingMessage}. Propose le texte manquant avec Corriger avant de valider."
+                    isValidated -> strings.ui(UiCopyKey.ENTRY_ALREADY_VALIDATED)
+                    policy.missingMessage != null -> strings.ui(
+                        UiCopyKey.MISSING_BEFORE_VALIDATE,
+                        strings.missionMissingMessage(policy.missingMessage)
+                    )
                     else -> strings.validationExplanation
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -5770,6 +5752,7 @@ private fun MoreAccessCard(
 
 @Composable
 private fun CategoriesScreen(
+    strings: AppStrings,
     database: DictionaryDatabase,
     onBack: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit
@@ -5854,7 +5837,7 @@ private fun CategoriesScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("Catégories", fontWeight = FontWeight.SemiBold)
+                            Text(strings.ui(UiCopyKey.CATEGORIES), fontWeight = FontWeight.SemiBold)
                         }
 
                         Spacer(Modifier.height(8.dp))
@@ -5869,7 +5852,7 @@ private fun CategoriesScreen(
                         Spacer(Modifier.height(4.dp))
 
                         Text(
-                            text = "${categoryEntries.size} mot${if (categoryEntries.size > 1) "s" else ""} à découvrir",
+                            text = strings.ui(UiCopyKey.WORDS_TO_DISCOVER, categoryEntries.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(alpha = 0.82f)
                         )
@@ -5993,13 +5976,13 @@ private fun CategoriesScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text("Retour", fontWeight = FontWeight.SemiBold)
+                        Text(strings.back.removePrefix("← "), fontWeight = FontWeight.SemiBold)
                     }
 
                     Spacer(Modifier.height(8.dp))
 
                     Text(
-                        text = "Catégories",
+                        text = strings.ui(UiCopyKey.CATEGORIES),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
@@ -6008,7 +5991,7 @@ private fun CategoriesScreen(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Explore le vocabulaire par thème",
+                        text = strings.ui(UiCopyKey.EXPLORE_VOCABULARY),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.84f)
                     )
@@ -6020,7 +6003,7 @@ private fun CategoriesScreen(
                         color = Color.White.copy(alpha = 0.13f)
                     ) {
                         Text(
-                            text = "${categories.size} thèmes • ${allEntries.size} mots et expressions",
+                            text = strings.ui(UiCopyKey.THEMES_AND_WORDS, categories.size, allEntries.size),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -6089,7 +6072,7 @@ private fun CategoriesScreen(
                         Spacer(Modifier.height(2.dp))
 
                         Text(
-                            text = "$count mot${if (count > 1) "s" else ""}",
+                            text = strings.ui(UiCopyKey.WORD_COUNT, count),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF68736C)
                         )
@@ -6141,7 +6124,7 @@ private fun CorrectionForm(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Proposer une correction",
+                        text = strings.proposeCorrection,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -6150,7 +6133,7 @@ private fun CorrectionForm(
                     Spacer(Modifier.height(4.dp))
 
                     Text(
-                        text = "Modifie uniquement les éléments qui doivent être corrigés.",
+                        text = strings.ui(UiCopyKey.EDIT_CORRECTION_HELP),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -6168,7 +6151,7 @@ private fun CorrectionForm(
                     Text(strings.correctorName)
                 },
                 supportingText = {
-                    Text("Identité du testeur enregistrée")
+                    Text(strings.ui(UiCopyKey.TESTER_IDENTITY_SAVED))
                 },
                 readOnly = true,
                 singleLine = true,
@@ -6215,7 +6198,7 @@ private fun CorrectionForm(
                     Text(strings.commentExplanation)
                 },
                 placeholder = {
-                    Text("Explique brièvement la correction si nécessaire")
+                    Text(strings.ui(UiCopyKey.CORRECTION_COMMENT_HINT))
                 },
                 minLines = 3,
                 shape = RoundedCornerShape(14.dp)
@@ -6322,6 +6305,7 @@ private fun isValidTesterExportZip(file: File): Boolean {
     }
 }
 private fun shareFile(
+    strings: AppStrings,
     context: Context,
     file: File,
     subject: String,
@@ -6332,7 +6316,7 @@ private fun shareFile(
     if (!file.exists()) {
         Toast.makeText(
             context,
-            "Export introuvable. Veuillez recréer l'envoi.",
+            strings.ui(UiCopyKey.EXPORT_NOT_FOUND),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6341,7 +6325,7 @@ private fun shareFile(
     if (!file.isFile || file.length() <= 0L) {
         Toast.makeText(
             context,
-            "Export invalide ou vide. Envoi annulé.",
+            strings.ui(UiCopyKey.EXPORT_INVALID),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6350,7 +6334,7 @@ private fun shareFile(
     if (!file.name.endsWith(".zip", ignoreCase = true)) {
         Toast.makeText(
             context,
-            "Le fichier d'export n'est pas un ZIP valide.",
+            strings.ui(UiCopyKey.EXPORT_NOT_ZIP),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6359,7 +6343,7 @@ private fun shareFile(
     if (!isValidTesterExportZip(file)) {
         Toast.makeText(
             context,
-            "L'export est incomplet ou corrompu. Envoi annulé.",
+            strings.ui(UiCopyKey.EXPORT_CORRUPT),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6374,7 +6358,7 @@ private fun shareFile(
     } catch (e: Exception) {
         Toast.makeText(
             context,
-            "Impossible de préparer le fichier pour le partage.",
+            strings.ui(UiCopyKey.SHARE_PREPARATION_FAILED),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6390,7 +6374,7 @@ private fun shareFile(
     if (exportHistoryStore.hasSameExportAlreadyBeenShared(file)) {
         Toast.makeText(
             context,
-            "Ce contenu a déjà été ouvert pour partage. Nouvelle tentative autorisée.",
+            strings.ui(UiCopyKey.SHARE_RETRY_ALLOWED),
             Toast.LENGTH_LONG
         ).show()
     }
@@ -6400,13 +6384,13 @@ private fun shareFile(
         context.startActivity(
             Intent.createChooser(
                 intent,
-                "Partager le travail du testeur"
+                strings.ui(UiCopyKey.SHARE_TESTER_WORK)
             )
         )
     } catch (e: Exception) {
         Toast.makeText(
             context,
-            "Impossible d'ouvrir le partage.",
+            strings.ui(UiCopyKey.OPEN_SHARE_FAILED),
             Toast.LENGTH_LONG
         ).show()
         return
@@ -6422,7 +6406,7 @@ private fun shareFile(
     } catch (e: Exception) {
         Toast.makeText(
             context,
-            "Partage ouvert, mais l'historique local n'a pas pu être enregistré.",
+            strings.ui(UiCopyKey.SHARE_HISTORY_FAILED),
             Toast.LENGTH_LONG
         ).show()
     }
@@ -6446,7 +6430,7 @@ private fun shareText(
     )
 }
 
-private fun openPremiumSubscriptionManagement(context: Context) {
+private fun openPremiumSubscriptionManagement(context: Context, strings: AppStrings) {
     val uri = Uri.parse(
         "https://play.google.com/store/account/subscriptions" +
             "?sku=$PREMIUM_PRODUCT_ID&package=${context.packageName}"
@@ -6456,7 +6440,7 @@ private fun openPremiumSubscriptionManagement(context: Context) {
     } catch (_: Exception) {
         Toast.makeText(
             context,
-            "Impossible d’ouvrir la gestion des abonnements Google Play.",
+            strings.ui(UiCopyKey.MANAGE_SUBSCRIPTION_FAILED),
             Toast.LENGTH_LONG
         ).show()
     }

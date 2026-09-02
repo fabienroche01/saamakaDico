@@ -2,6 +2,7 @@ package com.saamaka.dico.testeurs.billing
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -62,7 +63,9 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
 
     @Synchronized
     fun connect() {
+        Log.d(TAG, "connect ready=${billingClient.isReady} state=${billingClient.connectionState}")
         if (billingClient.isReady) {
+            queryPremiumProduct()
             restorePurchases()
             return
         }
@@ -78,6 +81,7 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 connectionStarted = false
+                logResult("setup", result)
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     publish(state.copy(isBillingConnected = true, message = null))
                     queryPremiumProduct()
@@ -89,11 +93,14 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
 
             override fun onBillingServiceDisconnected() {
                 connectionStarted = false
+                Log.w(TAG, "service disconnected; automatic reconnection enabled")
                 publish(
                     state.copy(
                         isPremium = false,
                         verification = PremiumVerification.UNAVAILABLE,
                         isBillingConnected = false,
+                        isLoadingPlans = false,
+                        plansMessage = "Connexion à Google Play interrompue.",
                         message = "Connexion à Google Play interrompue"
                     )
                 )
@@ -128,6 +135,19 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
 
     fun availablePlans(): Set<PremiumPlan> = state.availablePlans.keys
 
+    fun refreshProductDetails() {
+        productDetails = null
+        availableOffers = emptyList()
+        publish(
+            state.copy(
+                availablePlans = emptyMap(),
+                isLoadingPlans = true,
+                plansMessage = null
+            )
+        )
+        if (billingClient.isReady) queryPremiumProduct() else connect()
+    }
+
     fun launchSubscription(activity: Activity, plan: PremiumPlan): BillingResult? {
         val details = productDetails ?: run {
             queryPremiumProduct()
@@ -148,7 +168,18 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
     }
 
     private fun queryPremiumProduct() {
-        if (!billingClient.isReady) return
+        if (!billingClient.isReady) {
+            Log.w(TAG, "product query deferred: BillingClient not ready")
+            publish(
+                state.copy(
+                    isLoadingPlans = false,
+                    plansMessage = "Google Play Billing n’est pas connecté."
+                )
+            )
+            return
+        }
+        publish(state.copy(isLoadingPlans = true, plansMessage = null))
+        Log.d(TAG, "query product=$PREMIUM_PRODUCT_ID type=SUBS")
         val product = QueryProductDetailsParams.Product.newBuilder()
             .setProductId(PREMIUM_PRODUCT_ID)
             .setProductType(BillingClient.ProductType.SUBS)
@@ -158,9 +189,39 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
                 .setProductList(listOf(product))
                 .build()
         ) { result, detailsResult ->
+            logResult("queryProductDetails", result)
+            Log.d(
+                TAG,
+                "queryProductDetails products=${detailsResult.productDetailsList.size} " +
+                    "unfetched=${detailsResult.unfetchedProductList.size}"
+            )
+            detailsResult.unfetchedProductList.forEach { unfetched ->
+                Log.w(
+                    TAG,
+                    "unfetched product=${unfetched.productId} type=${unfetched.productType} " +
+                        "status=${unfetched.statusCode}"
+                )
+            }
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 productDetails = detailsResult.productDetailsList
                     .firstOrNull { it.productId == PREMIUM_PRODUCT_ID }
+                productDetails?.let { details ->
+                    Log.d(
+                        TAG,
+                        "product returned id=${details.productId} type=${details.productType} " +
+                            "offers=${details.subscriptionOfferDetails.orEmpty().size}"
+                    )
+                    details.subscriptionOfferDetails.orEmpty().forEach { offer ->
+                        val phases = offer.pricingPhases.pricingPhaseList.joinToString { phase ->
+                            "${phase.billingPeriod}:${phase.formattedPrice}:${phase.priceAmountMicros}"
+                        }
+                        Log.d(
+                            TAG,
+                            "offer basePlan=${offer.basePlanId} offerId=${offer.offerId ?: "base"} " +
+                                "tokenPresent=${offer.offerToken.isNotBlank()} phases=[$phases]"
+                        )
+                    }
+                }
                 availableOffers = productDetails
                     ?.subscriptionOfferDetails
                     .orEmpty()
@@ -176,14 +237,47 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
                                 .orEmpty()
                         )
                     }
+                val plans = PremiumOfferSelector.planDetails(availableOffers)
+                val selectedMonthly = PremiumOfferSelector.select(PremiumPlan.MONTHLY, availableOffers)
+                val selectedAnnual = PremiumOfferSelector.select(PremiumPlan.ANNUAL, availableOffers)
+                Log.d(
+                    TAG,
+                    "selected monthlyBase=${selectedMonthly?.basePlanId} " +
+                        "monthlyToken=${selectedMonthly?.offerToken?.isNotBlank() == true} " +
+                        "annualBase=${selectedAnnual?.basePlanId} annualOffer=${selectedAnnual?.offerId ?: "base"} " +
+                        "annualToken=${selectedAnnual?.offerToken?.isNotBlank() == true}"
+                )
+                val missingPlans = PremiumPlan.entries.filterNot(plans::containsKey)
+                val unfetched = detailsResult.unfetchedProductList.firstOrNull {
+                    it.productId == PREMIUM_PRODUCT_ID
+                }
+                val plansMessage = when {
+                    productDetails == null && unfetched != null ->
+                        "Google Play n’a pas pu récupérer l’abonnement (code ${unfetched.statusCode})."
+                    productDetails == null ->
+                        "L’abonnement DicoSaam Premium n’est pas disponible pour ce compte Google Play."
+                    missingPlans.isNotEmpty() ->
+                        "Forfait${if (missingPlans.size > 1) "s" else ""} Google Play indisponible${if (missingPlans.size > 1) "s" else ""} : " +
+                            missingPlans.joinToString { if (it == PremiumPlan.MONTHLY) "mensuel" else "annuel" } + "."
+                    else -> null
+                }
                 publish(
                     state.copy(
-                        availablePlans = PremiumOfferSelector.planDetails(availableOffers),
-                        message = null
+                        availablePlans = plans,
+                        isLoadingPlans = false,
+                        plansMessage = plansMessage
                     )
                 )
             } else {
-                publish(state.copy(message = result.debugMessage))
+                publish(
+                    state.copy(
+                        availablePlans = emptyMap(),
+                        isLoadingPlans = false,
+                        plansMessage = result.debugMessage.ifBlank {
+                            "Google Play Billing indisponible (${result.responseCode})."
+                        }
+                    )
+                )
             }
         }
     }
@@ -202,7 +296,11 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
                 )
             },
             verifiedAtMillis = System.currentTimeMillis()
-        ).copy(availablePlans = state.availablePlans)
+        ).copy(
+            availablePlans = state.availablePlans,
+            isLoadingPlans = state.isLoadingPlans,
+            plansMessage = state.plansMessage
+        )
         publish(verified)
         store.saveVerified(verified)
 
@@ -225,19 +323,24 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
     }
 
     private fun publishUnavailable(result: BillingResult) {
+        val unavailableMessage = result.debugMessage.ifBlank {
+            "Google Play Billing indisponible (${result.responseCode})"
+        }
         publish(
             PremiumEntitlementPolicy.unavailable(
                 previous = state,
-                message = result.debugMessage.ifBlank {
-                    "Google Play Billing indisponible (${result.responseCode})"
-                }
-            )
+                message = unavailableMessage
+            ).copy(isLoadingPlans = false, plansMessage = unavailableMessage)
         )
     }
 
     private fun publish(newState: PremiumEntitlementState) {
         state = newState
         listeners.forEach { it(newState) }
+    }
+
+    private fun logResult(operation: String, result: BillingResult) {
+        Log.d(TAG, "$operation response=${result.responseCode} message=${result.debugMessage}")
     }
 
     override fun close() {
@@ -247,5 +350,9 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
         billingClient.endConnection()
         publish(state.copy(isBillingConnected = false))
         listeners.clear()
+    }
+
+    private companion object {
+        const val TAG = "DicoSaamBilling"
     }
 }

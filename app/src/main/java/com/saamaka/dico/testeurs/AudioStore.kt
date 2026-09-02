@@ -13,11 +13,16 @@ import java.util.Locale
 import android.widget.Toast
 
 class AudioStore(
-    private val context: Context
+    private val context: Context,
+    private var strings: AppStrings
 ) {
     private var recorder: MediaRecorder? = null
     private var currentFile: File? = null
     private var player: MediaPlayer? = null
+
+    fun updateStrings(value: AppStrings) {
+        strings = value
+    }
 
     fun audioFile(
         entryId: Int,
@@ -80,7 +85,7 @@ class AudioStore(
     ) {
         val file = proposedEntryAudioFile(localId, testerName)
         if (!file.exists() || file.length() <= 0L) {
-            Toast.makeText(context, "Audio introuvable : ${file.name}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, strings.ui(UiCopyKey.AUDIO_NOT_FOUND, file.name), Toast.LENGTH_LONG).show()
             onFinished()
             return
         }
@@ -108,7 +113,10 @@ class AudioStore(
             onFinished()
             Toast.makeText(
                 context,
-                "Impossible de lire l'audio : ${error.message ?: "erreur inconnue"}",
+                strings.ui(
+                    UiCopyKey.AUDIO_READ_FAILED,
+                    error.message ?: strings.ui(UiCopyKey.UNKNOWN_ERROR)
+                ),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -259,7 +267,7 @@ class AudioStore(
         if (!file.exists()) {
             Toast.makeText(
                 context,
-                "Audio introuvable : ${file.name}",
+                strings.ui(UiCopyKey.AUDIO_NOT_FOUND, file.name),
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -268,7 +276,7 @@ class AudioStore(
         if (file.length() <= 0L) {
             Toast.makeText(
                 context,
-                "Audio vide : ${file.name}",
+                strings.ui(UiCopyKey.AUDIO_EMPTY, file.name),
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -285,7 +293,7 @@ class AudioStore(
             newPlayer.setOnPreparedListener { mediaPlayer ->
                 Toast.makeText(
                     context,
-                    "Lecture de la prononciation",
+                    strings.ui(UiCopyKey.PLAYING_PRONUNCIATION),
                     Toast.LENGTH_SHORT
                 ).show()
 
@@ -309,7 +317,7 @@ class AudioStore(
 
                 Toast.makeText(
                     context,
-                    "Erreur audio ($what / $extra)",
+                    strings.ui(UiCopyKey.AUDIO_ERROR, what, extra),
                     Toast.LENGTH_LONG
                 ).show()
 
@@ -325,7 +333,10 @@ class AudioStore(
 
             Toast.makeText(
                 context,
-                "Impossible de lire l'audio : ${e.message ?: "erreur inconnue"}",
+                strings.ui(
+                    UiCopyKey.AUDIO_READ_FAILED,
+                    e.message ?: strings.ui(UiCopyKey.UNKNOWN_ERROR)
+                ),
                 Toast.LENGTH_LONG
             ).show()
         }
