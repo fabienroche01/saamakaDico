@@ -442,8 +442,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         }
         val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
         var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
-            findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let {
-                LocalExactMatch(cleaned, it, LocalMatchProvenance.ATTESTED_EXPRESSION)
+            findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
+                val linkedEntry = withContext(Dispatchers.IO) {
+                    database.exactLocalEntry(translation, !frenchToSaamaka)
+                }
+                LocalExactMatch(
+                    cleaned,
+                    translation,
+                    LocalMatchProvenance.ATTESTED_EXPRESSION,
+                    linkedEntry
+                )
             }
         } else null
         if (exactMatch == null && (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA)) {
