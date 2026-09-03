@@ -48,8 +48,18 @@ class SettingsStore(context: Context) {
             .apply()
     }
 
+    fun testerModeEnabled(): Boolean =
+        preferences.getBoolean(KEY_TESTER_MODE_ENABLED, false)
+
+    fun setTesterModeEnabled(enabled: Boolean) {
+        preferences.edit()
+            .putBoolean(KEY_TESTER_MODE_ENABLED, enabled)
+            .apply()
+    }
+
     private companion object {
         const val KEY_THEME = "theme_mode"
         const val KEY_TEXT_SIZE = "text_size_mode"
+        const val KEY_TESTER_MODE_ENABLED = "tester_mode_enabled"
     }
 }

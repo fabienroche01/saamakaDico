@@ -191,6 +191,7 @@ enum class MainTab {
 private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val context = LocalContext.current
     val uiLanguageStore = remember(context) { UiLanguageStore(context) }
+    val settingsStore = remember(context) { SettingsStore(context) }
     var uiLanguage by remember { mutableStateOf(uiLanguageStore.load()) }
     fun selectUiLanguage(language: UiLanguage) {
         uiLanguage = language
@@ -202,7 +203,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
     val appStrings = stringsFor(uiLanguage)
     var accessLevel by remember {
-        mutableStateOf(AccessLevel.TESTER)
+        mutableStateOf(
+            if (settingsStore.testerModeEnabled()) AccessLevel.TESTER else AccessLevel.GUEST
+        )
     }
     var premiumState by remember(premiumBillingManager) {
         mutableStateOf(premiumBillingManager.state)
@@ -228,6 +231,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
     val assignmentStore = remember { AssignmentStore(context) }
     var testerName by remember { mutableStateOf(correctionStore.testerName()) }
+    var showTesterSetup by remember {
+        mutableStateOf(accessLevel == AccessLevel.TESTER && testerName.isBlank())
+    }
     var testerNumber by remember {
         mutableStateOf(assignmentStore.testerNumber())
     }
@@ -562,14 +568,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    if (testerName.isBlank()) {
+    if (showTesterSetup) {
         TesterNameSetupScreen(
-            initialName = "",
+            initialName = testerName,
             strings = appStrings,
+            onCancel = { showTesterSetup = false },
             onSave = { name ->
 
                 correctionStore.setTesterName(name)
                 testerName = correctionStore.testerName()
+                settingsStore.setTesterModeEnabled(true)
+                accessLevel = AccessLevel.TESTER
+                showTesterSetup = false
 
                 when {
                     name.equals("Fucia", ignoreCase = true) -> {
@@ -728,6 +738,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             DropdownMenuItem(
                                 text = { Text("👤 ${appStrings.guest}") },
                                 onClick = {
+                                    settingsStore.setTesterModeEnabled(false)
                                     accessLevel = AccessLevel.GUEST
                                     accessMenuExpanded = false
                                 }
@@ -736,6 +747,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             DropdownMenuItem(
                                 text = { Text("🔐 ${appStrings.freeAccount}") },
                                 onClick = {
+                                    settingsStore.setTesterModeEnabled(false)
                                     accessLevel = AccessLevel.FREE_ACCOUNT
                                     accessMenuExpanded = false
                                 }
@@ -749,13 +761,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 }
                             )
 
-                            DropdownMenuItem(
-                                text = { Text("🧪 ${appStrings.tester}") },
-                                onClick = {
-                                    accessLevel = AccessLevel.TESTER
-                                    accessMenuExpanded = false
-                                }
-                            )
                         }
                     }
                 }
@@ -3442,8 +3447,30 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             containerColor = Color(0xFFFFFBF3),
                                             onClick = { activeTab = MainTab.CORRECTIONS }
                                         )
+
+                                        MoreAccessCard(
+                                            icon = Icons.Default.Settings,
+                                            title = appStrings.ui(UiCopyKey.DEACTIVATE_TESTER_MODE),
+                                            description = appStrings.ui(UiCopyKey.TESTER_MODE),
+                                            containerColor = Color(0xFFFFFBF3),
+                                            onClick = {
+                                                settingsStore.setTesterModeEnabled(false)
+                                                accessLevel = if (premiumState.isPremium) {
+                                                    AccessLevel.PREMIUM
+                                                } else {
+                                                    AccessLevel.GUEST
+                                                }
+                                            }
+                                        )
                                     }
                                 }
+                            } else {
+                                MoreAccessCard(
+                                    icon = Icons.Default.Settings,
+                                    title = appStrings.ui(UiCopyKey.ACTIVATE_TESTER_MODE),
+                                    description = appStrings.ui(UiCopyKey.TESTER_MODE),
+                                    onClick = { showTesterSetup = true }
+                                )
                             }
 
                             Spacer(Modifier.height(4.dp))
@@ -3558,6 +3585,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 private fun TesterNameSetupScreen(
     initialName: String,
     strings: AppStrings,
+    onCancel: () -> Unit,
     onSave: (String) -> Unit
 ) {
     var name by remember(initialName) {
@@ -3605,6 +3633,15 @@ private fun TesterNameSetupScreen(
             }
         ){
             Text(strings.continueText)
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onCancel
+        ) {
+            Text(strings.cancel)
         }
     }
 }

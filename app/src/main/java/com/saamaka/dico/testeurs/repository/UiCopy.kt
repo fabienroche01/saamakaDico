@@ -73,7 +73,7 @@ enum class UiCopyKey {
     INSTRUCTIONS, AVAILABLE_LANGUAGES, SPEAKER_VALUE, EXPLORE_ACTION, MY_WORDS,
     FIND_MY_WORDS, TODAY, PROGRESSION, LEARNING_ACTIVITIES, TRANSLATOR_INTRO,
     UNLIMITED_SENTENCE_TRANSLATIONS, TESTER_MODE, CATEGORIES_COUNT,
-    APPROXIMATE_REVIEW
+    APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE
 }
 
 private data class UiCopyValue(
@@ -348,6 +348,8 @@ private val uiCopy = mapOf(
     ,UiCopyKey.TESTER_MODE to UiCopyValue("Mode testeur", "Tester mode", "Testmodus")
     ,UiCopyKey.CATEGORIES_COUNT to UiCopyValue("%d thèmes", "%d themes", "%d thema's")
     ,UiCopyKey.APPROXIMATE_REVIEW to UiCopyValue("Proposition approximative — à vérifier", "Approximate suggestion — review required", "Benaderend voorstel — controleren")
+    ,UiCopyKey.ACTIVATE_TESTER_MODE to UiCopyValue("Activer le mode testeur", "Enable tester mode", "Testmodus inschakelen")
+    ,UiCopyKey.DEACTIVATE_TESTER_MODE to UiCopyValue("Désactiver le mode testeur", "Disable tester mode", "Testmodus uitschakelen")
 )
 
 val saamakaCopyAwaitingValidation: Set<UiCopyKey> = uiCopy
