@@ -3494,7 +3494,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     icon = Icons.Default.Settings,
                                     title = appStrings.ui(UiCopyKey.ACTIVATE_TESTER_MODE),
                                     description = appStrings.ui(UiCopyKey.TESTER_MODE),
-                                    onClick = { showTesterCodePrompt = true }
+                                    onClick = {
+                                        if (TesterAccess.REQUIRE_TESTER_ACCESS_CODE) {
+                                            showTesterCodePrompt = true
+                                        } else {
+                                            showTesterSetup = true
+                                        }
+                                    }
                                 )
                             }
 
