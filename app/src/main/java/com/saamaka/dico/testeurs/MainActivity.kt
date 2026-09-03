@@ -443,8 +443,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
         var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
-                val linkedEntry = withContext(Dispatchers.IO) {
-                    database.exactLocalEntry(translation, !frenchToSaamaka)
+                val normalizedTranslation = normalizeAttestedPhraseKey(translation)
+                val linkedEntry = allEntries.firstOrNull { entry ->
+                    val translatedValue = if (frenchToSaamaka) entry.saamaka else entry.french
+                    normalizeAttestedPhraseKey(translatedValue) == normalizedTranslation
                 }
                 LocalExactMatch(
                     cleaned,
