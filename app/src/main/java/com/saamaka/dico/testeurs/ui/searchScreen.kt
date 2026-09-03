@@ -75,6 +75,7 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
     onOpen: (DictionaryEntry, AppLanguage) -> Unit,
+    onOpenExactDictionaryMatch: ((DictionaryEntry, AppLanguage) -> Unit)? = null,
     onTranslateClick: () -> Unit,
     exactCompleteMatch: LocalExactMatch? = null,
     canTranslatePhrase: Boolean = true,
@@ -797,7 +798,25 @@ fun SearchScreen(
                 }
 
                 exactCompleteMatch != null -> {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    val dictionaryEntry = exactCompleteMatch.entry
+                    val exactMatchModifier = if (
+                        dictionaryEntry != null && onOpenExactDictionaryMatch != null
+                    ) {
+                        Modifier.clickable {
+                            onOpenExactDictionaryMatch(
+                                dictionaryEntry,
+                                matchingLanguageForEntry(
+                                    entry = dictionaryEntry,
+                                    query = query,
+                                    filteredLanguage = searchLanguageFilter.language,
+                                    preferredLanguage = selectedLanguage
+                                )
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
+                    Card(modifier = Modifier.fillMaxWidth().then(exactMatchModifier)) {
                         Column(Modifier.padding(16.dp)) {
                             Text(
                                 strings.provenanceLabel(exactCompleteMatch.provenance),

@@ -30,7 +30,8 @@ internal fun relatedExpressionLabel(input: String, candidate: String): String {
 data class LocalExactMatch(
     val source: String,
     val translation: String,
-    val provenance: LocalMatchProvenance
+    val provenance: LocalMatchProvenance,
+    val entry: DictionaryEntry? = null
 )
 
 data class UnifiedLocalSearchResult(

@@ -444,7 +444,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 exactMatch = LocalExactMatch(
                     cleaned,
                     if (frenchToSaamaka) entry.saamaka else entry.french,
-                    LocalMatchProvenance.DICTIONARY
+                    LocalMatchProvenance.DICTIONARY,
+                    entry
                 )
             }
         }
@@ -1254,6 +1255,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             },
                             strings = appStrings,
                             onOpen = ::openSearchEntry,
+                            onOpenExactDictionaryMatch = ::openSearchEntry,
                             onTranslateClick = {
                                 pendingPhraseText = query
                                 translatePendingPhraseImmediately = true
