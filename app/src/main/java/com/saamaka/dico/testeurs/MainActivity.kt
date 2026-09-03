@@ -93,6 +93,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -234,6 +237,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var showTesterSetup by remember {
         mutableStateOf(accessLevel == AccessLevel.TESTER && testerName.isBlank())
     }
+    var showTesterCodePrompt by remember { mutableStateOf(false) }
     var testerNumber by remember {
         mutableStateOf(assignmentStore.testerNumber())
     }
@@ -597,6 +601,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             }
         )
         return
+    }
+
+    if (showTesterCodePrompt) {
+        TesterAccessCodeDialog(
+            strings = appStrings,
+            onDismiss = { showTesterCodePrompt = false },
+            onAccessGranted = {
+                showTesterCodePrompt = false
+                showTesterSetup = true
+            }
+        )
     }
 
     Scaffold(
@@ -3469,7 +3484,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     icon = Icons.Default.Settings,
                                     title = appStrings.ui(UiCopyKey.ACTIVATE_TESTER_MODE),
                                     description = appStrings.ui(UiCopyKey.TESTER_MODE),
-                                    onClick = { showTesterSetup = true }
+                                    onClick = { showTesterCodePrompt = true }
                                 )
                             }
 
@@ -4224,6 +4239,62 @@ private fun CorrectionsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun TesterAccessCodeDialog(
+    strings: AppStrings,
+    onDismiss: () -> Unit,
+    onAccessGranted: () -> Unit
+) {
+    var code by remember { mutableStateOf("") }
+    var showInvalidCode by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.ui(UiCopyKey.TESTER_CODE_TITLE)) },
+        text = {
+            Column {
+                Text(strings.ui(UiCopyKey.TESTER_CODE_PROMPT))
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = {
+                        code = it
+                        showInvalidCode = false
+                    },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    isError = showInvalidCode,
+                    supportingText = if (showInvalidCode) {
+                        { Text(strings.ui(UiCopyKey.TESTER_CODE_INVALID)) }
+                    } else {
+                        null
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = code.isNotEmpty(),
+                onClick = {
+                    if (TesterAccess.isValid(code)) {
+                        onAccessGranted()
+                    } else {
+                        showInvalidCode = true
+                    }
+                }
+            ) {
+                Text(strings.continueText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.cancel)
+            }
+        }
+    )
 }
 
 

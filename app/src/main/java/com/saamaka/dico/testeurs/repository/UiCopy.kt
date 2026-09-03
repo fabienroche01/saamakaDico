@@ -73,7 +73,8 @@ enum class UiCopyKey {
     INSTRUCTIONS, AVAILABLE_LANGUAGES, SPEAKER_VALUE, EXPLORE_ACTION, MY_WORDS,
     FIND_MY_WORDS, TODAY, PROGRESSION, LEARNING_ACTIVITIES, TRANSLATOR_INTRO,
     UNLIMITED_SENTENCE_TRANSLATIONS, TESTER_MODE, CATEGORIES_COUNT,
-    APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE
+    APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE,
+    TESTER_CODE_TITLE, TESTER_CODE_PROMPT, TESTER_CODE_INVALID
 }
 
 private data class UiCopyValue(
@@ -350,6 +351,9 @@ private val uiCopy = mapOf(
     ,UiCopyKey.APPROXIMATE_REVIEW to UiCopyValue("Proposition approximative — à vérifier", "Approximate suggestion — review required", "Benaderend voorstel — controleren")
     ,UiCopyKey.ACTIVATE_TESTER_MODE to UiCopyValue("Activer le mode testeur", "Enable tester mode", "Testmodus inschakelen")
     ,UiCopyKey.DEACTIVATE_TESTER_MODE to UiCopyValue("Désactiver le mode testeur", "Disable tester mode", "Testmodus uitschakelen")
+    ,UiCopyKey.TESTER_CODE_TITLE to UiCopyValue("Accès au mode testeur", "Tester mode access", "Toegang tot testmodus")
+    ,UiCopyKey.TESTER_CODE_PROMPT to UiCopyValue("Saisissez le code testeur.", "Enter the tester access code.", "Voer de toegangscode voor testers in.")
+    ,UiCopyKey.TESTER_CODE_INVALID to UiCopyValue("Code testeur incorrect.", "Incorrect tester access code.", "Onjuiste toegangscode voor testers.")
 )
 
 val saamakaCopyAwaitingValidation: Set<UiCopyKey> = uiCopy
