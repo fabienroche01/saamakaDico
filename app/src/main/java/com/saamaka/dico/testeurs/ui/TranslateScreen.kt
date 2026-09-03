@@ -473,19 +473,36 @@ private fun ResultActionRow(
 ) {
     val context = LocalContext.current
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        OutlinedButton(modifier = Modifier.weight(1f), onClick = {
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("Saamaka Dico", text))
-        }) { Text(strings.ui(UiCopyKey.COPY_ACTION)) }
-        OutlinedButton(modifier = Modifier.weight(1f), enabled = canListen, onClick = onListen) {
-            Text(strings.ui(UiCopyKey.LISTEN))
-        }
-        OutlinedButton(modifier = Modifier.weight(1f), onClick = {
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
+        OutlinedButton(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            onClick = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Saamaka Dico", text))
             }
-            context.startActivity(Intent.createChooser(intent, "Partager"))
-        }) { Text(strings.ui(UiCopyKey.SHARE_ACTION)) }
+        ) {
+            Text(strings.ui(UiCopyKey.COPY_ACTION), maxLines = 1, softWrap = false)
+        }
+        OutlinedButton(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            enabled = canListen,
+            onClick = onListen
+        ) {
+            Text(strings.ui(UiCopyKey.LISTEN), maxLines = 1, softWrap = false)
+        }
+        OutlinedButton(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            onClick = {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text)
+                }
+                context.startActivity(Intent.createChooser(intent, "Partager"))
+            }
+        ) {
+            Text(strings.ui(UiCopyKey.SHARE_ACTION), maxLines = 1, softWrap = false)
+        }
     }
 }
 
