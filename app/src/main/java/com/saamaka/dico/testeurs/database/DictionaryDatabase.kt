@@ -2146,7 +2146,7 @@ val frenchObject =
             .lowercase(Locale.ROOT)
 
     companion object {
-        const val EMBEDDED_DB_VERSION = 1
+        const val EMBEDDED_DB_VERSION = 2
         private const val DATABASE_PREFERENCES_NAME = "embedded_dictionary"
         private const val INSTALLED_DB_VERSION_KEY = "installed_db_version"
         private const val TAG = "DictionaryDatabase"
