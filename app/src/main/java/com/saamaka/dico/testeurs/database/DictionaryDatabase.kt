@@ -2,6 +2,7 @@ package com.saamaka.dico.testeurs.database
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.util.Log
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.filterAndRankByLanguageNormalized
 import com.saamaka.dico.testeurs.filterAndRankAcrossLanguages
@@ -20,14 +21,21 @@ import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
 import com.saamaka.dico.testeurs.model.TranslationReliability
 import java.io.FileOutputStream
+import java.io.File
 import java.text.Normalizer
 import java.util.Locale
 
 class DictionaryDatabase(private val context: Context) {
 
     private val databaseName = "SaamakaDico_v11_25.db"
+    private val databasePreferences = context.getSharedPreferences(
+        DATABASE_PREFERENCES_NAME,
+        Context.MODE_PRIVATE
+    )
     @Volatile
     private var cachedPhraseIndex: LocalPhraseIndex? = null
+    @Volatile
+    private var preparedDatabase: File? = null
 
     private fun phraseIndex(): LocalPhraseIndex {
         cachedPhraseIndex?.let { return it }
@@ -94,19 +102,132 @@ class DictionaryDatabase(private val context: Context) {
         }
     }
 
-    private fun openDatabase(): SQLiteDatabase {
+    @Synchronized
+    private fun ensureEmbeddedDatabase(): File {
+        preparedDatabase?.let { return it }
+
         val destination = context.getDatabasePath(databaseName)
+        val installedVersion = databasePreferences.getInt(INSTALLED_DB_VERSION_KEY, 0)
 
         if (!destination.exists()) {
             destination.parentFile?.mkdirs()
-
-            context.assets.open(databaseName).use { input ->
-                FileOutputStream(destination).use { output ->
-                    input.copyTo(output)
+            val firstInstallTemporary = File(destination.parentFile, "$databaseName.install")
+            firstInstallTemporary.delete()
+            try {
+                copyAssetTo(databaseName, firstInstallTemporary)
+                verifyDictionaryDatabase(firstInstallTemporary)
+                check(firstInstallTemporary.renameTo(destination)) {
+                    "Unable to install embedded dictionary"
                 }
+                check(
+                    databasePreferences.edit()
+                        .putInt(INSTALLED_DB_VERSION_KEY, EMBEDDED_DB_VERSION)
+                        .commit()
+                ) {
+                    "Unable to persist embedded dictionary version"
+                }
+            } catch (error: Exception) {
+                firstInstallTemporary.delete()
+                destination.delete()
+                Log.e(TAG, "Dictionary DB first installation failed", error)
+                throw error
+            }
+            Log.i(TAG, "Dictionary DB installed for the first time (version $EMBEDDED_DB_VERSION)")
+            preparedDatabase = destination
+            return destination
+        }
+
+        if (installedVersion >= EMBEDDED_DB_VERSION) {
+            Log.d(TAG, "Dictionary DB already up to date (version $installedVersion)")
+            preparedDatabase = destination
+            return destination
+        }
+
+        val temporary = File(destination.parentFile, "$databaseName.update")
+        val backup = File(destination.parentFile, "$databaseName.backup")
+        temporary.delete()
+        backup.delete()
+
+        try {
+            copyAssetTo(databaseName, temporary)
+            verifyDictionaryDatabase(temporary)
+
+            check(destination.renameTo(backup)) {
+                "Unable to create dictionary backup"
+            }
+            check(temporary.renameTo(destination)) {
+                "Unable to install updated dictionary"
+            }
+            verifyDictionaryDatabase(destination)
+
+            check(
+                databasePreferences.edit()
+                    .putInt(INSTALLED_DB_VERSION_KEY, EMBEDDED_DB_VERSION)
+                    .commit()
+            ) {
+                "Unable to persist updated dictionary version"
+            }
+
+            backup.delete()
+            temporary.delete()
+            cachedPhraseIndex = null
+            Log.i(
+                TAG,
+                "Dictionary DB updated $installedVersion -> $EMBEDDED_DB_VERSION"
+            )
+        } catch (error: Exception) {
+            temporary.delete()
+            if (backup.exists()) {
+                destination.delete()
+                if (!backup.renameTo(destination)) {
+                    backup.copyTo(destination, overwrite = true)
+                }
+            }
+            Log.e(TAG, "Dictionary DB update failed; previous DB kept", error)
+        } finally {
+            temporary.delete()
+            if (destination.exists()) {
+                backup.delete()
             }
         }
 
+        check(destination.exists()) { "No valid dictionary database is available" }
+        verifyDictionaryDatabase(destination)
+        preparedDatabase = destination
+        return destination
+    }
+
+    private fun copyAssetTo(assetName: String, destination: File) {
+        context.assets.open(assetName).use { input ->
+            FileOutputStream(destination).use { output ->
+                input.copyTo(output)
+                output.fd.sync()
+            }
+        }
+    }
+
+    private fun verifyDictionaryDatabase(file: File) {
+        val database = SQLiteDatabase.openDatabase(
+            file.absolutePath,
+            null,
+            SQLiteDatabase.OPEN_READONLY
+        )
+        try {
+            database.rawQuery(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dictionnaire'",
+                null
+            ).use { cursor ->
+                check(cursor.moveToFirst() && cursor.getInt(0) == 1) {
+                    "Embedded dictionary is missing the dictionnaire table"
+                }
+            }
+        } finally {
+            database.close()
+        }
+    }
+
+    private fun openDatabase(): SQLiteDatabase {
+        val destination = ensureEmbeddedDatabase()
         return SQLiteDatabase.openDatabase(
             destination.absolutePath,
             null,
@@ -2023,4 +2144,11 @@ val frenchObject =
         )
             .replace("\\p{Mn}+".toRegex(), "")
             .lowercase(Locale.ROOT)
+
+    companion object {
+        const val EMBEDDED_DB_VERSION = 1
+        private const val DATABASE_PREFERENCES_NAME = "embedded_dictionary"
+        private const val INSTALLED_DB_VERSION_KEY = "installed_db_version"
+        private const val TAG = "DictionaryDatabase"
+    }
 }
