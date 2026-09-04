@@ -4989,8 +4989,11 @@ private fun DetailScreen(
     ) {
         mutableStateOf(initiallyFavorite)
     }
-    var displayedLanguage by remember(entry.id, preferredTranslationLanguage) {
-        mutableStateOf(effectiveTranslationLanguage(entry, preferredTranslationLanguage))
+    val preferredDetailLanguage = preferredTranslationLanguage.takeUnless {
+        it == AppLanguage.SAAMAKA
+    } ?: AppLanguage.FRENCH
+    var displayedLanguage by remember(entry.id, preferredDetailLanguage) {
+        mutableStateOf(effectiveTranslationLanguage(entry, preferredDetailLanguage))
     }
     var deletionProposal by remember(entry.id, initialDeletionProposal) {
         mutableStateOf(initialDeletionProposal)
@@ -5037,6 +5040,7 @@ private fun DetailScreen(
         audioStore.hasOfficialAudio(entry.id)
     }
     val availableLanguages = AppLanguage.entries.filter {
+        it != AppLanguage.SAAMAKA &&
         searchTextForLanguage(entry, it.code).isNotBlank()
     }
 
