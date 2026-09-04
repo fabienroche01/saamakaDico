@@ -6229,8 +6229,8 @@ private fun CorrectionForm(
     onCancel: () -> Unit
 ) {
     var testerName by remember { mutableStateOf(defaultTesterName) }
-    var frenchProposed by remember { mutableStateOf(entry.french) }
-    var saamakaProposed by remember { mutableStateOf(entry.saamaka) }
+    var frenchProposed by remember(entry.id, entry.french) { mutableStateOf(entry.french) }
+    var saamakaProposed by remember(entry.id, entry.saamaka) { mutableStateOf(entry.saamaka) }
     var comment by remember { mutableStateOf("") }
 
     LazyColumn(
@@ -6286,6 +6286,18 @@ private fun CorrectionForm(
 
             Spacer(Modifier.height(10.dp))
 
+            Text(
+                text = strings.french,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = entry.french.ifBlank { strings.notSpecified },
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(Modifier.height(6.dp))
+
             OutlinedTextField(
                 value = frenchProposed,
                 onValueChange = {
@@ -6299,6 +6311,18 @@ private fun CorrectionForm(
             )
 
             Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = strings.saamaka,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = entry.saamaka.ifBlank { strings.notSpecified },
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(Modifier.height(6.dp))
 
             OutlinedTextField(
                 value = saamakaProposed,
