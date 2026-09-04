@@ -49,7 +49,12 @@ internal fun composeKnownVouloirPhrase(
     val words = cleanPhraseInput(text).split(Regex("\\s+")).filter(String::isNotBlank)
     if (words.size != 3) return null
 
-    val subject = resolveAttestedFrenchSubject(words[0]) ?: return null
+    val attestedSubject = resolveAttestedFrenchSubject(words[0]) ?: return null
+    val subject = resolveWord(words[0])?.takeIf {
+        it.kind == FrenchResolutionKind.EXACT &&
+            normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(words[0]) &&
+            normalizeAttestedPhraseKey(it.saamaka) == normalizeAttestedPhraseKey(attestedSubject)
+    }?.saamaka ?: return null
     val vouloir = resolveWord(words[1])?.takeIf {
         normalizeAttestedPhraseKey(it.matchedFrench) == "vouloir" &&
             it.kind in setOf(FrenchResolutionKind.EXACT, FrenchResolutionKind.INFLECTION)
