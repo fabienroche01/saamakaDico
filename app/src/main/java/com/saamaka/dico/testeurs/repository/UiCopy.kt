@@ -74,7 +74,9 @@ enum class UiCopyKey {
     FIND_MY_WORDS, TODAY, PROGRESSION, LEARNING_ACTIVITIES, TRANSLATOR_INTRO,
     UNLIMITED_SENTENCE_TRANSLATIONS, TESTER_MODE, CATEGORIES_COUNT,
     APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE,
-    TESTER_CODE_TITLE, TESTER_CODE_PROMPT, TESTER_CODE_INVALID
+    TESTER_CODE_TITLE, TESTER_CODE_PROMPT, TESTER_CODE_INVALID,
+    TESTER_WORDS, TESTER_VALIDATIONS, TESTER_CORRECTIONS, TESTER_ACTIONS,
+    LEARNED_WORDS
 }
 
 private data class UiCopyValue(
@@ -354,6 +356,11 @@ private val uiCopy = mapOf(
     ,UiCopyKey.TESTER_CODE_TITLE to UiCopyValue("Accès au mode testeur", "Tester mode access", "Toegang tot testmodus")
     ,UiCopyKey.TESTER_CODE_PROMPT to UiCopyValue("Saisissez le code testeur.", "Enter the tester access code.", "Voer de toegangscode voor testers in.")
     ,UiCopyKey.TESTER_CODE_INVALID to UiCopyValue("Code testeur incorrect.", "Incorrect tester access code.", "Onjuiste toegangscode voor testers.")
+    ,UiCopyKey.TESTER_WORDS to UiCopyValue("Mots", "Words", "Woorden")
+    ,UiCopyKey.TESTER_VALIDATIONS to UiCopyValue("Validations", "Validations", "Validaties")
+    ,UiCopyKey.TESTER_CORRECTIONS to UiCopyValue("Corrections", "Corrections", "Correcties")
+    ,UiCopyKey.TESTER_ACTIONS to UiCopyValue("Actions", "Actions", "Acties")
+    ,UiCopyKey.LEARNED_WORDS to UiCopyValue("Mots appris", "Words learned", "Geleerde woorden")
 )
 
 val saamakaCopyAwaitingValidation: Set<UiCopyKey> = uiCopy

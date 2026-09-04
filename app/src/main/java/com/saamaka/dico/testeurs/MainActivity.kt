@@ -2072,9 +2072,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     Spacer(Modifier.height(12.dp))
 
                                     val progressStats = listOf(
-                                        knownWordIds.size to "Mots appris",
+                                        knownWordIds.size to appStrings.ui(UiCopyKey.LEARNED_WORDS),
                                         reviewWordIds.size to appStrings.ui(UiCopyKey.REVIEW),
-                                        quizQuestionNumber to "Aujourd’hui",
+                                        quizQuestionNumber to appStrings.ui(UiCopyKey.TODAY),
                                         matchingPerfectGames to appStrings.ui(UiCopyKey.PERFECT_STREAK)
                                     )
 
@@ -3993,13 +3993,13 @@ private fun CorrectionsScreen(
                         StatCard(
                             modifier = Modifier.weight(1f),
                             value = "$total",
-                            label = "Mots"
+                            label = strings.ui(UiCopyKey.TESTER_WORDS)
                         )
 
                         StatCard(
                             modifier = Modifier.weight(1f),
                             value = "$validatedReviewCount",
-                            label = "Validations"
+                            label = strings.ui(UiCopyKey.TESTER_VALIDATIONS)
                         )
                     }
 
@@ -4013,13 +4013,13 @@ private fun CorrectionsScreen(
                         StatCard(
                             modifier = Modifier.weight(1f),
                             value = "$correctedReviewCount",
-                            label = "Corrections"
+                            label = strings.ui(UiCopyKey.TESTER_CORRECTIONS)
                         )
 
                         StatCard(
                             modifier = Modifier.weight(1f),
                             value = "$correctionCount",
-                            label = "Actions"
+                            label = strings.ui(UiCopyKey.TESTER_ACTIONS)
                         )
                     }
 

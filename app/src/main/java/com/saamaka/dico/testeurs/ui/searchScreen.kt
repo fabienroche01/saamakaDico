@@ -1040,7 +1040,7 @@ fun SearchScreen(
                                     IconButton(onClick = { onToggleFavorite(entry) }) {
                                         Icon(
                                             if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                            "Favori",
+                                            strings.ui(UiCopyKey.FAVORITE),
                                             tint = if (favorite) Color(0xFFC99A2E) else Color(0xFF68736C)
                                         )
                                     }
