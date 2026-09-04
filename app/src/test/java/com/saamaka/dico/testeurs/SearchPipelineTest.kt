@@ -60,4 +60,18 @@ class SearchPipelineTest {
         assertThrows(IllegalStateException::class.java) { requireBackgroundSearch(true) }
         requireBackgroundSearch(false)
     }
+
+    @Test
+    fun frenchHomePhrasesAreAlwaysRoutedThroughGrammar() {
+        listOf("je veux", "je veux manger", "je veux dormir", "tu veux dormir").forEach { text ->
+            assertEquals(
+                true,
+                shouldRouteHomePhraseThroughGrammar(SearchRequest(text, "fr", "fr"))
+            )
+        }
+        assertEquals(
+            false,
+            shouldRouteHomePhraseThroughGrammar(SearchRequest("je veux dormir", "en", "en"))
+        )
+    }
 }

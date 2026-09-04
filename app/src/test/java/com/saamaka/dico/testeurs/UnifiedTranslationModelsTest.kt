@@ -78,14 +78,6 @@ class UnifiedTranslationModelsTest {
     }
 
     @Test
-    fun quickSearchGrammarRespectsPremiumAccessRules() {
-        assertTrue(canResolveGrammarInQuickSearch(AccessLevel.TESTER))
-        assertTrue(canResolveGrammarInQuickSearch(AccessLevel.PREMIUM))
-        assertFalse(canResolveGrammarInQuickSearch(AccessLevel.GUEST))
-        assertFalse(canResolveGrammarInQuickSearch(AccessLevel.FREE_ACCOUNT))
-    }
-
-    @Test
     fun grammaticalQuickSearchResultDoesNotOfferFallbackTranslation() {
         val result = UnifiedLocalSearchResult(
             exactMatch = LocalExactMatch(

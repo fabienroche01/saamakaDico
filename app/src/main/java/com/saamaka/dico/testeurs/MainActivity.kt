@@ -519,9 +519,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             }
             if (
                 exactMatch == null &&
-                frenchToSaamaka &&
-                request.allowAutomaticGrammar &&
-                normalizedInputWordCount(cleaned) >= 2
+                shouldRouteHomePhraseThroughGrammar(request)
             ) {
                 database.translatePhrase(
                     text = cleaned,
@@ -547,8 +545,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             SearchRequest(
                 text = query,
                 languageCode = searchLanguageFilter.language?.code,
-                sourceLanguageCode = selectedLanguage.code,
-                allowAutomaticGrammar = canResolveGrammarInQuickSearch(accessLevel)
+                sourceLanguageCode = selectedLanguage.code
             )
         }
             .debouncedSearch(::executeSearch)

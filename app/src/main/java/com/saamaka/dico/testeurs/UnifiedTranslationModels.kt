@@ -11,9 +11,6 @@ enum class LocalMatchProvenance(val label: String) {
     GRAMMATICAL("Traduction grammaticale")
 }
 
-internal fun canResolveGrammarInQuickSearch(accessLevel: AccessLevel): Boolean =
-    accessLevel == AccessLevel.PREMIUM || accessLevel == AccessLevel.TESTER
-
 internal fun relatedExpressionLabel(input: String, candidate: String): String {
     val inputWords = cleanPhraseInput(input).split(Regex("\\s+")).filter { it.isNotBlank() }
     val candidateWords = cleanPhraseInput(candidate).split(Regex("\\s+")).filter { it.isNotBlank() }
