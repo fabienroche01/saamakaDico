@@ -431,6 +431,8 @@ private fun UnifiedTranslateContent(
                         when {
                             result.kind == PhraseTranslationKind.VALIDATED_RULE ->
                                 strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
+                            result.kind == PhraseTranslationKind.GRAMMATICAL ->
+                                strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
                             result.isComplete -> "Proposition locale"
                             else -> strings.ui(UiCopyKey.INCOMPLETE_SUGGESTION)
                         },
@@ -1151,6 +1153,8 @@ private fun PhraseTranslateContent(
                             Text(
                                 text = if (result.kind == PhraseTranslationKind.VALIDATED_RULE) {
                                     strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
+                                } else if (result.kind == PhraseTranslationKind.GRAMMATICAL) {
+                                    strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
                                 } else if (frenchToSaamaka) {
                                     if (result.isComplete) {
                                         "Proposition Saamaka"

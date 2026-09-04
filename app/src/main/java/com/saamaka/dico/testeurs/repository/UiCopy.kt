@@ -25,6 +25,7 @@ enum class UiCopyKey {
     TRANSLATION_UNAVAILABLE, TO_COMPLETE, SEARCH_OR_TRANSLATE, SEARCH_OR_TRANSLATE_HINT,
     SEARCHING, DICTIONARY_RESULTS, MISSING_TRANSLATION, CREATE_ACCOUNT_FOR_TRIALS,
     NO_TRIALS_LEFT, PREMIUM_TRANSLATION_UNAVAILABLE, VALIDATED_RULE_TRANSLATION,
+    GRAMMATICAL_TRANSLATION,
     INCOMPLETE_SUGGESTION, RELIABILITY, SHOW_DETAILS, HIDE_DETAILS, OTHER_POSSIBILITIES,
     ITEMS_TO_REVIEW, NEW_SEARCH, COPY_ACTION, SHARE_ACTION, CREATE_FREE_ACCOUNT,
     FREE_TRANSLATION_TRIALS, CREATE_MY_FREE_ACCOUNT, PREMIUM_BENEFITS,
@@ -157,6 +158,7 @@ private val uiCopy = mapOf(
     ,UiCopyKey.NO_TRIALS_LEFT to UiCopyValue("Aucun essai de traduction Premium restant.", "No Premium translation trials remaining.", "Geen Premium-proefvertalingen meer beschikbaar.")
     ,UiCopyKey.PREMIUM_TRANSLATION_UNAVAILABLE to UiCopyValue("Traduction Premium indisponible.", "Premium translation unavailable.", "Premium-vertaling niet beschikbaar.")
     ,UiCopyKey.VALIDATED_RULE_TRANSLATION to UiCopyValue("Traduction construite avec une règle validée", "Translation built using a validated rule", "Vertaling opgebouwd met een gevalideerde regel")
+    ,UiCopyKey.GRAMMATICAL_TRANSLATION to UiCopyValue("Traduction grammaticale", "Grammatical translation", "Grammaticale vertaling")
     ,UiCopyKey.INCOMPLETE_SUGGESTION to UiCopyValue("Proposition incomplète", "Incomplete suggestion", "Onvolledig voorstel")
     ,UiCopyKey.RELIABILITY to UiCopyValue("Fiabilité : %s", "Reliability: %s", "Betrouwbaarheid: %s")
     ,UiCopyKey.SHOW_DETAILS to UiCopyValue("Voir les détails", "Show details", "Details bekijken")

@@ -586,7 +586,7 @@ class DictionaryDatabase(private val context: Context) {
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() }
 
-        if (words.size < 2) {
+        if (words.size != 2) {
             return null
         }
 
@@ -1463,20 +1463,7 @@ val frenchObject =
 
             if (!confirmedInaccompli.isNullOrBlank()) {
 
-                return complete("✅ Inaccompli grammatical attesté :\n$confirmedInaccompli")
-            }
-        }
-
-        if (frenchToSaamaka) {
-
-            val confirmedInaccompli =
-                translateConfirmedInaccompliPattern(
-                    cleanText
-                )
-
-            if (!confirmedInaccompli.isNullOrBlank()) {
-
-                return complete("✅ Inaccompli grammatical attesté :\n$confirmedInaccompli")
+                return complete(confirmedInaccompli, PhraseTranslationKind.GRAMMATICAL)
             }
         }
         if (!frenchToSaamaka) {

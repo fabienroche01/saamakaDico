@@ -16,7 +16,8 @@ enum class TranslationReliability(val label: String) {
 
 enum class PhraseTranslationKind {
     PROPOSAL,
-    VALIDATED_RULE
+    VALIDATED_RULE,
+    GRAMMATICAL
 }
 
 data class PhraseTranslationResult(
