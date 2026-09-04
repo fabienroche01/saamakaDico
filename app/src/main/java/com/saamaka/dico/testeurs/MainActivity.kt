@@ -321,9 +321,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
     fun launchLearningActivity(section: String) {
         if (learnSection == section) return
-        if (consumeLearningTrialOrOpenPremium()) {
-            learnSection = section
-        }
+        if (section == "GAMES" && !consumeLearningTrialOrOpenPremium()) return
+        learnSection = section
     }
     val quizEntries = remember(allEntries) {
         allEntries.filter { entry ->
@@ -2347,6 +2346,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 OutlinedButton(
                                                     onClick = {
                                                         if (selectedQuizAnswer == null) {
+                                                            if (!consumeLearningTrialOrOpenPremium()) {
+                                                                return@OutlinedButton
+                                                            }
 
                                                             selectedQuizAnswer = answer
 
@@ -2587,6 +2589,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 OutlinedButton(
                                                     onClick = {
+                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                            return@OutlinedButton
+                                                        }
+
                                                         reviewWordsCount++
 
                                                         wordReviewEntry?.id?.let { id ->
@@ -2658,6 +2664,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 Button(
                                                     onClick = {
+                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                            return@Button
+                                                        }
+
                                                         knownWordsCount++
 
                                                         wordReviewEntry?.id?.let { id ->
@@ -2817,6 +2827,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 OutlinedButton(
                                                     onClick = {
+                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                            return@OutlinedButton
+                                                        }
+
                                                         phraseReviewEntry?.id?.let { id ->
                                                             if (id !in phraseReviewIds) {
                                                                 phraseReviewIds.add(id)
@@ -2876,6 +2890,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 Button(
                                                     onClick = {
+                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                            return@Button
+                                                        }
+
                                                         phraseReviewEntry?.id?.let { id ->
                                                             if (id !in phraseKnownIds) {
                                                                 phraseKnownIds.add(id)
