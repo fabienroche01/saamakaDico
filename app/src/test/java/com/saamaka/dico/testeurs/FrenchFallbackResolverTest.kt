@@ -24,6 +24,39 @@ class FrenchFallbackResolverTest {
     }
 
     @Test
+    fun conjugatedWantUsesTheAttestedInfinitive() {
+        val result = resolver(candidate("vouloir", "kë", "O")).resolve("veux")!!
+
+        assertEquals(FrenchResolutionKind.INFLECTION, result.kind)
+        assertEquals("vouloir", result.matchedFrench)
+        assertEquals("kë", result.saamaka)
+    }
+
+    @Test
+    fun knownWordsComposeJeVeuxMangerIntoOneCompleteTranslation() {
+        val resolver = resolver(
+            candidate("je", "mi", "O"),
+            candidate("vouloir", "kë", "O"),
+            candidate("manger", "makandi", "O")
+        )
+
+        val result = assembleAttestedPhrase("je veux manger") { segment ->
+            if (segment.contains(' ')) return@assembleAttestedPhrase null
+            resolver.resolve(segment)?.let {
+                RecognizedPhraseSegment(
+                    source = segment,
+                    translation = it.saamaka,
+                    matchedSource = it.matchedFrench
+                )
+            }
+        }!!
+
+        assertEquals("mi kë makandi", result.translation)
+        assertEquals(true, result.isComplete)
+        assertEquals(emptyList<String>(), result.untranslatedSegments)
+    }
+
+    @Test
     fun lightTypingErrorIsCorrectedButNotCalledASynonym() {
         val result = resolver(candidate("bonjour", "LOCAL_BONJOUR", "O")).resolve("bonjor")!!
 

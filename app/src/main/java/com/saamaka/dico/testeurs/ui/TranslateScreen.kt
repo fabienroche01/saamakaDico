@@ -181,7 +181,7 @@ private fun UnifiedTranslateContent(
         accessLevel == AccessLevel.TESTER ||
         (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTrials > 0)
 
-    suspend fun translateCurrentPhrase() {
+    suspend fun translateCurrentPhrase(): PhraseTranslationResult? {
         val result = onTranslate(input, frenchToSaamaka)
         if (result != null) {
             phraseResult = result
@@ -196,20 +196,24 @@ private fun UnifiedTranslateContent(
                 onUseTrial()
             }
         }
+        return result
     }
 
     LaunchedEffect(Unit) {
         if (startupText.isBlank()) return@LaunchedEffect
         launchRequest {
-            val result = onLocalSearch(startupText, frenchToSaamaka)
-            localResult = result
-            if (
-                translateStartupText &&
-                result.exactMatch == null &&
+            val shouldTranslate = translateStartupText &&
                 normalizedInputWordCount(startupText) >= 2 &&
                 canUsePremium
-            ) {
-                translateCurrentPhrase()
+            if (shouldTranslate) {
+                val translation = translateCurrentPhrase()
+                localResult = if (translation?.isComplete == true) {
+                    null
+                } else {
+                    onLocalSearch(startupText, frenchToSaamaka)
+                }
+            } else {
+                localResult = onLocalSearch(startupText, frenchToSaamaka)
             }
             onInitialTextHandled()
         }
@@ -265,7 +269,16 @@ private fun UnifiedTranslateContent(
             onClick = {
                 phraseResult = null
                 launchRequest {
-                    localResult = onLocalSearch(input, frenchToSaamaka)
+                    if (normalizedInputWordCount(input) >= 2 && canUsePremium) {
+                        val translation = translateCurrentPhrase()
+                        localResult = if (translation?.isComplete == true) {
+                            null
+                        } else {
+                            onLocalSearch(input, frenchToSaamaka)
+                        }
+                    } else {
+                        localResult = onLocalSearch(input, frenchToSaamaka)
+                    }
                 }
             }
         ) {

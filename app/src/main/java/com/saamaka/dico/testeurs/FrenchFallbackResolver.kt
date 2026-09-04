@@ -196,7 +196,9 @@ internal class FrenchFallbackResolver(
             "dors" to "dormir", "dort" to "dormir", "dormons" to "dormir",
             "dormez" to "dormir", "dorment" to "dormir",
             "mange" to "manger", "manges" to "manger", "mangeons" to "manger",
-            "mangez" to "manger", "mangent" to "manger"
+            "mangez" to "manger", "mangent" to "manger",
+            "veux" to "vouloir", "veut" to "vouloir", "voulons" to "vouloir",
+            "voulez" to "vouloir", "veulent" to "vouloir"
         )
     }
 }
