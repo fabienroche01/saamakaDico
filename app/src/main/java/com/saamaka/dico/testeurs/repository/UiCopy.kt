@@ -76,7 +76,7 @@ enum class UiCopyKey {
     APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE,
     TESTER_CODE_TITLE, TESTER_CODE_PROMPT, TESTER_CODE_INVALID,
     TESTER_WORDS, TESTER_VALIDATIONS, TESTER_CORRECTIONS, TESTER_ACTIONS,
-    LEARNED_WORDS
+    LEARNED_WORDS, LEARNING_TRIALS_EXHAUSTED
 }
 
 private data class UiCopyValue(
@@ -361,6 +361,7 @@ private val uiCopy = mapOf(
     ,UiCopyKey.TESTER_CORRECTIONS to UiCopyValue("Corrections", "Corrections", "Correcties")
     ,UiCopyKey.TESTER_ACTIONS to UiCopyValue("Actions", "Actions", "Acties")
     ,UiCopyKey.LEARNED_WORDS to UiCopyValue("Mots appris", "Words learned", "Geleerde woorden")
+    ,UiCopyKey.LEARNING_TRIALS_EXHAUSTED to UiCopyValue("Vous avez utilisé vos essais gratuits d’apprentissage.", "You have used your free learning trials.", "U hebt uw gratis leerpogingen gebruikt.")
 )
 
 val saamakaCopyAwaitingValidation: Set<UiCopyKey> = uiCopy

@@ -239,6 +239,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val translationTrialStore = remember {
         TranslationTrialStore(context)
     }
+    val learningTrialStore = remember {
+        LearningTrialStore(context)
+    }
+    var remainingLearningTrials by remember {
+        mutableStateOf(learningTrialStore.remainingTrials())
+    }
     val assignmentStore = remember { AssignmentStore(context) }
     var testerName by remember { mutableStateOf(correctionStore.testerName()) }
     var showTesterSetup by remember {
@@ -293,7 +299,31 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var quizScore by remember { mutableStateOf(0) }
     var quizQuestionNumber by remember { mutableStateOf(1) }
     var learnSection by remember {
-        mutableStateOf("QUIZ")
+        mutableStateOf("")
+    }
+
+    fun launchLearningActivity(section: String) {
+        if (learnSection == section) return
+
+        val canLaunch = when (accessLevel) {
+            AccessLevel.TESTER,
+            AccessLevel.PREMIUM -> true
+            AccessLevel.FREE_ACCOUNT -> learningTrialStore.useTrial().also {
+                remainingLearningTrials = learningTrialStore.remainingTrials()
+            }
+            AccessLevel.GUEST -> true
+        }
+
+        if (canLaunch) {
+            learnSection = section
+        } else {
+            Toast.makeText(
+                context,
+                appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),
+                Toast.LENGTH_LONG
+            ).show()
+            activeTab = MainTab.PREMIUM
+        }
     }
     val quizEntries = remember(allEntries) {
         allEntries.filter { entry ->
@@ -1975,7 +2005,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         val globalLearningProgress =
                             (learnedItemCount.toFloat() / learningItemTarget).coerceIn(0f, 1f)
                         val continueSection =
-                            if (reviewWordIds.isNotEmpty()) "WORDS" else learnSection
+                            if (reviewWordIds.isNotEmpty()) {
+                                "WORDS"
+                            } else {
+                                learnSection.ifBlank { "QUIZ" }
+                            }
                         val continueLabel = when (continueSection) {
                             "WORDS" -> appStrings.ui(UiCopyKey.WORD_REVIEW)
                             "PHRASES" -> "Phrases"
@@ -2127,7 +2161,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { learnSection = continueSection },
+                                    .clickable { launchLearningActivity(continueSection) },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4))
                             ) {
@@ -2150,12 +2184,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    LearnAccessCard(appStrings.ui(UiCopyKey.QUIZ), appStrings.ui(UiCopyKey.QUICK_QUESTIONS), "QUIZ", learnSection, Modifier.weight(1f)) { learnSection = it }
-                                    LearnAccessCard(appStrings.ui(UiCopyKey.REVIEW_ACTIVITY), appStrings.ui(UiCopyKey.REVIEW_WORDS), "WORDS", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.QUIZ), appStrings.ui(UiCopyKey.QUICK_QUESTIONS), "QUIZ", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.REVIEW_ACTIVITY), appStrings.ui(UiCopyKey.REVIEW_WORDS), "WORDS", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    LearnAccessCard(appStrings.ui(UiCopyKey.PHRASES), appStrings.ui(UiCopyKey.USEFUL_EXPRESSIONS), "PHRASES", learnSection, Modifier.weight(1f)) { learnSection = it }
-                                    LearnAccessCard(appStrings.ui(UiCopyKey.GAMES), appStrings.ui(UiCopyKey.MATCH_WORDS), "GAMES", learnSection, Modifier.weight(1f)) { learnSection = it }
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.PHRASES), appStrings.ui(UiCopyKey.USEFUL_EXPRESSIONS), "PHRASES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                    LearnAccessCard(appStrings.ui(UiCopyKey.GAMES), appStrings.ui(UiCopyKey.MATCH_WORDS), "GAMES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                 }
                             }
 
