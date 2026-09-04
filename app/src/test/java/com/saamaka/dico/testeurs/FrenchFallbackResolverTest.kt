@@ -66,14 +66,16 @@ class FrenchFallbackResolverTest {
         )
         fun compose(text: String) = composeKnownVouloirPhrase(
             text,
-            resolveSubject = { mapOf("je" to "mi", "tu" to "i", "nous" to "u")[it] },
             resolveWord = resolver::resolve
         )
 
         assertEquals("mi kë Makandi", compose("je veux manger")?.translation)
         assertEquals("mi kë duumí", compose("je veux dormir")?.translation)
+        assertEquals("i kë duumí", compose("tu veux dormir")?.translation)
+        assertEquals("u kë duumí", compose("nous voulons dormir")?.translation)
         assertEquals("u kë wooko", compose("nous voulons travailler")?.translation)
         assertNull(compose("je veux téléporter"))
+        assertNull(compose("personne veut dormir"))
     }
 
     @Test

@@ -31,15 +31,25 @@ internal data class FrenchFallbackResolution(
         get() = "$requested → $matchedFrench : ${kind.detailLabel}"
 }
 
+internal fun resolveAttestedFrenchSubject(subject: String): String? =
+    when (normalizeAttestedPhraseKey(subject)) {
+        "je" -> "mi"
+        "tu" -> "i"
+        "il", "elle" -> "a"
+        "nous" -> "u"
+        "vous" -> "unu"
+        "ils", "elles" -> "de"
+        else -> null
+    }
+
 internal fun composeKnownVouloirPhrase(
     text: String,
-    resolveSubject: (String) -> String?,
     resolveWord: (String) -> FrenchFallbackResolution?
 ): PhraseTranslationResult? {
     val words = cleanPhraseInput(text).split(Regex("\\s+")).filter(String::isNotBlank)
     if (words.size != 3) return null
 
-    val subject = resolveSubject(words[0]) ?: return null
+    val subject = resolveAttestedFrenchSubject(words[0]) ?: return null
     val vouloir = resolveWord(words[1])?.takeIf {
         normalizeAttestedPhraseKey(it.matchedFrench) == "vouloir" &&
             it.kind in setOf(FrenchResolutionKind.EXACT, FrenchResolutionKind.INFLECTION)

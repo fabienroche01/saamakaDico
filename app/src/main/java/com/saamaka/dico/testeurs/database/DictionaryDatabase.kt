@@ -13,6 +13,7 @@ import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.composeKnownVouloirPhrase
+import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
 import com.saamaka.dico.testeurs.CorrectionProposal
 import com.saamaka.dico.testeurs.findAttestedPhraseRule
 import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
@@ -547,18 +548,7 @@ class DictionaryDatabase(private val context: Context) {
 
     private fun frenchSubjectToSaamaka(
         subject: String
-    ): String? {
-
-        return when (normalizeForSearch(subject)) {
-            "je" -> "mi"
-            "tu" -> "i"
-            "il", "elle" -> "a"
-            "nous" -> "u"
-            "vous" -> "unu"
-            "ils", "elles" -> "de"
-            else -> null
-        }
-    }
+    ): String? = resolveAttestedFrenchSubject(subject)
 
     private fun isFrenchFutureSimpleForm(
         word: String
@@ -1369,7 +1359,6 @@ val frenchObject =
         if (frenchToSaamaka) {
             composeKnownVouloirPhrase(
                 text = cleanText,
-                resolveSubject = ::frenchSubjectToSaamaka,
                 resolveWord = phraseIndex().frenchFallbackResolver::resolve
             )?.let { return it }
         }
