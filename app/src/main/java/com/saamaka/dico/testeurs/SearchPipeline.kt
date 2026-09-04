@@ -9,7 +9,12 @@ import kotlinx.coroutines.flow.mapLatest
 
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 
-internal data class SearchRequest(val text: String, val languageCode: String?)
+internal data class SearchRequest(
+    val text: String,
+    val languageCode: String?,
+    val sourceLanguageCode: String = languageCode ?: "fr",
+    val allowAutomaticGrammar: Boolean = false
+)
 internal data class SearchOutcome(
     val text: String,
     val results: List<DictionaryEntry>,

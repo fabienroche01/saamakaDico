@@ -32,6 +32,7 @@ import com.saamaka.dico.testeurs.AppStrings
 import com.saamaka.dico.testeurs.UiCopyKey
 import com.saamaka.dico.testeurs.ui
 import com.saamaka.dico.testeurs.provenanceLabel
+import com.saamaka.dico.testeurs.reliabilityLabel
 import com.saamaka.dico.testeurs.LocalExactMatch
 import com.saamaka.dico.testeurs.homeSearchPresentation
 import com.saamaka.dico.testeurs.matchingLanguageForEntry
@@ -830,7 +831,12 @@ fun SearchScreen(
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
-                            Text(strings.ui(UiCopyKey.RELIABILITY_HIGH))
+                            Text(
+                                strings.ui(
+                                    UiCopyKey.RELIABILITY,
+                                    strings.reliabilityLabel(exactCompleteMatch.reliability)
+                                )
+                            )
                         }
                     }
                 }

@@ -387,6 +387,7 @@ fun AppStrings.provenanceLabel(provenance: LocalMatchProvenance): String = ui(
         LocalMatchProvenance.DICTIONARY -> UiCopyKey.EXACT_DICTIONARY_MATCH
         LocalMatchProvenance.LOCAL_CORRECTION -> UiCopyKey.LOCAL_CORRECTION
         LocalMatchProvenance.ATTESTED_EXPRESSION -> UiCopyKey.VALIDATED_RULE_TRANSLATION
+        LocalMatchProvenance.GRAMMATICAL -> UiCopyKey.GRAMMATICAL_TRANSLATION
     }
 )
 

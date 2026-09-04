@@ -78,6 +78,29 @@ class UnifiedTranslationModelsTest {
     }
 
     @Test
+    fun quickSearchGrammarRespectsPremiumAccessRules() {
+        assertTrue(canResolveGrammarInQuickSearch(AccessLevel.TESTER))
+        assertTrue(canResolveGrammarInQuickSearch(AccessLevel.PREMIUM))
+        assertFalse(canResolveGrammarInQuickSearch(AccessLevel.GUEST))
+        assertFalse(canResolveGrammarInQuickSearch(AccessLevel.FREE_ACCOUNT))
+    }
+
+    @Test
+    fun grammaticalQuickSearchResultDoesNotOfferFallbackTranslation() {
+        val result = UnifiedLocalSearchResult(
+            exactMatch = LocalExactMatch(
+                source = "tu veux dormir",
+                translation = "i kë duumí",
+                provenance = LocalMatchProvenance.GRAMMATICAL
+            ),
+            usefulEntries = emptyList()
+        )
+
+        assertFalse(shouldOfferPremiumTranslation("tu veux dormir", result))
+        assertEquals("Traduction grammaticale", result.exactMatch?.provenance?.label)
+    }
+
+    @Test
     fun directionIndependentPolicyDoesNotConsumeOrHideLocalMatch() {
         val reverseMatch = UnifiedLocalSearchResult(
             LocalExactMatch("da odi", "passe le bonjour", LocalMatchProvenance.ATTESTED_EXPRESSION),

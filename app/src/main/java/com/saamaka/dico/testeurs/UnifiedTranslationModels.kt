@@ -2,12 +2,17 @@ package com.saamaka.dico.testeurs
 
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.TranslationReliability
 
 enum class LocalMatchProvenance(val label: String) {
     DICTIONARY("Correspondance exacte du dictionnaire"),
     LOCAL_CORRECTION("Correction locale"),
-    ATTESTED_EXPRESSION("Traduction construite avec une règle validée")
+    ATTESTED_EXPRESSION("Traduction construite avec une règle validée"),
+    GRAMMATICAL("Traduction grammaticale")
 }
+
+internal fun canResolveGrammarInQuickSearch(accessLevel: AccessLevel): Boolean =
+    accessLevel == AccessLevel.PREMIUM || accessLevel == AccessLevel.TESTER
 
 internal fun relatedExpressionLabel(input: String, candidate: String): String {
     val inputWords = cleanPhraseInput(input).split(Regex("\\s+")).filter { it.isNotBlank() }
@@ -31,7 +36,8 @@ data class LocalExactMatch(
     val source: String,
     val translation: String,
     val provenance: LocalMatchProvenance,
-    val entry: DictionaryEntry? = null
+    val entry: DictionaryEntry? = null,
+    val reliability: TranslationReliability = TranslationReliability.HIGH
 )
 
 data class UnifiedLocalSearchResult(

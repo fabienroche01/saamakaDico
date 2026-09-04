@@ -58,6 +58,7 @@ import com.saamaka.dico.testeurs.billing.PremiumEntitlementState
 import com.saamaka.dico.testeurs.billing.PremiumPlan
 import com.saamaka.dico.testeurs.billing.PremiumVerification
 import com.saamaka.dico.testeurs.model.DictionaryEntry
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.repository.CorrectionStore
 import com.saamaka.dico.testeurs.repository.DeletionProposalStore
 import com.saamaka.dico.testeurs.repository.NewEntryProposalStore
@@ -483,8 +484,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
                 } ?: entry
             }
-            val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
-            var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
+            val frenchToSaamaka = request.sourceLanguageCode == AppLanguage.FRENCH.code
+            val supportsLocalExactMatch = request.sourceLanguageCode in setOf(
+                AppLanguage.FRENCH.code,
+                AppLanguage.SAAMAKA.code
+            )
+            var exactMatch = if (supportsLocalExactMatch) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
                 val normalizedTranslation = normalizeAttestedPhraseKey(translation)
                 val linkedEntry = allEntries.firstOrNull { entry ->
@@ -499,7 +504,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             } else null
-            if (exactMatch == null && (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA)) {
+            if (exactMatch == null && supportsLocalExactMatch) {
             correctedResults.firstOrNull { entry ->
                 val source = if (frenchToSaamaka) entry.french else entry.saamaka
                 normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
@@ -512,12 +517,40 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             }
+            if (
+                exactMatch == null &&
+                frenchToSaamaka &&
+                request.allowAutomaticGrammar &&
+                normalizedInputWordCount(cleaned) >= 2
+            ) {
+                database.translatePhrase(
+                    text = cleaned,
+                    frenchToSaamaka = true,
+                    localCorrections = correctionStore.all()
+                )?.takeIf {
+                    it.kind == PhraseTranslationKind.GRAMMATICAL && it.isComplete
+                }?.let { grammatical ->
+                    exactMatch = LocalExactMatch(
+                        source = cleaned,
+                        translation = grammatical.translation,
+                        provenance = LocalMatchProvenance.GRAMMATICAL,
+                        reliability = grammatical.reliability
+                    )
+                }
+            }
             SearchOutcome(cleaned, correctedResults, exactMatch)
         }
     }
 
     LaunchedEffect(appStrings) {
-        snapshotFlow { SearchRequest(query, searchLanguageFilter.language?.code) }
+        snapshotFlow {
+            SearchRequest(
+                text = query,
+                languageCode = searchLanguageFilter.language?.code,
+                sourceLanguageCode = selectedLanguage.code,
+                allowAutomaticGrammar = canResolveGrammarInQuickSearch(accessLevel)
+            )
+        }
             .debouncedSearch(::executeSearch)
             .collectLatest { outcome ->
                 searchResults = outcome.results
