@@ -243,7 +243,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         LearningTrialStore(context)
     }
     var remainingLearningTrials by remember(accessLevel) {
-        mutableStateOf(learningTrialStore.remainingTrials(accessLevel))
+        mutableStateOf(
+            LearningActivity.entries.associateWith { activity ->
+                learningTrialStore.remainingTrials(accessLevel, activity)
+            }
+        )
     }
     val assignmentStore = remember { AssignmentStore(context) }
     var testerName by remember { mutableStateOf(correctionStore.testerName()) }
@@ -302,10 +306,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         mutableStateOf("")
     }
 
-    fun consumeLearningTrialOrOpenPremium(): Boolean {
-        val canLaunch = learningTrialStore.useTrial(accessLevel)
+    fun consumeLearningTrialOrOpenPremium(activity: LearningActivity): Boolean {
+        val canLaunch = learningTrialStore.useTrial(accessLevel, activity)
         if (accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) {
-            remainingLearningTrials = learningTrialStore.remainingTrials(accessLevel)
+            remainingLearningTrials = remainingLearningTrials +
+                (activity to learningTrialStore.remainingTrials(accessLevel, activity))
         }
 
         if (!canLaunch) {
@@ -321,7 +326,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
     fun launchLearningActivity(section: String) {
         if (learnSection == section) return
-        if (section == "GAMES" && !consumeLearningTrialOrOpenPremium()) return
+        if (
+            section == "GAMES" &&
+            !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)
+        ) return
         learnSection = section
     }
     val quizEntries = remember(allEntries) {
@@ -2058,14 +2066,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 color = Color(0xFF68736C)
                             )
 
+                            val selectedLearningActivity = when (learnSection) {
+                                "QUIZ" -> LearningActivity.QUIZ
+                                "WORDS" -> LearningActivity.REVIEW
+                                "PHRASES" -> LearningActivity.PHRASES
+                                "GAMES" -> LearningActivity.GAMES
+                                else -> null
+                            }
                             if (
-                                accessLevel == AccessLevel.GUEST ||
-                                accessLevel == AccessLevel.FREE_ACCOUNT
+                                (accessLevel == AccessLevel.GUEST ||
+                                    accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                selectedLearningActivity != null
                             ) {
                                 Text(
                                     text = appStrings.ui(
                                         UiCopyKey.REMAINING_LEARNING_TRIALS,
-                                        remainingLearningTrials
+                                        remainingLearningTrials[selectedLearningActivity] ?: 0
                                     ),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = Color(0xFF68736C)
@@ -2346,7 +2362,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 OutlinedButton(
                                                     onClick = {
                                                         if (selectedQuizAnswer == null) {
-                                                            if (!consumeLearningTrialOrOpenPremium()) {
+                                                            if (!consumeLearningTrialOrOpenPremium(LearningActivity.QUIZ)) {
                                                                 return@OutlinedButton
                                                             }
 
@@ -2589,7 +2605,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 OutlinedButton(
                                                     onClick = {
-                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                        if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) {
                                                             return@OutlinedButton
                                                         }
 
@@ -2664,7 +2680,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 Button(
                                                     onClick = {
-                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                        if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) {
                                                             return@Button
                                                         }
 
@@ -2827,7 +2843,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 OutlinedButton(
                                                     onClick = {
-                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                        if (!consumeLearningTrialOrOpenPremium(LearningActivity.PHRASES)) {
                                                             return@OutlinedButton
                                                         }
 
@@ -2890,7 +2906,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                 Button(
                                                     onClick = {
-                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                        if (!consumeLearningTrialOrOpenPremium(LearningActivity.PHRASES)) {
                                                             return@Button
                                                         }
 
@@ -3351,7 +3367,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                             matchingCompletedGameRecorded = true
                                                         }
 
-                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                        if (!consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)) {
                                                             return@Button
                                                         }
 
