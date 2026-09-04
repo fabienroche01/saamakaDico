@@ -207,7 +207,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val appStrings = stringsFor(uiLanguage)
     var accessLevel by remember {
         mutableStateOf(
-            if (settingsStore.testerModeEnabled()) AccessLevel.TESTER else AccessLevel.GUEST
+            if (
+                TesterAccess.FORCE_TESTER_MODE_FOR_BETA ||
+                settingsStore.testerModeEnabled()
+            ) {
+                AccessLevel.TESTER
+            } else {
+                AccessLevel.GUEST
+            }
         )
     }
     var premiumState by remember(premiumBillingManager) {
