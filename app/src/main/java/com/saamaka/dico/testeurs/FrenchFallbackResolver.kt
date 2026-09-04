@@ -49,12 +49,7 @@ internal fun composeKnownVouloirPhrase(
     val words = cleanPhraseInput(text).split(Regex("\\s+")).filter(String::isNotBlank)
     if (words.size != 3) return null
 
-    val attestedSubject = resolveAttestedFrenchSubject(words[0]) ?: return null
-    val subject = resolveWord(words[0])?.takeIf {
-        it.kind == FrenchResolutionKind.EXACT &&
-            normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(words[0]) &&
-            normalizeAttestedPhraseKey(it.saamaka) == normalizeAttestedPhraseKey(attestedSubject)
-    }?.saamaka ?: return null
+    val subject = resolveAttestedFrenchSubject(words[0]) ?: return null
     val vouloir = resolveWord(words[1])?.takeIf {
         normalizeAttestedPhraseKey(it.matchedFrench) == "vouloir" &&
             it.kind in setOf(FrenchResolutionKind.EXACT, FrenchResolutionKind.INFLECTION)
@@ -196,7 +191,7 @@ internal class FrenchFallbackResolver(
         .filter(String::isNotBlank)
 
     private fun safeInflectionForms(word: String): List<String> = buildList {
-        safeFrenchInfinitives[word]?.let(::add)
+        FrenchVerbInflections.lemma(word)?.let(::add)
         if (word.length > 3 && word.endsWith("s") && !word.endsWith("ss")) {
             add(word.dropLast(1))
         }
@@ -245,13 +240,5 @@ internal class FrenchFallbackResolver(
             "papa" to listOf("pere")
         )
 
-        val safeFrenchInfinitives = mapOf(
-            "dors" to "dormir", "dort" to "dormir", "dormons" to "dormir",
-            "dormez" to "dormir", "dorment" to "dormir",
-            "mange" to "manger", "manges" to "manger", "mangeons" to "manger",
-            "mangez" to "manger", "mangent" to "manger",
-            "veux" to "vouloir", "veut" to "vouloir", "voulons" to "vouloir",
-            "voulez" to "vouloir", "veulent" to "vouloir"
-        )
     }
 }

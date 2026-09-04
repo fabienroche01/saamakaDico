@@ -76,10 +76,25 @@ class FrenchFallbackResolverTest {
         assertEquals("i kë Makandi", compose("tu veux manger")?.translation)
         assertEquals("mi kë duumí", compose("je veux dormir")?.translation)
         assertEquals("i kë duumí", compose("tu veux dormir")?.translation)
+        assertEquals("a kë duumí", compose("il veut dormir")?.translation)
+        assertEquals("a kë duumí", compose("elle veut dormir")?.translation)
         assertEquals("u kë duumí", compose("nous voulons dormir")?.translation)
+        assertEquals("unu kë duumí", compose("vous voulez dormir")?.translation)
+        assertEquals("de kë duumí", compose("ils veulent dormir")?.translation)
         assertEquals("u kë wooko", compose("nous voulons travailler")?.translation)
         assertNull(compose("je veux téléporter"))
+        assertNull(compose("on veut dormir"))
         assertNull(compose("personne veut dormir"))
+    }
+
+    @Test
+    fun frenchVerbInflectionsResolveToOneReusableLemma() {
+        listOf("veux", "veut", "voulons", "voulez", "veulent").forEach {
+            assertEquals("vouloir", FrenchVerbInflections.lemma(it))
+        }
+        assertEquals("aller", FrenchVerbInflections.lemma("allons"))
+        assertEquals("dormir", FrenchVerbInflections.lemma("dorment"))
+        assertNull(FrenchVerbInflections.lemma("forme-inconnue"))
     }
 
     @Test

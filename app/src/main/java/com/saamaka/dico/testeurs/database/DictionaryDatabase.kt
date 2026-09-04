@@ -14,6 +14,7 @@ import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.composeKnownVouloirPhrase
 import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
+import com.saamaka.dico.testeurs.FrenchVerbInflections
 import com.saamaka.dico.testeurs.CorrectionProposal
 import com.saamaka.dico.testeurs.findAttestedPhraseRule
 import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
@@ -754,52 +755,8 @@ class DictionaryDatabase(private val context: Context) {
 
         return when (clean) {
             "j'", "j’" -> "je"
-            "vais", "vas", "va", "allons", "allez", "vont",
-            "allais", "allait", "allaient",
-            "irai", "iras", "ira", "irons", "irez", "iront" -> "aller"
-
-            "suis", "es", "est", "sommes", "êtes", "sont",
-            "étais", "était", "étions", "étiez", "étaient",
-            "serai", "seras", "sera", "serons", "serez", "seront" -> "être"
-
-            "ai", "as", "avons", "avez", "ont",
-            "avais", "avait", "avions", "aviez", "avaient",
-            "aurai", "auras", "aura", "aurons", "aurez", "auront" -> "avoir"
-
-            "fais", "fait", "faisons", "faites", "font",
-            "faisais", "faisait", "faisaient",
-            "ferai", "feras", "fera", "ferons", "ferez", "feront" -> "faire"
-
-            "veux", "veut", "voulons", "voulez", "veulent",
-            "voulais", "voulait", "voulaient",
-            "voudrais", "voudrait" -> "vouloir"
-
-            "peux", "peut", "pouvons", "pouvez", "peuvent",
-            "pouvais", "pouvait", "pouvaient",
-            "pourrai", "pourras", "pourra", "pourront" -> "pouvoir"
-
-            "viens", "vient", "venons", "venez", "viennent",
-            "venais", "venait", "venaient",
-            "viendrai", "viendras", "viendra", "viendront" -> "venir"
-
-            "prends", "prend", "prenons", "prenez", "prennent",
-            "prenais", "prenait", "prenaient",
-            "prendrai", "prendras", "prendra", "prendront" -> "prendre"
-
-            "dors", "dort", "dormons", "dormez", "dorment",
-            "dormais", "dormait", "dormaient",
-            "dormirai", "dormiras", "dormira", "dormiront" -> "dormir"
-
-            "mange", "manges", "mangeons", "mangez", "mangent",
-            "mangeais", "mangeait", "mangeaient",
-            "mangerai", "mangeras", "mangera", "mangeront" -> "manger"
-
-            "aime", "aimes", "aimons", "aimez", "aiment",
-            "aimais", "aimait", "aimions", "aimiez", "aimaient",
-            "aimerai", "aimeras", "aimera", "aimerons", "aimerez", "aimeront" -> "aimer"
-
-            else -> clean
-            }
+            else -> FrenchVerbInflections.lemma(clean) ?: clean
+        }
         }
 
     private fun saamakaNegativeSubjectToFrench(
