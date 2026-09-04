@@ -705,24 +705,24 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
 
-                    AppLanguage.entries
+                    SearchLanguageFilter.entries
                         .chunked(2)
-                        .forEach { rowLanguages ->
+                        .forEach { rowFilters ->
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
 
-                                rowLanguages.forEach { language ->
+                                rowFilters.forEach { filter ->
 
                                     val selected =
-                                        selectedLanguage == language
+                                        searchLanguageFilter == filter
 
                                     FilterChip(
                                         selected = selected,
                                         onClick = {
-                                            onLanguageChange(language)
+                                            onSearchLanguageFilterChange(filter)
                                         },
                                         modifier = Modifier
                                             .weight(1f)
@@ -745,11 +745,12 @@ fun SearchScreen(
 
                                         label = {
                                             Text(
-                                                text = when (language) {
-                                                    AppLanguage.FRENCH -> "FR · Français"
-                                                    AppLanguage.SAAMAKA -> "SM · Saamaka"
-                                                    AppLanguage.ENGLISH -> "EN · English"
-                                                    AppLanguage.DUTCH -> "NL · Nederlands"
+                                                text = when (filter) {
+                                                    SearchLanguageFilter.ALL -> strings.ui(UiCopyKey.ALL)
+                                                    SearchLanguageFilter.FRENCH -> "FR · Français"
+                                                    SearchLanguageFilter.SAAMAKA -> "SM · Saamaka"
+                                                    SearchLanguageFilter.ENGLISH -> "EN · English"
+                                                    SearchLanguageFilter.DUTCH -> "NL · Nederlands"
                                                 },
                                                 modifier = Modifier.fillMaxWidth(),
                                                 textAlign = TextAlign.Center,
@@ -766,7 +767,7 @@ fun SearchScreen(
                                     )
                                 }
 
-                                if (rowLanguages.size == 1) {
+                                if (rowFilters.size == 1) {
                                     Spacer(
                                         modifier = Modifier.weight(1f)
                                     )
@@ -937,20 +938,19 @@ fun SearchScreen(
                             val audioAvailable = hasAudio(entry)
                             val favorite = isFavorite(entry)
                             val validated = isValidated(entry.id)
-                            val selectedTranslation = when (searchLanguageFilter) {
-                                SearchLanguageFilter.ALL -> searchTextForLanguage(entry, resultLanguage.code)
-                                SearchLanguageFilter.SAAMAKA -> entry.saamaka.ifBlank {
-                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
+                            val requestedTranslation = when (searchLanguageFilter) {
+                                SearchLanguageFilter.ALL -> if (resultLanguage == AppLanguage.SAAMAKA) {
+                                    entry.french
+                                } else {
+                                    searchTextForLanguage(entry, resultLanguage.code)
                                 }
-                                SearchLanguageFilter.FRENCH -> entry.french.ifBlank {
-                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
-                                }
-                                SearchLanguageFilter.ENGLISH -> entry.english.ifBlank {
-                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
-                                }
-                                SearchLanguageFilter.DUTCH -> entry.dutch.ifBlank {
-                                    strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
-                                }
+                                SearchLanguageFilter.SAAMAKA -> entry.french
+                                SearchLanguageFilter.FRENCH -> entry.french
+                                SearchLanguageFilter.ENGLISH -> entry.english
+                                SearchLanguageFilter.DUTCH -> entry.dutch
+                            }
+                            val selectedTranslation = requestedTranslation.ifBlank {
+                                strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
                             }
 
                             Card(

@@ -1317,7 +1317,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             searchLanguageFilter = searchLanguageFilter,
                             onSearchLanguageFilterChange = { filter ->
                                 searchLanguageFilter = filter
-                                filter.language?.let { selectedLanguage = it }
+                                selectedLanguage = filter.language ?: AppLanguage.FRENCH
                             },
                             hasAudio = { entry ->
                                 audioStore.hasOfficialAudio(entry.id) ||
@@ -1398,7 +1398,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             searchLanguageFilter = searchLanguageFilter,
                             onSearchLanguageFilterChange = { filter ->
                                 searchLanguageFilter = filter
-                                filter.language?.let { selectedLanguage = it }
+                                selectedLanguage = filter.language ?: AppLanguage.FRENCH
                             },
                             hasAudio = { entry ->
                                 audioStore.hasOfficialAudio(entry.id) ||
