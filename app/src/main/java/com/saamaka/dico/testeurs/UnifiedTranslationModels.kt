@@ -1,7 +1,6 @@
 package com.saamaka.dico.testeurs
 
 import com.saamaka.dico.testeurs.model.DictionaryEntry
-import com.saamaka.dico.testeurs.model.PhraseTranslationResult
 import com.saamaka.dico.testeurs.model.TranslationReliability
 
 enum class LocalMatchProvenance(val label: String) {
@@ -60,13 +59,3 @@ internal fun shouldOfferPremiumTranslation(
 ): Boolean = normalizedInputWordCount(text) > 1 &&
     result != null &&
     result.exactMatch == null
-
-internal fun shouldConsumeTrialAfterPremiumResult(
-    accessLevel: AccessLevel,
-    remainingTrials: Int,
-    result: PhraseTranslationResult?,
-    alreadyConsumedForRequest: Boolean
-): Boolean = accessLevel == AccessLevel.FREE_ACCOUNT &&
-    remainingTrials > 0 &&
-    result != null &&
-    !alreadyConsumedForRequest

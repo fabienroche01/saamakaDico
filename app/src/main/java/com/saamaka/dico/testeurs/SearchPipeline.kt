@@ -19,16 +19,12 @@ internal data class SearchOutcome(
     val text: String,
     val results: List<DictionaryEntry>,
     val exactMatch: LocalExactMatch?,
-    val consumesTranslationTrial: Boolean = false
+    val phraseTranslation: PhraseTranslationPipelineResult? = null
 )
 
 internal fun shouldRouteHomePhraseThroughGrammar(request: SearchRequest): Boolean =
     request.sourceLanguageCode == AppLanguage.FRENCH.code &&
-        normalizedInputWordCount(request.text) >= 2 &&
-        request.accessLevel != AccessLevel.GUEST
-
-internal fun homeGrammarConsumesTranslationTrial(accessLevel: AccessLevel): Boolean =
-    accessLevel == AccessLevel.FREE_ACCOUNT
+        normalizedInputWordCount(request.text) >= 2
 
 internal fun retainChargedHomePhrase(currentPhrase: String?, newQuery: String): String? =
     currentPhrase.takeIf { normalizedInputWordCount(newQuery) >= 2 }

@@ -240,6 +240,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val translationTrialStore = remember {
         TranslationTrialStore(context)
     }
+    val phraseTranslationPipeline = remember(database, correctionStore, translationTrialStore) {
+        PhraseTranslationPipeline(
+            resolvePhrase = { text, frenchToSaamaka ->
+                withContext(Dispatchers.IO) {
+                    database.preparePhraseTranslationIndex()
+                    database.translatePhrase(
+                        text = text,
+                        frenchToSaamaka = frenchToSaamaka,
+                        localCorrections = correctionStore.all()
+                    )
+                }
+            },
+            remainingTrials = translationTrialStore::remainingTrials,
+            consumeTrial = translationTrialStore::useTrial
+        )
+    }
     val learningTrialStore = remember {
         LearningTrialStore(context)
     }
@@ -490,7 +506,23 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 AppLanguage.FRENCH.code,
                 AppLanguage.SAAMAKA.code
             )
-            var exactMatch = if (supportsLocalExactMatch) {
+            val phraseTranslation = if (shouldRouteHomePhraseThroughGrammar(request)) {
+                phraseTranslationPipeline.resolve(cleaned, true, request.accessLevel)
+            } else {
+                null
+            }
+            var exactMatch = phraseTranslation?.translation?.let { translation ->
+                LocalExactMatch(
+                    source = cleaned,
+                    translation = translation.translation,
+                    provenance = when (translation.kind) {
+                        PhraseTranslationKind.VALIDATED_RULE -> LocalMatchProvenance.ATTESTED_EXPRESSION
+                        PhraseTranslationKind.GRAMMATICAL -> LocalMatchProvenance.GRAMMATICAL
+                        PhraseTranslationKind.PROPOSAL -> LocalMatchProvenance.DICTIONARY
+                    },
+                    reliability = translation.reliability
+                )
+            } ?: if (supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 1) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
                 val normalizedTranslation = normalizeAttestedPhraseKey(translation)
                 val linkedEntry = allEntries.firstOrNull { entry ->
@@ -505,7 +537,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             } else null
-            if (exactMatch == null && supportsLocalExactMatch) {
+            if (exactMatch == null && supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 1) {
             correctedResults.firstOrNull { entry ->
                 val source = if (frenchToSaamaka) entry.french else entry.saamaka
                 normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
@@ -518,31 +550,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             }
-            if (
-                exactMatch == null &&
-                shouldRouteHomePhraseThroughGrammar(request)
-            ) {
-                database.translatePhrase(
-                    text = cleaned,
-                    frenchToSaamaka = true,
-                    localCorrections = correctionStore.all()
-                )?.takeIf {
-                    it.kind == PhraseTranslationKind.GRAMMATICAL && it.isComplete
-                }?.let { grammatical ->
-                    exactMatch = LocalExactMatch(
-                        source = cleaned,
-                        translation = grammatical.translation,
-                        provenance = LocalMatchProvenance.GRAMMATICAL,
-                        reliability = grammatical.reliability
-                    )
-                }
-            }
             SearchOutcome(
                 text = cleaned,
                 results = correctedResults,
                 exactMatch = exactMatch,
-                consumesTranslationTrial = exactMatch?.provenance == LocalMatchProvenance.GRAMMATICAL &&
-                    homeGrammarConsumesTranslationTrial(request.accessLevel)
+                phraseTranslation = phraseTranslation
             )
         }
     }
@@ -560,22 +572,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             .collectLatest { outcome ->
                 searchResults = outcome.results
                 val normalizedPhrase = normalizeAttestedPhraseKey(outcome.text)
-                homeExactCompleteMatch = if (outcome.consumesTranslationTrial) {
-                    when {
-                        lastChargedHomePhrase == normalizedPhrase -> outcome.exactMatch
-                        translationTrialStore.useTrial() -> {
-                            lastChargedHomePhrase = normalizedPhrase
-                            remainingTranslationTrials = translationTrialStore.remainingTrials()
-                            outcome.exactMatch
-                        }
-                        else -> {
-                            activeTab = MainTab.PREMIUM
-                            null
-                        }
-                    }
-                } else {
-                    outcome.exactMatch
+                val authorizedPhrase = outcome.phraseTranslation?.let {
+                    phraseTranslationPipeline.authorizeSuccessfulTranslation(
+                        result = it,
+                        accessLevel = accessLevel,
+                        alreadyConsumed = lastChargedHomePhrase == normalizedPhrase
+                    )
                 }
+                if (authorizedPhrase?.trialConsumed == true) {
+                    lastChargedHomePhrase = normalizedPhrase
+                    remainingTranslationTrials = authorizedPhrase.remainingTrials
+                }
+                if (authorizedPhrase?.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
+                    activeTab = MainTab.PREMIUM
+                }
+                homeExactCompleteMatch = outcome.exactMatch
+                    ?.takeIf { authorizedPhrase?.disposition != PhraseTranslationDisposition.PREMIUM_REQUIRED }
                 status = when {
                     outcome.text.isBlank() -> appStrings.startSearching
                     outcome.results.isEmpty() -> appStrings.noResult
@@ -1198,12 +1210,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             },
                             accessLevel = accessLevel,
                             remainingTrials = remainingTranslationTrials,
-                            onUseTrial = {
-                                if (translationTrialStore.useTrial()) {
-                                    remainingTranslationTrials =
-                                        translationTrialStore.remainingTrials()
-                                }
-                            },
+                            onTrialsChanged = { remainingTranslationTrials = it },
                             onLocalSearch = { text, frenchToSaamaka ->
                                 withContext(Dispatchers.IO) {
                                     database.preparePhraseTranslationIndex()
@@ -1233,7 +1240,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         normalizeAttestedPhraseKey(source) == normalizedInput
                                     }
 
-                                    val exactMatch = when {
+                                    val exactMatch = if (normalizedInputWordCount(text) > 1) {
+                                        null
+                                    } else when {
                                         correctedDictionaryEntry != null -> {
                                             val translation = if (frenchToSaamaka) {
                                                 correctedDictionaryEntry.saamaka
@@ -1292,17 +1301,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 }
                             },
                             onTranslate = { text, frenchToSaamaka ->
-                                val localCorrections = withContext(Dispatchers.IO) {
-                                    database.preparePhraseTranslationIndex()
-                                    correctionStore.all()
-                                }
-                                withContext(Dispatchers.Default) {
-                                    database.translatePhrase(
-                                        text = text,
-                                        frenchToSaamaka = frenchToSaamaka,
-                                        localCorrections = localCorrections
-                                    )
-                                }
+                                phraseTranslationPipeline.translate(
+                                    text = text,
+                                    frenchToSaamaka = frenchToSaamaka,
+                                    accessLevel = accessLevel
+                                )
                             },
                             onOpenEntry = ::openEntry
                         )

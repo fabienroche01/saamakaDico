@@ -4,8 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.saamaka.dico.testeurs.model.PhraseTranslationResult
-import com.saamaka.dico.testeurs.model.TranslationReliability
 
 class UnifiedTranslationModelsTest {
     @Test
@@ -102,19 +100,4 @@ class UnifiedTranslationModelsTest {
         assertFalse(shouldOfferPremiumTranslation("da odi", reverseMatch))
     }
 
-    @Test
-    fun premiumTrialIsConsumedOnlyAfterOneSuccessfulExplicitRequest() {
-        val phraseResult = PhraseTranslationResult(
-            translation = "proposition",
-            recognizedSegments = emptyList(),
-            untranslatedSegments = listOf("phrase", "inconnue"),
-            isComplete = false,
-            reliability = TranslationReliability.LOW
-        )
-
-        assertFalse(shouldConsumeTrialAfterPremiumResult(AccessLevel.FREE_ACCOUNT, 3, null, false))
-        assertTrue(shouldConsumeTrialAfterPremiumResult(AccessLevel.FREE_ACCOUNT, 3, phraseResult, false))
-        assertFalse(shouldConsumeTrialAfterPremiumResult(AccessLevel.FREE_ACCOUNT, 3, phraseResult, true))
-        assertFalse(shouldConsumeTrialAfterPremiumResult(AccessLevel.PREMIUM, 3, phraseResult, false))
-    }
 }

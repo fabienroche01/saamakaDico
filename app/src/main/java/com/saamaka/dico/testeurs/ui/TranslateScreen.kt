@@ -39,9 +39,10 @@ import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.TranslationReliability
 import com.saamaka.dico.testeurs.model.DictionaryEntry
 import com.saamaka.dico.testeurs.UnifiedLocalSearchResult
+import com.saamaka.dico.testeurs.PhraseTranslationDisposition
+import com.saamaka.dico.testeurs.PhraseTranslationPipelineResult
 import com.saamaka.dico.testeurs.unifiedSearchButtonLabel
 import com.saamaka.dico.testeurs.shouldOfferPremiumTranslation
-import com.saamaka.dico.testeurs.shouldConsumeTrialAfterPremiumResult
 import com.saamaka.dico.testeurs.normalizedInputWordCount
 import com.saamaka.dico.testeurs.relatedExpressionLabel
 import androidx.compose.foundation.rememberScrollState
@@ -89,9 +90,9 @@ fun TranslateScreen(
     onInitialTextHandled: () -> Unit = {},
     accessLevel: AccessLevel,
     remainingTrials: Int,
-    onUseTrial: () -> Unit,
+    onTrialsChanged: (Int) -> Unit,
     onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
-    onTranslate: suspend (String, Boolean) -> PhraseTranslationResult?,
+    onTranslate: suspend (String, Boolean) -> PhraseTranslationPipelineResult,
     onOpenEntry: (DictionaryEntry) -> Unit
 ) {
     UnifiedTranslateContent(
@@ -101,7 +102,7 @@ fun TranslateScreen(
         onInitialTextHandled = onInitialTextHandled,
         accessLevel = accessLevel,
         remainingTrials = remainingTrials,
-        onUseTrial = onUseTrial,
+        onTrialsChanged = onTrialsChanged,
         onLocalSearch = onLocalSearch,
         onTranslate = onTranslate,
         onOpenEntry = onOpenEntry
@@ -116,9 +117,9 @@ private fun UnifiedTranslateContent(
     onInitialTextHandled: () -> Unit,
     accessLevel: AccessLevel,
     remainingTrials: Int,
-    onUseTrial: () -> Unit,
+    onTrialsChanged: (Int) -> Unit,
     onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
-    onTranslate: suspend (String, Boolean) -> PhraseTranslationResult?,
+    onTranslate: suspend (String, Boolean) -> PhraseTranslationPipelineResult,
     onOpenEntry: (DictionaryEntry) -> Unit
 ) {
     val context = LocalContext.current
@@ -134,7 +135,6 @@ private fun UnifiedTranslateContent(
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDetails by remember { mutableStateOf(false) }
-    var trialConsumedForRequest by remember { mutableStateOf(false) }
     var ttsReady by remember { mutableStateOf(false) }
     val tts = remember {
         TextToSpeech(context) { ttsReady = it == TextToSpeech.SUCCESS }
@@ -156,7 +156,6 @@ private fun UnifiedTranslateContent(
         localResult = null
         phraseResult = null
         showDetails = false
-        trialConsumedForRequest = false
     }
 
     fun launchRequest(block: suspend () -> Unit) {
@@ -181,36 +180,28 @@ private fun UnifiedTranslateContent(
         accessLevel == AccessLevel.TESTER ||
         (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTrials > 0)
 
-    suspend fun translateCurrentPhrase(): PhraseTranslationResult? {
-        val result = onTranslate(input, frenchToSaamaka)
-        if (result != null) {
-            phraseResult = result
-            if (shouldConsumeTrialAfterPremiumResult(
-                    accessLevel,
-                    remainingTrials,
-                    result,
-                    trialConsumedForRequest
-                )
-            ) {
-                trialConsumedForRequest = true
-                onUseTrial()
-            }
+    suspend fun translateCurrentPhrase(): PhraseTranslationPipelineResult {
+        val pipelineResult = onTranslate(input, frenchToSaamaka)
+        if (pipelineResult.trialConsumed) {
+            onTrialsChanged(pipelineResult.remainingTrials)
         }
-        return result
+        val result = pipelineResult.translation
+            ?.takeIf { pipelineResult.disposition == PhraseTranslationDisposition.TRANSLATED }
+        phraseResult = result
+        return pipelineResult
     }
 
     LaunchedEffect(Unit) {
         if (startupText.isBlank()) return@LaunchedEffect
         launchRequest {
             val shouldTranslate = translateStartupText &&
-                normalizedInputWordCount(startupText) >= 2 &&
-                canUsePremium
+                normalizedInputWordCount(startupText) >= 2
             if (shouldTranslate) {
-                val translation = translateCurrentPhrase()
-                localResult = if (translation?.isComplete == true) {
+                val decision = translateCurrentPhrase()
+                localResult = if (decision.disposition == PhraseTranslationDisposition.TRANSLATED) {
                     null
                 } else {
-                    onLocalSearch(startupText, frenchToSaamaka)
+                    onLocalSearch(startupText, frenchToSaamaka).copy(exactMatch = null)
                 }
             } else {
                 localResult = onLocalSearch(startupText, frenchToSaamaka)
@@ -269,12 +260,12 @@ private fun UnifiedTranslateContent(
             onClick = {
                 phraseResult = null
                 launchRequest {
-                    if (normalizedInputWordCount(input) >= 2 && canUsePremium) {
-                        val translation = translateCurrentPhrase()
-                        localResult = if (translation?.isComplete == true) {
+                    if (normalizedInputWordCount(input) >= 2) {
+                        val decision = translateCurrentPhrase()
+                        localResult = if (decision.disposition == PhraseTranslationDisposition.TRANSLATED) {
                             null
                         } else {
-                            onLocalSearch(input, frenchToSaamaka)
+                            onLocalSearch(input, frenchToSaamaka).copy(exactMatch = null)
                         }
                     } else {
                         localResult = onLocalSearch(input, frenchToSaamaka)

@@ -82,10 +82,7 @@ class SearchPipelineTest {
     @Test
     fun homePhraseUsesExistingTranslationAccessPolicy() {
         assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("mot", "fr", "fr", AccessLevel.FREE_ACCOUNT)))
-        assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors", "fr", "fr", AccessLevel.GUEST)))
-        assertEquals(true, homeGrammarConsumesTranslationTrial(AccessLevel.FREE_ACCOUNT))
-        assertEquals(false, homeGrammarConsumesTranslationTrial(AccessLevel.TESTER))
-        assertEquals(false, homeGrammarConsumesTranslationTrial(AccessLevel.PREMIUM))
+        assertEquals(true, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors", "fr", "fr", AccessLevel.GUEST)))
     }
 
     @Test
