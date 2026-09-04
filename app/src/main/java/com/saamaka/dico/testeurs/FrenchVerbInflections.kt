@@ -12,6 +12,7 @@ internal object FrenchVerbInflections {
         add("faire", "fais", "fait", "faisons", "faites", "font", "faisais", "faisait", "faisaient", "ferai", "feras", "fera", "ferons", "ferez", "feront")
         add("vouloir", "veux", "veut", "voulons", "voulez", "veulent", "voulais", "voulait", "voulaient", "voudrais", "voudrait")
         add("pouvoir", "peux", "peut", "pouvons", "pouvez", "peuvent", "pouvais", "pouvait", "pouvaient", "pourrai", "pourras", "pourra", "pourront")
+        add("devoir", "dois", "doit", "devons", "devez", "doivent", "devais", "devait", "devaient", "devrai", "devras", "devra", "devrons", "devrez", "devront")
         add("venir", "viens", "vient", "venons", "venez", "viennent", "venais", "venait", "venaient", "viendrai", "viendras", "viendra", "viendront")
         add("prendre", "prends", "prend", "prenons", "prenez", "prennent", "prenais", "prenait", "prenaient", "prendrai", "prendras", "prendra", "prendront")
         add("dormir", "dors", "dort", "dormons", "dormez", "dorment", "dormais", "dormait", "dormaient", "dormirai", "dormiras", "dormira", "dormiront")
@@ -20,6 +21,9 @@ internal object FrenchVerbInflections {
     }
 
     fun lemma(form: String): String? = lemmaByForm[normalizeAttestedPhraseKey(form)]
+
+    fun canComposeFromAttestedTranslation(lemma: String): Boolean =
+        normalizeAttestedPhraseKey(lemma) in setOf("devoir", "aimer", "manger", "dormir")
 
     private fun MutableMap<String, String>.add(lemma: String, vararg forms: String) {
         forms.forEach { form -> put(normalizeAttestedPhraseKey(form), lemma) }

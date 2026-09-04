@@ -12,17 +12,26 @@ import com.saamaka.dico.testeurs.model.DictionaryEntry
 internal data class SearchRequest(
     val text: String,
     val languageCode: String?,
-    val sourceLanguageCode: String = languageCode ?: "fr"
+    val sourceLanguageCode: String = languageCode ?: "fr",
+    val accessLevel: AccessLevel = AccessLevel.GUEST
 )
 internal data class SearchOutcome(
     val text: String,
     val results: List<DictionaryEntry>,
-    val exactMatch: LocalExactMatch?
+    val exactMatch: LocalExactMatch?,
+    val consumesTranslationTrial: Boolean = false
 )
 
 internal fun shouldRouteHomePhraseThroughGrammar(request: SearchRequest): Boolean =
     request.sourceLanguageCode == AppLanguage.FRENCH.code &&
-        normalizedInputWordCount(request.text) >= 2
+        normalizedInputWordCount(request.text) >= 2 &&
+        request.accessLevel != AccessLevel.GUEST
+
+internal fun homeGrammarConsumesTranslationTrial(accessLevel: AccessLevel): Boolean =
+    accessLevel == AccessLevel.FREE_ACCOUNT
+
+internal fun retainChargedHomePhrase(currentPhrase: String?, newQuery: String): String? =
+    currentPhrase.takeIf { normalizedInputWordCount(newQuery) >= 2 }
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 internal fun <T> Flow<SearchRequest>.debouncedSearch(

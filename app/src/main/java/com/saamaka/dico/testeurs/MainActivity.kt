@@ -290,6 +290,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
+    var lastChargedHomePhrase by remember { mutableStateOf<String?>(null) }
     var pendingPhraseText by remember { mutableStateOf("") }
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
@@ -536,7 +537,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
                 }
             }
-            SearchOutcome(cleaned, correctedResults, exactMatch)
+            SearchOutcome(
+                text = cleaned,
+                results = correctedResults,
+                exactMatch = exactMatch,
+                consumesTranslationTrial = exactMatch?.provenance == LocalMatchProvenance.GRAMMATICAL &&
+                    homeGrammarConsumesTranslationTrial(request.accessLevel)
+            )
         }
     }
 
@@ -545,13 +552,30 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             SearchRequest(
                 text = query,
                 languageCode = searchLanguageFilter.language?.code,
-                sourceLanguageCode = selectedLanguage.code
+                sourceLanguageCode = selectedLanguage.code,
+                accessLevel = accessLevel
             )
         }
             .debouncedSearch(::executeSearch)
             .collectLatest { outcome ->
                 searchResults = outcome.results
-                homeExactCompleteMatch = outcome.exactMatch
+                val normalizedPhrase = normalizeAttestedPhraseKey(outcome.text)
+                homeExactCompleteMatch = if (outcome.consumesTranslationTrial) {
+                    when {
+                        lastChargedHomePhrase == normalizedPhrase -> outcome.exactMatch
+                        translationTrialStore.useTrial() -> {
+                            lastChargedHomePhrase = normalizedPhrase
+                            remainingTranslationTrials = translationTrialStore.remainingTrials()
+                            outcome.exactMatch
+                        }
+                        else -> {
+                            activeTab = MainTab.PREMIUM
+                            null
+                        }
+                    }
+                } else {
+                    outcome.exactMatch
+                }
                 status = when {
                     outcome.text.isBlank() -> appStrings.startSearching
                     outcome.results.isEmpty() -> appStrings.noResult
@@ -1350,9 +1374,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
+                                lastChargedHomePhrase = retainChargedHomePhrase(lastChargedHomePhrase, it)
                             },
                             onClear = {
                                 query = ""
+                                lastChargedHomePhrase = null
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = appStrings.startSearching
@@ -1423,10 +1449,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
+                                lastChargedHomePhrase = retainChargedHomePhrase(lastChargedHomePhrase, it)
                             },
 
                             onClear = {
                                 query = ""
+                                lastChargedHomePhrase = null
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = appStrings.startSearching

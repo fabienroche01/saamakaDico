@@ -597,22 +597,11 @@ class DictionaryDatabase(private val context: Context) {
                 frenchVerb
             )
 
-        // Si aucune normalisation n'a eu lieu,
-        // on peut quand même essayer la forme telle quelle
-        val alternatives =
-            translateExactAlternatives(
-                text = infinitive,
-                frenchToSaamaka = true
-            )
-
-        if (alternatives.size != 1) {
-            return null
-        }
-
-        val verb =
-            cleanTranslationForDisplay(
-                alternatives.first()
-            )
+        if (!FrenchVerbInflections.canComposeFromAttestedTranslation(infinitive)) return null
+        val resolvedVerb = phraseIndex().frenchFallbackResolver.resolve(frenchVerb)
+            ?.takeIf { normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(infinitive) }
+            ?: return null
+        val verb = cleanTranslationForDisplay(resolvedVerb.saamaka)
 
         return "$subject ta $verb"
     }
@@ -727,22 +716,11 @@ class DictionaryDatabase(private val context: Context) {
             return "$subject o ɗɛ"
         }
 
-        val alternatives =
-            translateExactAlternatives(
-                text = infinitive,
-                frenchToSaamaka = true
-            )
-
-        // On ne choisit automatiquement
-        // que s'il existe une seule traduction
-        if (alternatives.size != 1) {
-            return null
-        }
-
-        val verb =
-            cleanTranslationForDisplay(
-                alternatives.first()
-            )
+        if (!FrenchVerbInflections.canComposeFromAttestedTranslation(infinitive)) return null
+        val resolvedVerb = phraseIndex().frenchFallbackResolver.resolve(words[2])
+            ?.takeIf { normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(infinitive) }
+            ?: return null
+        val verb = cleanTranslationForDisplay(resolvedVerb.saamaka)
 
         return "$subject o $verb"
     }

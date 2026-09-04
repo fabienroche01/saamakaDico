@@ -33,6 +33,15 @@ class FrenchFallbackResolverTest {
     }
 
     @Test
+    fun conjugatedDevoirUsesOnlyItsAttestedInfinitiveTranslation() {
+        val result = resolver(candidate("devoir", "da", "O")).resolve("devons")!!
+
+        assertEquals(FrenchResolutionKind.INFLECTION, result.kind)
+        assertEquals("devoir", result.matchedFrench)
+        assertEquals("da", result.saamaka)
+    }
+
+    @Test
     fun knownWordsComposeJeVeuxMangerIntoOneCompleteTranslation() {
         val resolver = resolver(
             candidate("je", "mi", "O"),
@@ -93,8 +102,21 @@ class FrenchFallbackResolverTest {
             assertEquals("vouloir", FrenchVerbInflections.lemma(it))
         }
         assertEquals("aller", FrenchVerbInflections.lemma("allons"))
+        assertEquals("devoir", FrenchVerbInflections.lemma("dois"))
+        assertEquals("devoir", FrenchVerbInflections.lemma("devons"))
+        assertEquals("devoir", FrenchVerbInflections.lemma("doivent"))
         assertEquals("dormir", FrenchVerbInflections.lemma("dorment"))
         assertNull(FrenchVerbInflections.lemma("forme-inconnue"))
+    }
+
+    @Test
+    fun grammaticalCompositionIsLimitedToAttestedUsableVerbTranslations() {
+        listOf("devoir", "aimer", "manger", "dormir").forEach {
+            assertEquals(true, FrenchVerbInflections.canComposeFromAttestedTranslation(it))
+        }
+        listOf("faire", "pouvoir", "aller", "avoir", "être", "venir").forEach {
+            assertEquals(false, FrenchVerbInflections.canComposeFromAttestedTranslation(it))
+        }
     }
 
     @Test

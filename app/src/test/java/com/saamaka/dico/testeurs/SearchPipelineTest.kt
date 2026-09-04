@@ -66,12 +66,36 @@ class SearchPipelineTest {
         listOf("je veux", "je veux manger", "je veux dormir", "tu veux dormir").forEach { text ->
             assertEquals(
                 true,
-                shouldRouteHomePhraseThroughGrammar(SearchRequest(text, "fr", "fr"))
+                shouldRouteHomePhraseThroughGrammar(
+                    SearchRequest(text, "fr", "fr", AccessLevel.FREE_ACCOUNT)
+                )
             )
         }
         assertEquals(
             false,
-            shouldRouteHomePhraseThroughGrammar(SearchRequest("je veux dormir", "en", "en"))
+            shouldRouteHomePhraseThroughGrammar(
+                SearchRequest("je veux dormir", "en", "en", AccessLevel.FREE_ACCOUNT)
+            )
         )
+    }
+
+    @Test
+    fun homePhraseUsesExistingTranslationAccessPolicy() {
+        assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("mot", "fr", "fr", AccessLevel.FREE_ACCOUNT)))
+        assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors", "fr", "fr", AccessLevel.GUEST)))
+        assertEquals(true, homeGrammarConsumesTranslationTrial(AccessLevel.FREE_ACCOUNT))
+        assertEquals(false, homeGrammarConsumesTranslationTrial(AccessLevel.TESTER))
+        assertEquals(false, homeGrammarConsumesTranslationTrial(AccessLevel.PREMIUM))
+    }
+
+    @Test
+    fun clearingAndRetypingDoesNotResetThePersistentTranslationQuota() {
+        val chargedPhrase = normalizeAttestedPhraseKey("je veux dormir")
+
+        assertEquals(chargedPhrase, retainChargedHomePhrase(chargedPhrase, "je veux dormir"))
+        assertEquals(null, retainChargedHomePhrase(chargedPhrase, ""))
+        assertEquals(null, retainChargedHomePhrase(chargedPhrase, "mot"))
+        // Only the in-flight duplicate marker is cleared. TranslationTrialStore is never reset here,
+        // so retyping the phrase requires another useTrial() on the same persistent store.
     }
 }
