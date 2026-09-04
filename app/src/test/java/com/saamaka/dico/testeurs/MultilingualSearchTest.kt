@@ -95,6 +95,46 @@ class MultilingualSearchTest {
     }
 
     @Test
+    fun phraseRankingPrefersExactThenPrefixThenOrderedThenUnorderedThenPartial() {
+        val ranked = listOf(
+            entry(1, french = "venir maison"),
+            entry(2, french = "maison venir"),
+            entry(3, french = "venir demain à la maison"),
+            entry(4, french = "venir maison demain"),
+            entry(5, french = "venir"),
+            entry(6, french = "venir maison")
+        )
+        assertEquals(
+            listOf(1, 6, 4, 3, 2, 5),
+            filterAndRankByLanguage(ranked, "venir maison", "fr").map { it.id }
+        )
+    }
+
+    @Test
+    fun searchNormalizationHarmonizesApostrophesHyphensAndFinalPunctuation() {
+        assertEquals("j'aime", normalizeMultilingualSearch(" J’AIME ! "))
+        assertEquals("porte-monnaie", normalizeMultilingualSearch("porte—monnaie."))
+        assertEquals(
+            listOf(1),
+            filterAndRankByLanguage(listOf(entry(1, french = "J’aime")), "j'aime", "fr").map { it.id }
+        )
+        assertEquals(
+            listOf(2),
+            filterAndRankByLanguage(listOf(entry(2, french = "porte‑monnaie")), "porte-monnaie", "fr").map { it.id }
+        )
+    }
+
+    @Test
+    fun singleWordRankingRemainsExactThenPrefixThenContains() {
+        val ranked = listOf(
+            entry(1, french = "soleil"),
+            entry(2, french = "soleil levant"),
+            entry(3, french = "grand soleil")
+        )
+        assertEquals(listOf(1, 2, 3), filterAndRankByLanguage(ranked, "soleil", "fr").map { it.id })
+    }
+
+    @Test
     fun resultCarriesTheLanguageThatMatched() {
         val swim = entries.first { it.id == 1 }
         val sun = entries.first { it.id == 2 }

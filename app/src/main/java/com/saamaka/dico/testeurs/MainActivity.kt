@@ -473,9 +473,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         val cleaned = request.text.trim()
         if (cleaned.isBlank()) return SearchOutcome(cleaned, emptyList(), null)
 
-        val correctedResults = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             val corrections = correctionStore.latestByEntry()
-            database.search(cleaned, request.languageCode).map { entry ->
+            val correctedResults = database.search(cleaned, request.languageCode).map { entry ->
                 corrections[entry.id]?.let { correction ->
                     entry.copy(
                         french = correction.frenchProposed.ifBlank { entry.french },
@@ -483,9 +483,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
                 } ?: entry
             }
-        }
-        val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
-        var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
+            val frenchToSaamaka = selectedLanguage == AppLanguage.FRENCH
+            var exactMatch = if (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
                 val normalizedTranslation = normalizeAttestedPhraseKey(translation)
                 val linkedEntry = allEntries.firstOrNull { entry ->
@@ -499,8 +498,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     linkedEntry
                 )
             }
-        } else null
-        if (exactMatch == null && (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA)) {
+            } else null
+            if (exactMatch == null && (selectedLanguage == AppLanguage.FRENCH || selectedLanguage == AppLanguage.SAAMAKA)) {
             correctedResults.firstOrNull { entry ->
                 val source = if (frenchToSaamaka) entry.french else entry.saamaka
                 normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
@@ -512,8 +511,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     entry
                 )
             }
+            }
+            SearchOutcome(cleaned, correctedResults, exactMatch)
         }
-        return SearchOutcome(cleaned, correctedResults, exactMatch)
     }
 
     LaunchedEffect(appStrings) {

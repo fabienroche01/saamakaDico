@@ -330,14 +330,29 @@ class DictionaryDatabase(private val context: Context) {
         )
         val languageCodes = if (languageCode == null) listOf("srm", "fr", "en", "nl") else listOf(languageCode)
         val glob = accentInsensitiveGlob(normalizedQuery)
+        val wordGlobs = normalizedQuery.split(' ').filter(String::isNotBlank).map(::accentInsensitiveGlob)
         val exactClause = columns.joinToString(" OR ") { "$it GLOB ?" }
         val prefixClause = columns.joinToString(" OR ") { "$it GLOB ?" }
-        val containsClause = columns.joinToString(" OR ") { "$it GLOB ?" }
+        val allWordsClause = columns.joinToString(" OR ") { column ->
+            wordGlobs.joinToString(" AND ", prefix = "(", postfix = ")") { "$column GLOB ?" }
+        }
+        val containsClause = if (wordGlobs.size <= 1) {
+            columns.joinToString(" OR ") { "$it GLOB ?" }
+        } else {
+            columns.joinToString(" OR ") { column ->
+                wordGlobs.joinToString(" OR ", prefix = "(", postfix = ")") { "$column GLOB ?" }
+            }
+        }
         val candidateLimit = (limit * 4).coerceAtLeast(limit)
         val args = buildList {
-            repeat(columns.size) { add("*$glob*") }
+            if (wordGlobs.size <= 1) {
+                repeat(columns.size) { add("*$glob*") }
+            } else {
+                repeat(columns.size) { wordGlobs.forEach { add("*$it*") } }
+            }
             repeat(columns.size) { add(glob) }
             repeat(columns.size) { add("$glob*") }
+            repeat(columns.size) { wordGlobs.forEach { add("*$it*") } }
             add(candidateLimit.toString())
         }.toTypedArray()
 
@@ -356,7 +371,8 @@ class DictionaryDatabase(private val context: Context) {
             ORDER BY CASE
                 WHEN $exactClause THEN 0
                 WHEN $prefixClause THEN 1
-                ELSE 2
+                WHEN $allWordsClause THEN 2
+                ELSE 3
             END, id
             LIMIT ?
 """.trimIndent(),

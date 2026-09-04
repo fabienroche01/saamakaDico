@@ -13,9 +13,16 @@ internal fun searchTextForLanguage(entry: DictionaryEntry, languageCode: String)
     }
 
 internal fun normalizeMultilingualSearch(value: String): String =
-    Normalizer.normalize(value.trim(), Normalizer.Form.NFD)
+    Normalizer.normalize(
+        value.trim()
+            .replace(Regex("[‘’ʼ`]"), "'")
+            .replace(Regex("[‐‑‒–—−]"), "-"),
+        Normalizer.Form.NFD
+    )
         .replace("\\p{Mn}+".toRegex(), "")
         .lowercase(Locale.ROOT)
+        .replace(Regex("[.!?,;:]+$"), "")
+        .trimEnd()
         .replace(Regex("\\s+"), " ")
 
 internal fun accentInsensitiveGlob(value: String): String = buildString {
@@ -32,6 +39,8 @@ internal fun accentInsensitiveGlob(value: String): String = buildString {
                 'u' -> "[uUùÙúÚûÛüÜũŨūŪŭŬůŮűŰųŲ]"
                 'y' -> "[yYýÝÿŸ]"
                 'z' -> "[zZźŹžŽżŻ]"
+                '\'' -> "['‘’ʼ`]"
+                '-' -> "[-‐‑‒–—−]"
                 '*', '?', '[', ']' -> "[$character]"
                 in 'a'..'z' -> "[$character${character.uppercaseChar()}]"
                 else -> character.toString()
@@ -62,6 +71,47 @@ internal fun multilingualSearchRankNormalized(text: String, normalizedQuery: Str
     }
 }
 
+private data class SearchRelevance(
+    val rank: Int,
+    val missingWordCount: Int = 0
+)
+
+private fun searchRelevance(text: String, normalizedQuery: String): SearchRelevance? {
+    val normalizedText = normalizeMultilingualSearch(text)
+    if (normalizedText.isBlank()) return null
+    val queryWords = normalizedQuery.split(' ').filter(String::isNotBlank)
+    if (queryWords.size <= 1) {
+        val rank = multilingualSearchRank(normalizedText, normalizedQuery)
+        return SearchRelevance(rank).takeIf { rank < 4 }
+    }
+
+    if (normalizedText == normalizedQuery) return SearchRelevance(0)
+    if (normalizedText.startsWith(normalizedQuery)) return SearchRelevance(1)
+
+    val textWords = normalizedText.split(' ').filter(String::isNotBlank)
+    var nextIndex = 0
+    val allWordsInOrder = queryWords.all { queryWord ->
+        val found = textWords.indexOfFirstFrom(nextIndex) { it == queryWord }
+        if (found >= 0) nextIndex = found + 1
+        found >= 0
+    }
+    if (allWordsInOrder) return SearchRelevance(2)
+    if (queryWords.all { it in textWords }) return SearchRelevance(3)
+
+    val matchedWords = queryWords.count { queryWord ->
+        textWords.any { textWord -> textWord.contains(queryWord) || queryWord.contains(textWord) }
+    }
+    return SearchRelevance(4, queryWords.size - matchedWords).takeIf { matchedWords > 0 }
+}
+
+private inline fun List<String>.indexOfFirstFrom(
+    startIndex: Int,
+    predicate: (String) -> Boolean
+): Int {
+    for (index in startIndex until size) if (predicate(this[index])) return index
+    return -1
+}
+
 internal fun filterAndRankAcrossLanguages(
     entries: List<DictionaryEntry>,
     normalizedQuery: String,
@@ -71,13 +121,17 @@ internal fun filterAndRankAcrossLanguages(
     if (normalizedQuery.isBlank()) return emptyList()
     return entries.asSequence()
         .mapNotNull { entry ->
-            val rank = languageCodes.minOfOrNull { languageCode ->
-                multilingualSearchRankNormalized(searchTextForLanguage(entry, languageCode), normalizedQuery)
-            } ?: 3
-            entry.takeIf { rank < 3 }?.let { it to rank }
+            val relevance = languageCodes.mapNotNull { languageCode ->
+                searchRelevance(searchTextForLanguage(entry, languageCode), normalizedQuery)
+            }.minWithOrNull(compareBy<SearchRelevance> { it.rank }.thenBy { it.missingWordCount })
+            relevance?.let { entry to it }
         }
         .distinctBy { it.first.id }
-        .sortedWith(compareBy<Pair<DictionaryEntry, Int>> { it.second }.thenBy { it.first.id })
+        .sortedWith(
+            compareBy<Pair<DictionaryEntry, SearchRelevance>> { it.second.rank }
+                .thenBy { it.second.missingWordCount }
+                .thenBy { it.first.id }
+        )
         .take(limit)
         .map { it.first }
         .toList()
@@ -102,19 +156,17 @@ internal fun filterAndRankByLanguageNormalized(
     if (normalizedQuery.isBlank()) return emptyList()
     return entries.asSequence()
         .filter { searchTextForLanguage(it, languageCode).isNotBlank() }
-        .filter {
-            normalizeMultilingualSearch(searchTextForLanguage(it, languageCode))
-                .contains(normalizedQuery)
+        .mapNotNull { entry ->
+            searchRelevance(searchTextForLanguage(entry, languageCode), normalizedQuery)?.let { entry to it }
         }
-        .distinctBy { it.id }
+        .distinctBy { it.first.id }
         .sortedWith(
-            compareBy<DictionaryEntry> {
-                multilingualSearchRank(searchTextForLanguage(it, languageCode), normalizedQuery)
-            }.thenBy {
-                normalizeMultilingualSearch(searchTextForLanguage(it, languageCode))
-            }
+            compareBy<Pair<DictionaryEntry, SearchRelevance>> { it.second.rank }
+                .thenBy { it.second.missingWordCount }
+                .thenBy { normalizeMultilingualSearch(searchTextForLanguage(it.first, languageCode)) }
         )
         .take(limit)
+        .map { it.first }
         .toList()
 }
 
