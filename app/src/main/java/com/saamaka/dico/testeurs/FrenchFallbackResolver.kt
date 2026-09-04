@@ -1,5 +1,10 @@
 package com.saamaka.dico.testeurs
 
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
+import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
+import com.saamaka.dico.testeurs.model.TranslationReliability
+
 internal enum class FrenchResolutionKind(val detailLabel: String) {
     EXACT("correspondance exacte"),
     ELISION("élision française normalisée"),
@@ -24,6 +29,39 @@ internal data class FrenchFallbackResolution(
 ) {
     val detail: String
         get() = "$requested → $matchedFrench : ${kind.detailLabel}"
+}
+
+internal fun composeKnownVouloirPhrase(
+    text: String,
+    resolveSubject: (String) -> String?,
+    resolveWord: (String) -> FrenchFallbackResolution?
+): PhraseTranslationResult? {
+    val words = cleanPhraseInput(text).split(Regex("\\s+")).filter(String::isNotBlank)
+    if (words.size != 3) return null
+
+    val subject = resolveSubject(words[0]) ?: return null
+    val vouloir = resolveWord(words[1])?.takeIf {
+        normalizeAttestedPhraseKey(it.matchedFrench) == "vouloir" &&
+            it.kind in setOf(FrenchResolutionKind.EXACT, FrenchResolutionKind.INFLECTION)
+    } ?: return null
+    val infinitive = resolveWord(words[2])?.takeIf {
+        it.kind == FrenchResolutionKind.EXACT &&
+            normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(words[2])
+    } ?: return null
+
+    val segments = listOf(
+        RecognizedPhraseSegment(words[0], subject, matchedSource = words[0]),
+        RecognizedPhraseSegment(words[1], vouloir.saamaka, matchedSource = vouloir.matchedFrench),
+        RecognizedPhraseSegment(words[2], infinitive.saamaka, matchedSource = infinitive.matchedFrench)
+    )
+    return PhraseTranslationResult(
+        translation = segments.joinToString(" ") { it.translation },
+        recognizedSegments = segments,
+        untranslatedSegments = emptyList(),
+        isComplete = true,
+        reliability = TranslationReliability.MEDIUM,
+        kind = PhraseTranslationKind.GRAMMATICAL
+    )
 }
 
 internal class FrenchFallbackResolver(

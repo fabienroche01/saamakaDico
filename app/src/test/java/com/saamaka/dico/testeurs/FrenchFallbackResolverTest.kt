@@ -57,6 +57,26 @@ class FrenchFallbackResolverTest {
     }
 
     @Test
+    fun genericVouloirCompositionUsesAnyKnownInfinitive() {
+        val resolver = resolver(
+            candidate("vouloir", "kë", "O"),
+            candidate("manger", "Makandi", "O"),
+            candidate("dormir", "duumí", "O"),
+            candidate("travailler", "wooko", "O")
+        )
+        fun compose(text: String) = composeKnownVouloirPhrase(
+            text,
+            resolveSubject = { mapOf("je" to "mi", "tu" to "i", "nous" to "u")[it] },
+            resolveWord = resolver::resolve
+        )
+
+        assertEquals("mi kë Makandi", compose("je veux manger")?.translation)
+        assertEquals("mi kë duumí", compose("je veux dormir")?.translation)
+        assertEquals("u kë wooko", compose("nous voulons travailler")?.translation)
+        assertNull(compose("je veux téléporter"))
+    }
+
+    @Test
     fun lightTypingErrorIsCorrectedButNotCalledASynonym() {
         val result = resolver(candidate("bonjour", "LOCAL_BONJOUR", "O")).resolve("bonjor")!!
 

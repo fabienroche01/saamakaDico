@@ -12,6 +12,7 @@ import com.saamaka.dico.testeurs.requireBackgroundSearch
 import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
+import com.saamaka.dico.testeurs.composeKnownVouloirPhrase
 import com.saamaka.dico.testeurs.CorrectionProposal
 import com.saamaka.dico.testeurs.findAttestedPhraseRule
 import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
@@ -1363,6 +1364,14 @@ val frenchObject =
         )
         if (!attestedRule.isNullOrBlank()) {
             return complete(attestedRule, PhraseTranslationKind.VALIDATED_RULE)
+        }
+
+        if (frenchToSaamaka) {
+            composeKnownVouloirPhrase(
+                text = cleanText,
+                resolveSubject = ::frenchSubjectToSaamaka,
+                resolveWord = phraseIndex().frenchFallbackResolver::resolve
+            )?.let { return it }
         }
 
         fun correctionTranslation(segment: String): String? {
