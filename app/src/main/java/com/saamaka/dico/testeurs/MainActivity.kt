@@ -242,8 +242,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val learningTrialStore = remember {
         LearningTrialStore(context)
     }
-    var remainingLearningTrials by remember {
-        mutableStateOf(learningTrialStore.remainingTrials())
+    var remainingLearningTrials by remember(accessLevel) {
+        mutableStateOf(learningTrialStore.remainingTrials(accessLevel))
     }
     val assignmentStore = remember { AssignmentStore(context) }
     var testerName by remember { mutableStateOf(correctionStore.testerName()) }
@@ -302,27 +302,27 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         mutableStateOf("")
     }
 
-    fun launchLearningActivity(section: String) {
-        if (learnSection == section) return
-
-        val canLaunch = when (accessLevel) {
-            AccessLevel.TESTER,
-            AccessLevel.PREMIUM -> true
-            AccessLevel.FREE_ACCOUNT -> learningTrialStore.useTrial().also {
-                remainingLearningTrials = learningTrialStore.remainingTrials()
-            }
-            AccessLevel.GUEST -> true
+    fun consumeLearningTrialOrOpenPremium(): Boolean {
+        val canLaunch = learningTrialStore.useTrial(accessLevel)
+        if (accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) {
+            remainingLearningTrials = learningTrialStore.remainingTrials(accessLevel)
         }
 
-        if (canLaunch) {
-            learnSection = section
-        } else {
+        if (!canLaunch) {
             Toast.makeText(
                 context,
                 appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),
                 Toast.LENGTH_LONG
             ).show()
             activeTab = MainTab.PREMIUM
+        }
+        return canLaunch
+    }
+
+    fun launchLearningActivity(section: String) {
+        if (learnSection == section) return
+        if (consumeLearningTrialOrOpenPremium()) {
+            learnSection = section
         }
     }
     val quizEntries = remember(allEntries) {
@@ -1914,6 +1914,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 learningPrefs.getInt("matching_perfect_games", 0)
                             )
                         }
+                        var matchingCompletedGameRecorded by remember {
+                            mutableStateOf(false)
+                        }
 
                         val knownWordIds = remember {
                             mutableStateListOf<Int>().apply {
@@ -2055,6 +2058,20 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color(0xFF68736C)
                             )
+
+                            if (
+                                accessLevel == AccessLevel.GUEST ||
+                                accessLevel == AccessLevel.FREE_ACCOUNT
+                            ) {
+                                Text(
+                                    text = appStrings.ui(
+                                        UiCopyKey.REMAINING_LEARNING_TRIALS,
+                                        remainingLearningTrials
+                                    ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFF68736C)
+                                )
+                            }
 
                             Spacer(Modifier.height(12.dp))
 
@@ -3286,32 +3303,39 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 Button(
                                                     onClick = {
 
-                                                        matchingGamesPlayed++
-                                                        matchingTotalCorrect += matchedEntryIds.size
-                                                        matchingTotalErrors += matchingErrors
+                                                        if (!matchingCompletedGameRecorded) {
+                                                            matchingGamesPlayed++
+                                                            matchingTotalCorrect += matchedEntryIds.size
+                                                            matchingTotalErrors += matchingErrors
 
-                                                        if (matchingErrors == 0) {
-                                                            matchingPerfectGames++
+                                                            if (matchingErrors == 0) {
+                                                                matchingPerfectGames++
+                                                            }
+
+                                                            learningPrefs.edit()
+                                                                .putInt(
+                                                                    "matching_games_played",
+                                                                    matchingGamesPlayed
+                                                                )
+                                                                .putInt(
+                                                                    "matching_total_correct",
+                                                                    matchingTotalCorrect
+                                                                )
+                                                                .putInt(
+                                                                    "matching_total_errors",
+                                                                    matchingTotalErrors
+                                                                )
+                                                                .putInt(
+                                                                    "matching_perfect_games",
+                                                                    matchingPerfectGames
+                                                                )
+                                                                .apply()
+                                                            matchingCompletedGameRecorded = true
                                                         }
 
-                                                        learningPrefs.edit()
-                                                            .putInt(
-                                                                "matching_games_played",
-                                                                matchingGamesPlayed
-                                                            )
-                                                            .putInt(
-                                                                "matching_total_correct",
-                                                                matchingTotalCorrect
-                                                            )
-                                                            .putInt(
-                                                                "matching_total_errors",
-                                                                matchingTotalErrors
-                                                            )
-                                                            .putInt(
-                                                                "matching_perfect_games",
-                                                                matchingPerfectGames
-                                                            )
-                                                            .apply()
+                                                        if (!consumeLearningTrialOrOpenPremium()) {
+                                                            return@Button
+                                                        }
 
                                                         matchedEntryIds.clear()
                                                         selectedSaamakaMatch = null
@@ -3319,6 +3343,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         matchingFeedback = null
                                                         matchingErrors = 0
                                                         matchingGameKey++
+                                                        matchingCompletedGameRecorded = false
                                                     },
                                                     modifier = Modifier.fillMaxWidth(),
                                                     shape = RoundedCornerShape(14.dp),
