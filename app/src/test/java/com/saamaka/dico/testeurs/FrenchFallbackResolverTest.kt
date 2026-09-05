@@ -66,37 +66,6 @@ class FrenchFallbackResolverTest {
     }
 
     @Test
-    fun genericVouloirCompositionUsesAnyKnownInfinitive() {
-        val resolver = resolver(
-            candidate("je", "mi", "O"),
-            candidate("tu", "i", "O"),
-            candidate("nous", "u", "O"),
-            candidate("vouloir", "kë", "O"),
-            candidate("manger", "Makandi", "O"),
-            candidate("dormir", "duumí", "O"),
-            candidate("travailler", "wooko", "O")
-        )
-        fun compose(text: String) = composeKnownVouloirPhrase(
-            text,
-            resolveWord = resolver::resolve
-        )
-
-        assertEquals("mi kë Makandi", compose("je veux manger")?.translation)
-        assertEquals("i kë Makandi", compose("tu veux manger")?.translation)
-        assertEquals("mi kë duumí", compose("je veux dormir")?.translation)
-        assertEquals("i kë duumí", compose("tu veux dormir")?.translation)
-        assertEquals("a kë duumí", compose("il veut dormir")?.translation)
-        assertEquals("a kë duumí", compose("elle veut dormir")?.translation)
-        assertEquals("u kë duumí", compose("nous voulons dormir")?.translation)
-        assertEquals("unu kë duumí", compose("vous voulez dormir")?.translation)
-        assertEquals("de kë duumí", compose("ils veulent dormir")?.translation)
-        assertEquals("u kë wooko", compose("nous voulons travailler")?.translation)
-        assertNull(compose("je veux téléporter"))
-        assertNull(compose("on veut dormir"))
-        assertNull(compose("personne veut dormir"))
-    }
-
-    @Test
     fun frenchVerbInflectionsResolveToOneReusableLemma() {
         listOf("veux", "veut", "voulons", "voulez", "veulent").forEach {
             assertEquals("vouloir", FrenchVerbInflections.lemma(it))

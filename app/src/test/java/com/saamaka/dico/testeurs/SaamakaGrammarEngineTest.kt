@@ -1,0 +1,59 @@
+package com.saamaka.dico.testeurs
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class SaamakaGrammarEngineTest {
+    private val resolver = FrenchFallbackResolver(
+        listOf(
+            candidate("malade", "síki"),
+            candidate("seul", "wanwan"),
+            candidate("vouloir", "kë"),
+            candidate("devoir", "da"),
+            candidate("aimer", "lobi"),
+            candidate("manger", "Makandi", "O"),
+            candidate("dormir", "duumí")
+        )
+    )
+    private val engine = SaamakaGrammarEngine(resolver::resolve)
+
+    @Test
+    fun appliesAttestedCopulaMarkersWithoutTranslatingEtre() {
+        assertEquals("mi síki", engine.translate("je suis malade")?.translation)
+        assertEquals("i wanwan", engine.translate("tu es seul")?.translation)
+        assertEquals("mi bi síki", engine.translate("j’étais malade")?.translation)
+        assertEquals("mi an síki", engine.translate("je ne suis pas malade")?.translation)
+    }
+
+    @Test
+    fun appliesAttestedAspectAndModalPatterns() {
+        assertEquals("mi o Makandi", engine.translate("je vais manger")?.translation)
+        assertEquals("i o duumí", engine.translate("tu vas dormir")?.translation)
+        assertEquals("mi kë Makandi", engine.translate("je veux manger")?.translation)
+        assertEquals("i kë duumí", engine.translate("tu veux dormir")?.translation)
+        assertEquals("mi ta Makandi", engine.translate("je suis en train de manger")?.translation)
+        assertEquals("mi ta da duumí", engine.translate("je dois dormir")?.translation)
+        assertEquals("mi an lobi duumí", engine.translate("je n’aime pas dormir")?.translation)
+    }
+
+    @Test
+    fun neverInventsAnUnknownOrUnsafeLexeme() {
+        assertNull(engine.translate("je fais dormir"))
+        assertNull(engine.translate("je peux dormir"))
+        assertNull(engine.translate("je veux téléporter"))
+        assertNull(engine.translate("on veut dormir"))
+    }
+
+    @Test
+    fun frenchInflectionsOnlyExposeLemmaAndTense() {
+        assertEquals("être", FrenchVerbInflections.lemma("suis"))
+        assertEquals(FrenchVerbTense.PRESENT, FrenchVerbInflections.tense("suis"))
+        assertEquals(FrenchVerbTense.PAST, FrenchVerbInflections.tense("étais"))
+        assertEquals("aller", FrenchVerbInflections.lemma("vas"))
+        assertEquals(FrenchVerbTense.PRESENT, FrenchVerbInflections.tense("vas"))
+    }
+
+    private fun candidate(french: String, saamaka: String, validation: String = "") =
+        FrenchTranslationCandidate(french, saamaka, validation)
+}

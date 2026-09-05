@@ -12,9 +12,9 @@ import com.saamaka.dico.testeurs.requireBackgroundSearch
 import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.cleanPhraseInput
-import com.saamaka.dico.testeurs.composeKnownVouloirPhrase
 import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
 import com.saamaka.dico.testeurs.FrenchVerbInflections
+import com.saamaka.dico.testeurs.SaamakaGrammarEngine
 import com.saamaka.dico.testeurs.CorrectionProposal
 import com.saamaka.dico.testeurs.findAttestedPhraseRule
 import com.saamaka.dico.testeurs.normalizeAttestedPhraseKey
@@ -1292,10 +1292,9 @@ val frenchObject =
         }
 
         if (frenchToSaamaka) {
-            composeKnownVouloirPhrase(
-                text = cleanText,
-                resolveWord = phraseIndex().frenchFallbackResolver::resolve
-            )?.let { return it }
+            SaamakaGrammarEngine(
+                resolveFrenchWord = phraseIndex().frenchFallbackResolver::resolve
+            ).translate(cleanText)?.let { return it }
         }
 
         fun correctionTranslation(segment: String): String? {
@@ -1319,86 +1318,6 @@ val frenchObject =
             }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
         }
 
-        if (frenchToSaamaka) {
-
-            val confirmedNegative =
-                translateConfirmedNegativePattern(
-                    cleanText
-                )
-
-            if (!confirmedNegative.isNullOrBlank()) {
-
-                return complete(confirmedNegative)
-            }
-        }
-
-        if (frenchToSaamaka) {
-
-            val normalizedSentence =
-                normalizeForSearch(
-                    prepareFrenchTextForTranslation(
-                        cleanText
-                    )
-                )
-
-            if (
-                normalizedSentence == "c est" ||
-                normalizedSentence == "ce est"
-            ) {
-                return complete("✅ Construction grammaticale attestée :\nɗa")
-            }
-
-            if (
-                normalizedSentence == "ce n est pas" ||
-                normalizedSentence == "ce ne est pas" ||
-                normalizedSentence == "c est pas" ||
-                normalizedSentence == "ce est pas"
-            ) {
-                return complete("✅ Construction grammaticale attestée :\nna")
-            }
-        }
-
-        // -------------------------------------------------
-        // 1. PRIORITÉ ABSOLUE : PHRASE EXACTE ATTESTÉE
-        // -------------------------------------------------
-        if (frenchToSaamaka) {
-
-            val confirmedFuture =
-                translateConfirmedFuturePattern(
-                    cleanText
-                )
-
-            if (!confirmedFuture.isNullOrBlank()) {
-
-                return complete("✅ Futur grammatical attesté :\n$confirmedFuture")
-            }
-        }
-
-        if (frenchToSaamaka) {
-
-            val confirmedNearFuture =
-                translateConfirmedNearFuturePattern(
-                    cleanText
-                )
-
-            if (!confirmedNearFuture.isNullOrBlank()) {
-
-                return complete("✅ Futur grammatical attesté :\n$confirmedNearFuture")
-            }
-        }
-
-        if (frenchToSaamaka) {
-
-            val confirmedInaccompli =
-                translateConfirmedInaccompliPattern(
-                    cleanText
-                )
-
-            if (!confirmedInaccompli.isNullOrBlank()) {
-
-                return complete(confirmedInaccompli, PhraseTranslationKind.GRAMMATICAL)
-            }
-        }
         if (!frenchToSaamaka) {
 
             val negativeInaccompli =
@@ -1495,6 +1414,16 @@ val frenchObject =
                     matchedSource = resolution.matchedFrench,
                     alternatives = resolution.alternatives
                 )
+            }
+        }?.let { assembled ->
+            if (frenchToSaamaka && assembled.isComplete) {
+                assembled.copy(
+                    untranslatedSegments = listOf(cleanText),
+                    isComplete = false,
+                    reliability = TranslationReliability.LOW
+                )
+            } else {
+                assembled
             }
         }
 

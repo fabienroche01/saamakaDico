@@ -11,17 +11,30 @@ import org.junit.Test
 class PhraseTranslationPipelineTest {
     @Test
     fun homeAndTranslateUseTheSamePhraseDecisionForAllRequiredCases() = runBlocking {
-        val translations = mapOf(
-            "je veux manger" to "mi kë Makandi",
-            "tu veux dormir" to "i kë duumí",
-            "il veut dormir" to "a kë duumí",
-            "je dois dormir" to "mi ta da duumí",
-            "je vais manger" to "mi o Makandi"
+        val resolver = FrenchFallbackResolver(
+            listOf(
+                FrenchTranslationCandidate("malade", "síki", ""),
+                FrenchTranslationCandidate("vouloir", "kë", ""),
+                FrenchTranslationCandidate("devoir", "da", ""),
+                FrenchTranslationCandidate("manger", "Makandi", "O"),
+                FrenchTranslationCandidate("dormir", "duumí", "")
+            )
+        )
+        val grammar = SaamakaGrammarEngine(resolver::resolve)
+        val inputs = listOf(
+            "je suis malade",
+            "tu es seul",
+            "je vais manger",
+            "tu vas dormir",
+            "je veux manger",
+            "tu veux dormir",
+            "je suis en train de manger",
+            "phrase inconnue"
         )
 
-        (translations.keys + "phrase inconnue").forEach { input ->
+        inputs.forEach { input ->
             fun pipeline() = PhraseTranslationPipeline(
-                resolvePhrase = { text, _ -> translations[text]?.let(::complete) },
+                resolvePhrase = { text, _ -> grammar.translate(text) },
                 remainingTrials = { 3 },
                 consumeTrial = { true }
             )

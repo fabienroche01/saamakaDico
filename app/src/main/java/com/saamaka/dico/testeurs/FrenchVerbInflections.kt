@@ -1,5 +1,7 @@
 package com.saamaka.dico.testeurs
 
+internal enum class FrenchVerbTense { PRESENT, PAST, FUTURE, OTHER }
+
 /**
  * Safe, explicit French inflections used before an exact lemma lookup in the dictionary.
  * Adding a verb only requires adding its attested forms here; translation remains DB-driven.
@@ -22,10 +24,63 @@ internal object FrenchVerbInflections {
 
     fun lemma(form: String): String? = lemmaByForm[normalizeAttestedPhraseKey(form)]
 
+    fun tense(form: String): FrenchVerbTense? {
+        val normalized = normalizeAttestedPhraseKey(form)
+        if (normalized !in lemmaByForm) return null
+        return when (normalized) {
+            in presentForms -> FrenchVerbTense.PRESENT
+            in pastForms -> FrenchVerbTense.PAST
+            in futureForms -> FrenchVerbTense.FUTURE
+            else -> FrenchVerbTense.OTHER
+        }
+    }
+
     fun canComposeFromAttestedTranslation(lemma: String): Boolean =
         normalizeAttestedPhraseKey(lemma) in setOf("devoir", "aimer", "manger", "dormir")
 
     private fun MutableMap<String, String>.add(lemma: String, vararg forms: String) {
         forms.forEach { form -> put(normalizeAttestedPhraseKey(form), lemma) }
     }
+
+    private val presentForms = normalizedSet(
+        "vais", "vas", "va", "allons", "allez", "vont",
+        "suis", "es", "est", "sommes", "êtes", "sont",
+        "ai", "as", "avons", "avez", "ont",
+        "fais", "fait", "faisons", "faites", "font",
+        "veux", "veut", "voulons", "voulez", "veulent",
+        "peux", "peut", "pouvons", "pouvez", "peuvent",
+        "dois", "doit", "devons", "devez", "doivent",
+        "viens", "vient", "venons", "venez", "viennent",
+        "dors", "dort", "dormons", "dormez", "dorment",
+        "mange", "manges", "mangeons", "mangez", "mangent",
+        "aime", "aimes", "aimons", "aimez", "aiment"
+    )
+    private val pastForms = normalizedSet(
+        "allais", "allait", "allaient",
+        "étais", "était", "étions", "étiez", "étaient",
+        "avais", "avait", "avions", "aviez", "avaient",
+        "faisais", "faisait", "faisaient",
+        "voulais", "voulait", "voulaient",
+        "pouvais", "pouvait", "pouvaient",
+        "devais", "devait", "devaient",
+        "venais", "venait", "venaient",
+        "dormais", "dormait", "dormaient",
+        "mangeais", "mangeait", "mangeaient",
+        "aimais", "aimait", "aimions", "aimiez", "aimaient"
+    )
+    private val futureForms = normalizedSet(
+        "irai", "iras", "ira", "irons", "irez", "iront",
+        "serai", "seras", "sera", "serons", "serez", "seront",
+        "aurai", "auras", "aura", "aurons", "aurez", "auront",
+        "ferai", "feras", "fera", "ferons", "ferez", "feront",
+        "pourrai", "pourras", "pourra", "pourront",
+        "devrai", "devras", "devra", "devrons", "devrez", "devront",
+        "viendrai", "viendras", "viendra", "viendront",
+        "dormirai", "dormiras", "dormira", "dormiront",
+        "mangerai", "mangeras", "mangera", "mangeront",
+        "aimerai", "aimeras", "aimera", "aimerons", "aimerez", "aimeront"
+    )
+
+    private fun normalizedSet(vararg forms: String): Set<String> =
+        forms.mapTo(mutableSetOf(), ::normalizeAttestedPhraseKey)
 }
