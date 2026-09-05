@@ -155,6 +155,67 @@ class PhraseTranslationPipelineTest {
     }
 
     @Test
+    fun cancellationAfterAuthorizationCannotBypassGuestQuota() = runBlocking {
+        var remaining = 3
+        val observedRemaining = mutableListOf<Int>()
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ ->
+                observedRemaining += remaining
+                null
+            },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                if (remaining <= 0) false else {
+                    remaining--
+                    true
+                }
+            }
+        )
+
+        repeat(3) {
+            assertEquals(
+                PhraseTranslationDisposition.FALLBACK,
+                pipeline.translate("phrase numero $it", true, AccessLevel.GUEST).disposition
+            )
+        }
+
+        assertEquals(listOf(2, 1, 0), observedRemaining)
+        assertEquals(0, remaining)
+        assertEquals(
+            PhraseTranslationDisposition.PREMIUM_REQUIRED,
+            pipeline.translate("phrase numero quatre", true, AccessLevel.GUEST).disposition
+        )
+        assertEquals(listOf(2, 1, 0), observedRemaining)
+    }
+
+    @Test
+    fun freeAccountRemainingValuesAreFourToZeroThenSixthAttemptIsBlocked() = runBlocking {
+        var remaining = 5
+        val values = mutableListOf<Int>()
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                if (remaining <= 0) false else {
+                    remaining--
+                    values += remaining
+                    true
+                }
+            }
+        )
+
+        repeat(5) {
+            pipeline.translate("tentative phrase $it", true, AccessLevel.FREE_ACCOUNT)
+        }
+
+        assertEquals(listOf(4, 3, 2, 1, 0), values)
+        assertEquals(
+            PhraseTranslationDisposition.PREMIUM_REQUIRED,
+            pipeline.translate("sixieme tentative", true, AccessLevel.FREE_ACCOUNT).disposition
+        )
+    }
+
+    @Test
     fun guestGetsThreeTranslationsAndFreeAccountGetsFive() = runBlocking {
         assertEquals(3, translationTrialLimit(AccessLevel.GUEST))
         assertEquals(5, translationTrialLimit(AccessLevel.FREE_ACCOUNT))

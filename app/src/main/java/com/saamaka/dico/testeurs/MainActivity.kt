@@ -516,7 +516,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 AppLanguage.SAAMAKA.code
             )
             val phraseTranslation = if (shouldRouteHomePhraseThroughGrammar(request)) {
-                phraseTranslationPipeline.resolve(cleaned, true, request.accessLevel)
+                phraseTranslationPipeline.translate(
+                    text = cleaned,
+                    frenchToSaamaka = true,
+                    accessLevel = request.accessLevel,
+                    alreadyConsumed = request.phraseAttemptAlreadyConsumed
+                )
             } else {
                 null
             }
@@ -576,20 +581,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 text = query,
                 languageCode = searchLanguageFilter.language?.code,
                 sourceLanguageCode = selectedLanguage.code,
-                accessLevel = accessLevel
+                accessLevel = accessLevel,
+                phraseAttemptAlreadyConsumed = lastChargedHomePhrase ==
+                    normalizeAttestedPhraseKey(query)
             )
         }
             .debouncedSearch(::executeSearch)
             .collectLatest { outcome ->
                 searchResults = outcome.results
                 val normalizedPhrase = normalizeAttestedPhraseKey(outcome.text)
-                val authorizedPhrase = outcome.phraseTranslation?.let {
-                    phraseTranslationPipeline.authorizePhraseAttempt(
-                        result = it,
-                        accessLevel = accessLevel,
-                        alreadyConsumed = lastChargedHomePhrase == normalizedPhrase
-                    )
-                }
+                val authorizedPhrase = outcome.phraseTranslation
                 if (authorizedPhrase?.trialConsumed == true) {
                     lastChargedHomePhrase = normalizedPhrase
                     remainingTranslationTrials = authorizedPhrase.remainingTrials
