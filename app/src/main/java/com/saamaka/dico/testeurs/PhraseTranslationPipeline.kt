@@ -19,8 +19,8 @@ data class PhraseTranslationPipelineResult(
 /** The single access/quota boundary around the dictionary phrase engine. */
 internal class PhraseTranslationPipeline(
     private val resolvePhrase: suspend (String, Boolean) -> PhraseTranslationResult?,
-    private val remainingTrials: () -> Int,
-    private val consumeTrial: () -> Boolean
+    private val remainingTrials: (AccessLevel) -> Int,
+    private val consumeTrial: (AccessLevel) -> Boolean
 ) {
     suspend fun resolve(
         text: String,
@@ -28,20 +28,19 @@ internal class PhraseTranslationPipeline(
         accessLevel: AccessLevel
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
-        if (normalizedInputWordCount(clean) <= 1) return fallback(clean)
-        if (accessLevel == AccessLevel.GUEST) return premiumRequired(clean)
-        if (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTrials() <= 0) {
-            return premiumRequired(clean)
+        if (normalizedInputWordCount(clean) <= 1) return fallback(clean, accessLevel)
+        if (isTrialLimited(accessLevel) && remainingTrials(accessLevel) <= 0) {
+            return premiumRequired(clean, accessLevel)
         }
 
         val translation = resolvePhrase(clean, frenchToSaamaka)
             ?.takeIf { it.isComplete }
-            ?: return fallback(clean)
+            ?: return fallback(clean, accessLevel)
         return PhraseTranslationPipelineResult(
             text = clean,
             translation = translation,
             disposition = PhraseTranslationDisposition.TRANSLATED,
-            remainingTrials = remainingTrials()
+            remainingTrials = remainingTrials(accessLevel)
         )
     }
 
@@ -51,11 +50,11 @@ internal class PhraseTranslationPipeline(
         alreadyConsumed: Boolean = false
     ): PhraseTranslationPipelineResult {
         if (result.disposition != PhraseTranslationDisposition.TRANSLATED ||
-            accessLevel != AccessLevel.FREE_ACCOUNT || alreadyConsumed
+            !isTrialLimited(accessLevel) || alreadyConsumed
         ) return result
 
-        if (!consumeTrial()) return premiumRequired(result.text)
-        return result.copy(trialConsumed = true, remainingTrials = remainingTrials())
+        if (!consumeTrial(accessLevel)) return premiumRequired(result.text, accessLevel)
+        return result.copy(trialConsumed = true, remainingTrials = remainingTrials(accessLevel))
     }
 
     suspend fun translate(
@@ -67,15 +66,18 @@ internal class PhraseTranslationPipeline(
         accessLevel
     )
 
-    private fun fallback(text: String) = PhraseTranslationPipelineResult(
+    private fun fallback(text: String, accessLevel: AccessLevel) = PhraseTranslationPipelineResult(
         text = text,
         disposition = PhraseTranslationDisposition.FALLBACK,
-        remainingTrials = remainingTrials()
+        remainingTrials = remainingTrials(accessLevel)
     )
 
-    private fun premiumRequired(text: String) = PhraseTranslationPipelineResult(
+    private fun premiumRequired(text: String, accessLevel: AccessLevel) = PhraseTranslationPipelineResult(
         text = text,
         disposition = PhraseTranslationDisposition.PREMIUM_REQUIRED,
-        remainingTrials = remainingTrials()
+        remainingTrials = remainingTrials(accessLevel)
     )
+
+    private fun isTrialLimited(accessLevel: AccessLevel): Boolean =
+        translationTrialLimit(accessLevel) != null
 }

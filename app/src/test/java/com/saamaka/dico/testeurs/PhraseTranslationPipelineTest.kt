@@ -76,6 +76,60 @@ class PhraseTranslationPipelineTest {
         assertEquals(1, remaining)
     }
 
+    @Test
+    fun guestGetsThreeTranslationsAndFreeAccountGetsFive() = runBlocking {
+        assertEquals(3, translationTrialLimit(AccessLevel.GUEST))
+        assertEquals(5, translationTrialLimit(AccessLevel.FREE_ACCOUNT))
+        suspend fun verifyLimit(accessLevel: AccessLevel, limit: Int) {
+            var remaining = limit
+            val pipeline = PhraseTranslationPipeline(
+                resolvePhrase = { _, _ -> complete("mi kë Makandi") },
+                remainingTrials = { remaining },
+                consumeTrial = {
+                    if (remaining == 0) false else {
+                        remaining--
+                        true
+                    }
+                }
+            )
+            repeat(limit) {
+                assertEquals(
+                    PhraseTranslationDisposition.TRANSLATED,
+                    pipeline.translate("je veux manger", true, accessLevel).disposition
+                )
+            }
+            assertEquals(
+                PhraseTranslationDisposition.PREMIUM_REQUIRED,
+                pipeline.translate("je veux manger", true, accessLevel).disposition
+            )
+        }
+
+        verifyLimit(AccessLevel.GUEST, 3)
+        verifyLimit(AccessLevel.FREE_ACCOUNT, 5)
+    }
+
+    @Test
+    fun premiumAndTesterNeverConsumeTranslationTrials() = runBlocking {
+        listOf(AccessLevel.PREMIUM, AccessLevel.TESTER).forEach { accessLevel ->
+            var consumptions = 0
+            val pipeline = PhraseTranslationPipeline(
+                resolvePhrase = { _, _ -> complete("mi kë Makandi") },
+                remainingTrials = { Int.MAX_VALUE },
+                consumeTrial = {
+                    consumptions++
+                    true
+                }
+            )
+            repeat(10) {
+                assertEquals(
+                    PhraseTranslationDisposition.TRANSLATED,
+                    pipeline.translate("je veux manger", true, accessLevel).disposition
+                )
+            }
+            assertEquals(0, consumptions)
+        }
+    }
+
     private fun complete(translation: String) = PhraseTranslationResult(
         translation = translation,
         recognizedSegments = listOf(RecognizedPhraseSegment("source", translation)),

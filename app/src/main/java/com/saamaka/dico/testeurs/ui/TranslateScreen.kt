@@ -178,7 +178,8 @@ private fun UnifiedTranslateContent(
 
     val canUsePremium = accessLevel == AccessLevel.PREMIUM ||
         accessLevel == AccessLevel.TESTER ||
-        (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTrials > 0)
+        ((accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) &&
+            remainingTrials > 0)
 
     suspend fun translateCurrentPhrase(): PhraseTranslationPipelineResult {
         val pipelineResult = onTranslate(input, frenchToSaamaka)
@@ -402,7 +403,7 @@ private fun UnifiedTranslateContent(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = when (accessLevel) {
-                        AccessLevel.GUEST -> strings.ui(UiCopyKey.CREATE_ACCOUNT_FOR_TRIALS)
+                        AccessLevel.GUEST -> strings.ui(UiCopyKey.NO_TRIALS_LEFT)
                         AccessLevel.FREE_ACCOUNT -> strings.ui(UiCopyKey.NO_TRIALS_LEFT)
                         else -> strings.ui(UiCopyKey.PREMIUM_TRANSLATION_UNAVAILABLE)
                             },

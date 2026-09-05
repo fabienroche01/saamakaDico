@@ -471,9 +471,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
         selectedQuizAnswer = null
     }
-    var remainingTranslationTrials by remember {
+    var remainingTranslationTrials by remember(accessLevel) {
         mutableStateOf(
-            translationTrialStore.remainingTrials()
+            translationTrialStore.remainingTrials(accessLevel)
         )
     }
 
@@ -493,13 +493,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
         return withContext(Dispatchers.IO) {
             val corrections = correctionStore.latestByEntry()
-            val correctedResults = database.search(cleaned, request.languageCode).map { entry ->
+            val relatedCandidates = relatedCandidateSearchTerms(cleaned, request.languageCode)
+                .flatMap { term -> database.search(term, request.languageCode, limit = 20) }
+            val rawCorrectedResults = (database.search(cleaned, request.languageCode) + relatedCandidates)
+                .distinctBy { it.id }
+                .map { entry ->
                 corrections[entry.id]?.let { correction ->
                     entry.copy(
                         french = correction.frenchProposed.ifBlank { entry.french },
                         saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
                     )
                 } ?: entry
+            }
+            val correctedResults = if (normalizedInputWordCount(cleaned) > 1) {
+                relevantRelatedExpressions(cleaned, rawCorrectedResults, request.languageCode)
+            } else {
+                rawCorrectedResults
             }
             val frenchToSaamaka = request.sourceLanguageCode == AppLanguage.FRENCH.code
             val supportsLocalExactMatch = request.sourceLanguageCode in setOf(
@@ -1284,16 +1293,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     val languageCode = if (frenchToSaamaka) "fr" else "srm"
                                     val usefulEntries = if (exactMatch == null) {
                                         val wholeTextMatches = database.search(text, languageCode, limit = 20)
+                                        val attestedSemanticMatches = relatedCandidateSearchTerms(text, languageCode)
+                                            .flatMap { term -> database.search(term, languageCode, limit = 20) }
                                         val segmentMatches = cleanPhraseInput(text)
                                             .split(Regex("\\s+"))
                                             .asSequence()
                                             .filter { it.isNotBlank() }
                                             .mapNotNull { database.exactLocalEntry(it, frenchToSaamaka) }
                                             .toList()
-                                        (wholeTextMatches + segmentMatches)
-                                            .distinctBy { it.id }
-                                            .take(20)
-                                            .map(::corrected)
+                                        relevantRelatedExpressions(
+                                            input = text,
+                                            candidates = (wholeTextMatches + attestedSemanticMatches + segmentMatches)
+                                                .distinctBy { it.id }
+                                                .map(::corrected),
+                                            languageCode = languageCode,
+                                            limit = 20
+                                        )
                                     } else {
                                         emptyList()
                                     }
@@ -1397,7 +1412,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             exactCompleteMatch = homeExactCompleteMatch,
                             canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
                                 accessLevel == AccessLevel.TESTER ||
-                                (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTranslationTrials > 0),
+                                ((accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                    remainingTranslationTrials > 0),
                             onFavoritesClick = {
                                 openFavorites()
                             },
@@ -1474,7 +1490,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             exactCompleteMatch = homeExactCompleteMatch,
                             canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
                                 accessLevel == AccessLevel.TESTER ||
-                                (accessLevel == AccessLevel.FREE_ACCOUNT && remainingTranslationTrials > 0),
+                                ((accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                    remainingTranslationTrials > 0),
 
                             onFavoritesClick = {
                                 openFavorites()

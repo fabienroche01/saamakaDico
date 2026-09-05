@@ -27,6 +27,14 @@ internal data class FrenchFallbackResolution(
         get() = "$requested → $matchedFrench : ${kind.detailLabel}"
 }
 
+private val attestedFrenchSynonyms = mapOf(
+    "pere" to setOf("papa"),
+    "papa" to setOf("pere")
+)
+
+internal fun attestedFrenchSynonymsOf(word: String): Set<String> =
+    attestedFrenchSynonyms[normalizeAttestedPhraseKey(word)].orEmpty()
+
 internal fun resolveAttestedFrenchSubject(subject: String): String? =
     when (normalizeAttestedPhraseKey(subject)) {
         "je" -> "mi"
@@ -75,7 +83,7 @@ internal class FrenchFallbackResolver(
             }
         }
 
-        frenchSynonyms[normalizedWord].orEmpty().forEach { synonym ->
+        attestedFrenchSynonyms[normalizedWord].orEmpty().forEach { synonym ->
             bestCandidate(synonym)?.let { candidate ->
                 return resolution(word, candidate, FrenchResolutionKind.SYNONYM, 600)
             }
@@ -199,10 +207,5 @@ internal class FrenchFallbackResolver(
         const val MAX_SPELLING_CANDIDATES = 128
         const val MIN_SPELLING_LENGTH = 5
         const val MIN_ACCEPTED_SCORE = 650
-        val frenchSynonyms = mapOf(
-            "pere" to listOf("papa"),
-            "papa" to listOf("pere")
-        )
-
     }
 }
