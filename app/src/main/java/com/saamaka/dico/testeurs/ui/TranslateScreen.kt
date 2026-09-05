@@ -425,7 +425,11 @@ private fun UnifiedTranslateContent(
                                 strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
                             result.kind == PhraseTranslationKind.GRAMMATICAL ->
                                 strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
-                            result.isComplete -> "Proposition locale"
+                            result.kind == PhraseTranslationKind.WORD_BY_WORD ->
+                                strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION)
+                            result.kind == PhraseTranslationKind.PARTIAL ->
+                                strings.ui(UiCopyKey.PARTIAL_TRANSLATION)
+                            result.isComplete -> strings.ui(UiCopyKey.LOCAL_DICTIONARY_SUGGESTION)
                             else -> strings.ui(UiCopyKey.INCOMPLETE_SUGGESTION)
                         },
                         fontWeight = FontWeight.Bold,
@@ -1147,6 +1151,10 @@ private fun PhraseTranslateContent(
                                     strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
                                 } else if (result.kind == PhraseTranslationKind.GRAMMATICAL) {
                                     strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
+                                } else if (result.kind == PhraseTranslationKind.WORD_BY_WORD) {
+                                    strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION)
+                                } else if (result.kind == PhraseTranslationKind.PARTIAL) {
+                                    strings.ui(UiCopyKey.PARTIAL_TRANSLATION)
                                 } else if (frenchToSaamaka) {
                                     if (result.isComplete) {
                                         "Proposition Saamaka"

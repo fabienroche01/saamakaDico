@@ -25,7 +25,7 @@ enum class UiCopyKey {
     TRANSLATION_UNAVAILABLE, TO_COMPLETE, SEARCH_OR_TRANSLATE, SEARCH_OR_TRANSLATE_HINT,
     SEARCHING, DICTIONARY_RESULTS, MISSING_TRANSLATION, CREATE_ACCOUNT_FOR_TRIALS,
     NO_TRIALS_LEFT, PREMIUM_TRANSLATION_UNAVAILABLE, VALIDATED_RULE_TRANSLATION,
-    GRAMMATICAL_TRANSLATION,
+    GRAMMATICAL_TRANSLATION, WORD_BY_WORD_TRANSLATION, PARTIAL_TRANSLATION,
     INCOMPLETE_SUGGESTION, RELIABILITY, SHOW_DETAILS, HIDE_DETAILS, OTHER_POSSIBILITIES,
     ITEMS_TO_REVIEW, NEW_SEARCH, COPY_ACTION, SHARE_ACTION, CREATE_FREE_ACCOUNT,
     FREE_TRANSLATION_TRIALS, CREATE_MY_FREE_ACCOUNT, PREMIUM_BENEFITS,
@@ -159,6 +159,8 @@ private val uiCopy = mapOf(
     ,UiCopyKey.PREMIUM_TRANSLATION_UNAVAILABLE to UiCopyValue("Traduction Premium indisponible.", "Premium translation unavailable.", "Premium-vertaling niet beschikbaar.")
     ,UiCopyKey.VALIDATED_RULE_TRANSLATION to UiCopyValue("Traduction construite avec une règle validée", "Translation built using a validated rule", "Vertaling opgebouwd met een gevalideerde regel")
     ,UiCopyKey.GRAMMATICAL_TRANSLATION to UiCopyValue("Traduction grammaticale", "Grammatical translation", "Grammaticale vertaling")
+    ,UiCopyKey.WORD_BY_WORD_TRANSLATION to UiCopyValue("Traduction mot à mot", "Word-for-word translation", "Woord-voor-woordvertaling")
+    ,UiCopyKey.PARTIAL_TRANSLATION to UiCopyValue("Traduction partielle", "Partial translation", "Gedeeltelijke vertaling")
     ,UiCopyKey.INCOMPLETE_SUGGESTION to UiCopyValue("Proposition incomplète", "Incomplete suggestion", "Onvolledig voorstel")
     ,UiCopyKey.RELIABILITY to UiCopyValue("Fiabilité : %s", "Reliability: %s", "Betrouwbaarheid: %s")
     ,UiCopyKey.SHOW_DETAILS to UiCopyValue("Voir les détails", "Show details", "Details bekijken")
@@ -169,11 +171,11 @@ private val uiCopy = mapOf(
     ,UiCopyKey.COPY_ACTION to UiCopyValue("Copier", "Copy", "Kopiëren", "Kopi")
     ,UiCopyKey.SHARE_ACTION to UiCopyValue("Partager", "Share", "Delen", "Deli")
     ,UiCopyKey.CREATE_FREE_ACCOUNT to UiCopyValue("Créez votre compte gratuitement", "Create your free account", "Maak uw gratis account aan")
-    ,UiCopyKey.FREE_TRANSLATION_TRIALS to UiCopyValue("Profitez de 3 traductions de phrases ou textes complets offertes.", "Enjoy 3 free translations of full sentences or texts.", "Probeer 3 gratis vertalingen van volledige zinnen of teksten.")
+    ,UiCopyKey.FREE_TRANSLATION_TRIALS to UiCopyValue("Profitez de 5 tentatives gratuites de traduction de phrases.", "Enjoy 5 free phrase translation attempts.", "Probeer 5 gratis pogingen om zinnen te vertalen.")
     ,UiCopyKey.CREATE_MY_FREE_ACCOUNT to UiCopyValue("Créer mon compte gratuitement", "Create my free account", "Mijn gratis account aanmaken")
     ,UiCopyKey.PREMIUM_BENEFITS to UiCopyValue("Traductions illimitées, textes plus longs, apprentissage, quiz et fonctions avancées.", "Unlimited translations, longer texts, learning, quizzes and advanced features.", "Onbeperkte vertalingen, langere teksten, leren, quizzen en geavanceerde functies.")
     ,UiCopyKey.DISCOVER_PREMIUM to UiCopyValue("Découvrir Premium", "Discover Premium", "Premium ontdekken")
-    ,UiCopyKey.REMAINING_TRANSLATIONS to UiCopyValue("%d traduction(s) restante(s)", "%d translation(s) remaining", "%d vertaling(en) resterend")
+    ,UiCopyKey.REMAINING_TRANSLATIONS to UiCopyValue("%d tentative(s) de phrase restante(s)", "%d phrase attempt(s) remaining", "%d zinpoging(en) resterend")
     ,UiCopyKey.FREE_ACCOUNT_TRIAL_INFO to UiCopyValue("Votre compte gratuit permet d'essayer le traducteur Saamaka.", "Your free account lets you try the Saamaka translator.", "Met uw gratis account kunt u de Saamaka-vertaler proberen.")
     ,UiCopyKey.START_TRANSLATION to UiCopyValue("Commencer une traduction", "Start a translation", "Een vertaling starten")
     ,UiCopyKey.PREMIUM_UNLIMITED to UiCopyValue("Premium : traductions illimitées", "Premium: unlimited translations", "Premium: onbeperkte vertalingen")
@@ -388,6 +390,8 @@ fun AppStrings.provenanceLabel(provenance: LocalMatchProvenance): String = ui(
         LocalMatchProvenance.LOCAL_CORRECTION -> UiCopyKey.LOCAL_CORRECTION
         LocalMatchProvenance.ATTESTED_EXPRESSION -> UiCopyKey.VALIDATED_RULE_TRANSLATION
         LocalMatchProvenance.GRAMMATICAL -> UiCopyKey.GRAMMATICAL_TRANSLATION
+        LocalMatchProvenance.WORD_BY_WORD -> UiCopyKey.WORD_BY_WORD_TRANSLATION
+        LocalMatchProvenance.PARTIAL -> UiCopyKey.PARTIAL_TRANSLATION
     }
 )
 

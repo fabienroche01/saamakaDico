@@ -57,6 +57,16 @@ class UiLocalizationTest {
     }
 
     @Test
+    fun lexicalFallbackLabelsAreLocalizedWithSaamakaEnglishFallback() {
+        assertEquals("Traduction mot à mot", stringsFor(UiLanguage.FRENCH).ui(UiCopyKey.WORD_BY_WORD_TRANSLATION))
+        assertEquals("Word-for-word translation", stringsFor(UiLanguage.ENGLISH).ui(UiCopyKey.WORD_BY_WORD_TRANSLATION))
+        assertEquals("Woord-voor-woordvertaling", stringsFor(UiLanguage.DUTCH).ui(UiCopyKey.WORD_BY_WORD_TRANSLATION))
+        assertEquals("Word-for-word translation", stringsFor(UiLanguage.SAAMAKA).ui(UiCopyKey.WORD_BY_WORD_TRANSLATION))
+        assertEquals("Traduction partielle", stringsFor(UiLanguage.FRENCH).ui(UiCopyKey.PARTIAL_TRANSLATION))
+        assertEquals("Partial translation", stringsFor(UiLanguage.SAAMAKA).ui(UiCopyKey.PARTIAL_TRANSLATION))
+    }
+
+    @Test
     fun storedLanguageIsRestoredWithoutTouchingTesterData() {
         assertEquals(UiLanguage.ENGLISH, UiLanguageStore.decode("ENGLISH"))
         assertEquals(UiLanguage.DUTCH, UiLanguageStore.decode("DUTCH"))

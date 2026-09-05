@@ -7,7 +7,9 @@ enum class LocalMatchProvenance(val label: String) {
     DICTIONARY("Correspondance exacte du dictionnaire"),
     LOCAL_CORRECTION("Correction locale"),
     ATTESTED_EXPRESSION("Traduction construite avec une règle validée"),
-    GRAMMATICAL("Traduction grammaticale")
+    GRAMMATICAL("Traduction grammaticale"),
+    WORD_BY_WORD("Traduction mot à mot"),
+    PARTIAL("Traduction partielle")
 }
 
 internal fun relatedExpressionLabel(input: String, candidate: String): String {

@@ -11,6 +11,7 @@ import com.saamaka.dico.testeurs.accentInsensitiveGlob
 import com.saamaka.dico.testeurs.requireBackgroundSearch
 import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
+import com.saamaka.dico.testeurs.asFrenchLexicalFallback
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
 import com.saamaka.dico.testeurs.FrenchVerbInflections
@@ -1404,6 +1405,14 @@ val frenchObject =
                 }
             }
 
+            resolveAttestedFrenchSubject(segment)?.let { subject ->
+                return@assembleAttestedPhrase RecognizedPhraseSegment(
+                    source = segment,
+                    translation = subject,
+                    matchedSource = segment
+                )
+            }
+
             frenchFallbackResolver?.resolve(segment)?.let { resolution ->
                 RecognizedPhraseSegment(
                     source = segment,
@@ -1416,15 +1425,7 @@ val frenchObject =
                 )
             }
         }?.let { assembled ->
-            if (frenchToSaamaka && assembled.isComplete) {
-                assembled.copy(
-                    untranslatedSegments = listOf(cleanText),
-                    isComplete = false,
-                    reliability = TranslationReliability.LOW
-                )
-            } else {
-                assembled
-            }
+            if (frenchToSaamaka) assembled.asFrenchLexicalFallback() else assembled
         }
 
 

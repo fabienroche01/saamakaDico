@@ -34,7 +34,9 @@ internal class PhraseTranslationPipeline(
         }
 
         val translation = resolvePhrase(clean, frenchToSaamaka)
-            ?.takeIf { it.isComplete }
+            ?.takeIf {
+                it.isComplete || (frenchToSaamaka && it.recognizedSegments.isNotEmpty())
+            }
             ?: return fallback(clean, accessLevel)
         return PhraseTranslationPipelineResult(
             text = clean,
@@ -44,13 +46,15 @@ internal class PhraseTranslationPipeline(
         )
     }
 
-    fun authorizeSuccessfulTranslation(
+    fun authorizePhraseAttempt(
         result: PhraseTranslationPipelineResult,
         accessLevel: AccessLevel,
         alreadyConsumed: Boolean = false
     ): PhraseTranslationPipelineResult {
-        if (result.disposition != PhraseTranslationDisposition.TRANSLATED ||
-            !isTrialLimited(accessLevel) || alreadyConsumed
+        if (result.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED ||
+            normalizedInputWordCount(result.text) <= 1 ||
+            !isTrialLimited(accessLevel) ||
+            alreadyConsumed
         ) return result
 
         if (!consumeTrial(accessLevel)) return premiumRequired(result.text, accessLevel)
@@ -61,7 +65,7 @@ internal class PhraseTranslationPipeline(
         text: String,
         frenchToSaamaka: Boolean,
         accessLevel: AccessLevel
-    ): PhraseTranslationPipelineResult = authorizeSuccessfulTranslation(
+    ): PhraseTranslationPipelineResult = authorizePhraseAttempt(
         resolve(text, frenchToSaamaka, accessLevel),
         accessLevel
     )

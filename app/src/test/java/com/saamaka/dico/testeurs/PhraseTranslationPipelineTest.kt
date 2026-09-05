@@ -40,7 +40,7 @@ class PhraseTranslationPipelineTest {
             )
 
             val homePipeline = pipeline()
-            val home = homePipeline.authorizeSuccessfulTranslation(
+            val home = homePipeline.authorizePhraseAttempt(
                 homePipeline.resolve(input, true, AccessLevel.PREMIUM),
                 AccessLevel.PREMIUM
             )
@@ -52,7 +52,7 @@ class PhraseTranslationPipelineTest {
     }
 
     @Test
-    fun freePhraseConsumesTheExistingQuotaOnlyAfterACompleteTranslation() = runBlocking {
+    fun everyPhraseAttemptConsumesQuotaIncludingFallbackButSingleWordsStayFree() = runBlocking {
         var remaining = 2
         val pipeline = PhraseTranslationPipeline(
             resolvePhrase = { text, _ -> if (text == "je veux manger") complete("mi kë Makandi") else null },
@@ -72,8 +72,86 @@ class PhraseTranslationPipelineTest {
         assertEquals(PhraseTranslationDisposition.TRANSLATED, translated.disposition)
         assertEquals(true, translated.trialConsumed)
         assertEquals(PhraseTranslationDisposition.FALLBACK, unknown.disposition)
+        assertEquals(true, unknown.trialConsumed)
         assertEquals(PhraseTranslationDisposition.FALLBACK, word.disposition)
-        assertEquals(1, remaining)
+        assertEquals(false, word.trialConsumed)
+        assertEquals(0, remaining)
+    }
+
+    @Test
+    fun guestFourthUnknownPhraseAttemptIsBlocked() = runBlocking {
+        var remaining = 3
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                if (remaining <= 0) false else {
+                    remaining--
+                    true
+                }
+            }
+        )
+
+        repeat(3) {
+            val attempt = pipeline.translate("phrase inconnue", true, AccessLevel.GUEST)
+            assertEquals(PhraseTranslationDisposition.FALLBACK, attempt.disposition)
+            assertEquals(true, attempt.trialConsumed)
+        }
+        assertEquals(
+            PhraseTranslationDisposition.PREMIUM_REQUIRED,
+            pipeline.translate("encore inconnue", true, AccessLevel.GUEST).disposition
+        )
+    }
+
+    @Test
+    fun partialWordByWordResultIsShownAndConsumesThePhraseAttempt() = runBlocking {
+        var remaining = 3
+        val partial = PhraseTranslationResult(
+            translation = "mi pee",
+            recognizedSegments = listOf(
+                RecognizedPhraseSegment("je", "mi"),
+                RecognizedPhraseSegment("papa", "pee")
+            ),
+            untranslatedSegments = listOf("suis", "ton"),
+            isComplete = false,
+            reliability = TranslationReliability.LOW,
+            kind = PhraseTranslationKind.PARTIAL
+        )
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> partial },
+            remainingTrials = { remaining },
+            consumeTrial = { remaining--; true }
+        )
+
+        val result = pipeline.translate("je suis ton papa", true, AccessLevel.GUEST)
+
+        assertEquals(PhraseTranslationDisposition.TRANSLATED, result.disposition)
+        assertEquals(PhraseTranslationKind.PARTIAL, result.translation?.kind)
+        assertEquals("mi pee", result.translation?.translation)
+        assertEquals(true, result.trialConsumed)
+        assertEquals(2, remaining)
+    }
+
+    @Test
+    fun homeRecompositionDoesNotConsumeTheSameAttemptTwice() = runBlocking {
+        var remaining = 3
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { remaining },
+            consumeTrial = { remaining--; true }
+        )
+        val resolved = pipeline.resolve("phrase inconnue", true, AccessLevel.GUEST)
+
+        val first = pipeline.authorizePhraseAttempt(resolved, AccessLevel.GUEST)
+        val repeated = pipeline.authorizePhraseAttempt(
+            resolved,
+            AccessLevel.GUEST,
+            alreadyConsumed = true
+        )
+
+        assertEquals(true, first.trialConsumed)
+        assertEquals(false, repeated.trialConsumed)
+        assertEquals(2, remaining)
     }
 
     @Test

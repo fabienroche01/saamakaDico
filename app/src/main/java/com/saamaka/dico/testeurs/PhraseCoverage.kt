@@ -1,6 +1,7 @@
 package com.saamaka.dico.testeurs
 
 import com.saamaka.dico.testeurs.model.PhraseTranslationResult
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
 import com.saamaka.dico.testeurs.model.TranslationReliability
 
@@ -65,5 +66,14 @@ internal fun assembleAttestedPhrase(
                 TranslationReliability.HIGH
             else -> TranslationReliability.MEDIUM
         }
+    )
+}
+
+/** Marks a DB-backed lexical assembly without presenting it as proven grammar. */
+internal fun PhraseTranslationResult.asFrenchLexicalFallback(): PhraseTranslationResult? {
+    if (recognizedSegments.isEmpty()) return null
+    return copy(
+        reliability = if (isComplete) TranslationReliability.MEDIUM else TranslationReliability.LOW,
+        kind = if (isComplete) PhraseTranslationKind.WORD_BY_WORD else PhraseTranslationKind.PARTIAL
     )
 }

@@ -528,6 +528,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         PhraseTranslationKind.VALIDATED_RULE -> LocalMatchProvenance.ATTESTED_EXPRESSION
                         PhraseTranslationKind.GRAMMATICAL -> LocalMatchProvenance.GRAMMATICAL
                         PhraseTranslationKind.PROPOSAL -> LocalMatchProvenance.DICTIONARY
+                        PhraseTranslationKind.WORD_BY_WORD -> LocalMatchProvenance.WORD_BY_WORD
+                        PhraseTranslationKind.PARTIAL -> LocalMatchProvenance.PARTIAL
                     },
                     reliability = translation.reliability
                 )
@@ -582,7 +584,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 searchResults = outcome.results
                 val normalizedPhrase = normalizeAttestedPhraseKey(outcome.text)
                 val authorizedPhrase = outcome.phraseTranslation?.let {
-                    phraseTranslationPipeline.authorizeSuccessfulTranslation(
+                    phraseTranslationPipeline.authorizePhraseAttempt(
                         result = it,
                         accessLevel = accessLevel,
                         alreadyConsumed = lastChargedHomePhrase == normalizedPhrase

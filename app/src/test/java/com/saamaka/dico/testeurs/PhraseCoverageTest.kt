@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.saamaka.dico.testeurs.model.TranslationReliability
 import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
+import com.saamaka.dico.testeurs.model.PhraseTranslationKind
 
 class PhraseCoverageTest {
     @Test
@@ -59,6 +60,31 @@ class PhraseCoverageTest {
         assertTrue(result.recognizedSegments.isEmpty())
         assertEquals(listOf("alpha", "beta"), result.untranslatedSegments)
         assertEquals(TranslationReliability.LOW, result.reliability)
+    }
+
+    @Test
+    fun nominalPhraseWithoutAttestedCopulaIsClearlyPartial() {
+        val assembled = assemble(
+            "je suis ton papa",
+            mapOf("je" to "mi", "papa" to "pee")
+        )!!.asFrenchLexicalFallback()!!
+
+        assertEquals("mi pee", assembled.translation)
+        assertEquals(listOf("suis", "ton"), assembled.untranslatedSegments)
+        assertEquals(PhraseTranslationKind.PARTIAL, assembled.kind)
+        assertFalse(assembled.isComplete)
+    }
+
+    @Test
+    fun fullyResolvedLexicalFallbackIsNotLabeledAsGrammar() {
+        val assembled = assemble(
+            "mot connu",
+            mapOf("mot" to "wan", "connu" to "sabi")
+        )!!.asFrenchLexicalFallback()!!
+
+        assertEquals(PhraseTranslationKind.WORD_BY_WORD, assembled.kind)
+        assertEquals(TranslationReliability.MEDIUM, assembled.reliability)
+        assertTrue(assembled.isComplete)
     }
 
     @Test
