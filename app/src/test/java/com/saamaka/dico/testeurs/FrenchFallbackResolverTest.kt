@@ -1,7 +1,9 @@
 package com.saamaka.dico.testeurs
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.saamaka.dico.testeurs.model.RecognizedPhraseSegment
 
@@ -138,6 +140,18 @@ class FrenchFallbackResolverTest {
     @Test
     fun shortWordsNeverTriggerUnrelatedSpellingSubstitutions() {
         assertNull(resolver(candidate("son", "UNRELATED", "O")).resolve("ton"))
+    }
+
+    @Test
+    fun wordByWordFallbackRejectsApproximateSpellingButAcceptsExactAndInflection() {
+        val resolver = resolver(
+            candidate("maman", "ma", "O"),
+            candidate("dormir", "duumí", "O")
+        )
+
+        assertFalse(resolver.resolve("mamam")!!.isSafeForWordByWordFallback)
+        assertTrue(resolver.resolve("maman")!!.isSafeForWordByWordFallback)
+        assertTrue(resolver.resolve("dort")!!.isSafeForWordByWordFallback)
     }
 
     @Test

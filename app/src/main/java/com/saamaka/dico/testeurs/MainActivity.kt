@@ -306,7 +306,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
-    var lastChargedHomePhrase by remember { mutableStateOf<String?>(null) }
     var pendingPhraseText by remember { mutableStateOf("") }
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
@@ -515,13 +514,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 AppLanguage.FRENCH.code,
                 AppLanguage.SAAMAKA.code
             )
+            // Debounced typing may preview a local result, but never consumes quota.
+            // Only the explicit action in TranslateScreen calls translate().
             val phraseTranslation = if (shouldRouteHomePhraseThroughGrammar(request)) {
-                phraseTranslationPipeline.translate(
-                    text = cleaned,
-                    frenchToSaamaka = true,
-                    accessLevel = request.accessLevel,
-                    alreadyConsumed = request.phraseAttemptAlreadyConsumed
-                )
+                phraseTranslationPipeline.resolve(cleaned, true, request.accessLevel)
             } else {
                 null
             }
@@ -581,20 +577,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 text = query,
                 languageCode = searchLanguageFilter.language?.code,
                 sourceLanguageCode = selectedLanguage.code,
-                accessLevel = accessLevel,
-                phraseAttemptAlreadyConsumed = lastChargedHomePhrase ==
-                    normalizeAttestedPhraseKey(query)
+                accessLevel = accessLevel
             )
         }
             .debouncedSearch(::executeSearch)
             .collectLatest { outcome ->
                 searchResults = outcome.results
-                val normalizedPhrase = normalizeAttestedPhraseKey(outcome.text)
                 val authorizedPhrase = outcome.phraseTranslation
-                if (authorizedPhrase?.trialConsumed == true) {
-                    lastChargedHomePhrase = normalizedPhrase
-                    remainingTranslationTrials = authorizedPhrase.remainingTrials
-                }
                 if (authorizedPhrase?.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
                     activeTab = MainTab.PREMIUM
                 }
@@ -1395,11 +1384,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
-                                lastChargedHomePhrase = retainChargedHomePhrase(lastChargedHomePhrase, it)
                             },
                             onClear = {
                                 query = ""
-                                lastChargedHomePhrase = null
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = appStrings.startSearching
@@ -1471,12 +1458,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
-                                lastChargedHomePhrase = retainChargedHomePhrase(lastChargedHomePhrase, it)
                             },
 
                             onClear = {
                                 query = ""
-                                lastChargedHomePhrase = null
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
                                 status = appStrings.startSearching

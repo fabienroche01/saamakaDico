@@ -873,7 +873,7 @@ fun SearchScreen(
                                 enabled = canTranslatePhrase,
                                 onClick = onTranslateClick
                             ) {
-                                Text(strings.ui(UiCopyKey.TRANSLATE_PHRASE))
+                                Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE))
                             }
                         }
                     }

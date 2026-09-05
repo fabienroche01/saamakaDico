@@ -76,6 +76,18 @@ class PhraseCoverageTest {
     }
 
     @Test
+    fun oneResolvedWordOutOfFourStillProducesAPartialTranslation() {
+        val assembled = assemble(
+            "et ta maman alors",
+            mapOf("maman" to "ma")
+        )!!.asFrenchLexicalFallback()!!
+
+        assertEquals("ma", assembled.translation)
+        assertEquals(listOf("et", "ta", "alors"), assembled.untranslatedSegments)
+        assertEquals(PhraseTranslationKind.PARTIAL, assembled.kind)
+    }
+
+    @Test
     fun fullyResolvedLexicalFallbackIsNotLabeledAsGrammar() {
         val assembled = assemble(
             "mot connu",

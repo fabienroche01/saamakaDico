@@ -13,8 +13,7 @@ internal data class SearchRequest(
     val text: String,
     val languageCode: String?,
     val sourceLanguageCode: String = languageCode ?: "fr",
-    val accessLevel: AccessLevel = AccessLevel.GUEST,
-    val phraseAttemptAlreadyConsumed: Boolean = false
+    val accessLevel: AccessLevel = AccessLevel.GUEST
 )
 internal data class SearchOutcome(
     val text: String,

@@ -189,6 +189,31 @@ class PhraseTranslationPipelineTest {
     }
 
     @Test
+    fun debouncedPreviewResolutionNeverConsumesATrial() = runBlocking {
+        var remaining = 3
+        var consumptions = 0
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                consumptions++
+                remaining--
+                true
+            }
+        )
+
+        repeat(10) {
+            assertEquals(
+                PhraseTranslationDisposition.FALLBACK,
+                pipeline.resolve("phrase automatique $it", true, AccessLevel.GUEST).disposition
+            )
+        }
+
+        assertEquals(0, consumptions)
+        assertEquals(3, remaining)
+    }
+
+    @Test
     fun freeAccountRemainingValuesAreFourToZeroThenSixthAttemptIsBlocked() = runBlocking {
         var remaining = 5
         val values = mutableListOf<Int>()
@@ -212,6 +237,32 @@ class PhraseTranslationPipelineTest {
         assertEquals(
             PhraseTranslationDisposition.PREMIUM_REQUIRED,
             pipeline.translate("sixieme tentative", true, AccessLevel.FREE_ACCOUNT).disposition
+        )
+    }
+
+    @Test
+    fun clearingAndRetypingTheSamePhraseNeverResetsGuestQuota() = runBlocking {
+        var remaining = 3
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                if (remaining <= 0) false else {
+                    remaining--
+                    true
+                }
+            }
+        )
+
+        repeat(3) {
+            assertEquals(
+                PhraseTranslationDisposition.FALLBACK,
+                pipeline.translate("même phrase", true, AccessLevel.GUEST).disposition
+            )
+        }
+        assertEquals(
+            PhraseTranslationDisposition.PREMIUM_REQUIRED,
+            pipeline.translate("même phrase", true, AccessLevel.GUEST).disposition
         )
     }
 

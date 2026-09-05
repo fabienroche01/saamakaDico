@@ -29,9 +29,6 @@ internal class PhraseTranslationPipeline(
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         if (normalizedInputWordCount(clean) <= 1) return fallback(clean, accessLevel)
-        if (isTrialLimited(accessLevel) && remainingTrials(accessLevel) <= 0) {
-            return premiumRequired(clean, accessLevel)
-        }
 
         val translation = resolvePhrase(clean, frenchToSaamaka)
             ?.takeIf {
@@ -64,8 +61,7 @@ internal class PhraseTranslationPipeline(
     suspend fun translate(
         text: String,
         frenchToSaamaka: Boolean,
-        accessLevel: AccessLevel,
-        alreadyConsumed: Boolean = false
+        accessLevel: AccessLevel
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         if (normalizedInputWordCount(clean) <= 1) return fallback(clean, accessLevel)
@@ -74,8 +70,7 @@ internal class PhraseTranslationPipeline(
         // search can therefore never bypass the persistent quota.
         val authorization = authorizePhraseAttempt(
             fallback(clean, accessLevel),
-            accessLevel,
-            alreadyConsumed
+            accessLevel
         )
         if (authorization.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
             return authorization

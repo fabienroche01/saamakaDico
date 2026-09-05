@@ -25,6 +25,13 @@ internal data class FrenchFallbackResolution(
 ) {
     val detail: String
         get() = "$requested → $matchedFrench : ${kind.detailLabel}"
+
+    val isSafeForWordByWordFallback: Boolean
+        get() = kind in setOf(
+            FrenchResolutionKind.EXACT,
+            FrenchResolutionKind.ELISION,
+            FrenchResolutionKind.INFLECTION
+        )
 }
 
 private val attestedFrenchSynonyms = mapOf(

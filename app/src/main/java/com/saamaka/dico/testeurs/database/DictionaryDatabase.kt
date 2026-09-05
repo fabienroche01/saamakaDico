@@ -1413,17 +1413,19 @@ val frenchObject =
                 )
             }
 
-            frenchFallbackResolver?.resolve(segment)?.let { resolution ->
-                RecognizedPhraseSegment(
-                    source = segment,
-                    translation = cleanTranslationForDisplay(resolution.saamaka),
-                    detail = resolution.detail.takeUnless {
-                        resolution.kind == com.saamaka.dico.testeurs.FrenchResolutionKind.EXACT
-                    },
-                    matchedSource = resolution.matchedFrench,
-                    alternatives = resolution.alternatives
-                )
-            }
+            frenchFallbackResolver?.resolve(segment)
+                ?.takeIf { it.isSafeForWordByWordFallback }
+                ?.let { resolution ->
+                    RecognizedPhraseSegment(
+                        source = segment,
+                        translation = cleanTranslationForDisplay(resolution.saamaka),
+                        detail = resolution.detail.takeUnless {
+                            resolution.kind == com.saamaka.dico.testeurs.FrenchResolutionKind.EXACT
+                        },
+                        matchedSource = resolution.matchedFrench,
+                        alternatives = resolution.alternatives
+                    )
+                }
         }?.let { assembled ->
             if (frenchToSaamaka) assembled.asFrenchLexicalFallback() else assembled
         }
