@@ -91,6 +91,7 @@ fun TranslateScreen(
     accessLevel: AccessLevel,
     remainingTrials: Int,
     onTrialsChanged: (Int) -> Unit,
+    onPremiumRequired: () -> Unit,
     onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
     onTranslate: suspend (String, Boolean) -> PhraseTranslationPipelineResult,
     onOpenEntry: (DictionaryEntry) -> Unit
@@ -103,6 +104,7 @@ fun TranslateScreen(
         accessLevel = accessLevel,
         remainingTrials = remainingTrials,
         onTrialsChanged = onTrialsChanged,
+        onPremiumRequired = onPremiumRequired,
         onLocalSearch = onLocalSearch,
         onTranslate = onTranslate,
         onOpenEntry = onOpenEntry
@@ -118,6 +120,7 @@ private fun UnifiedTranslateContent(
     accessLevel: AccessLevel,
     remainingTrials: Int,
     onTrialsChanged: (Int) -> Unit,
+    onPremiumRequired: () -> Unit,
     onLocalSearch: suspend (String, Boolean) -> UnifiedLocalSearchResult,
     onTranslate: suspend (String, Boolean) -> PhraseTranslationPipelineResult,
     onOpenEntry: (DictionaryEntry) -> Unit
@@ -125,11 +128,10 @@ private fun UnifiedTranslateContent(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val startupText = remember { initialText }
-    val translateStartupText = remember { translateInitialTextImmediately }
     var input by remember { mutableStateOf(initialText) }
     var frenchToSaamaka by remember { mutableStateOf(true) }
     var localResult by remember { mutableStateOf<UnifiedLocalSearchResult?>(null) }
-    var phraseResult by remember { mutableStateOf<PhraseTranslationResult?>(null) }
+    var phraseDecision by remember { mutableStateOf<PhraseTranslationPipelineResult?>(null) }
     var runningJob by remember { mutableStateOf<Job?>(null) }
     var requestId by remember { mutableStateOf(0L) }
     var isLoading by remember { mutableStateOf(false) }
@@ -154,7 +156,7 @@ private fun UnifiedTranslateContent(
         isLoading = false
         error = null
         localResult = null
-        phraseResult = null
+        phraseDecision = null
         showDetails = false
     }
 
@@ -186,27 +188,21 @@ private fun UnifiedTranslateContent(
         if (pipelineResult.trialConsumed) {
             onTrialsChanged(pipelineResult.remainingTrials)
         }
-        val result = pipelineResult.translation
-            ?.takeIf { pipelineResult.disposition == PhraseTranslationDisposition.TRANSLATED }
-        phraseResult = result
+        if (pipelineResult.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
+            onPremiumRequired()
+        }
+        phraseDecision = pipelineResult.takeUnless {
+            it.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED
+        }
         return pipelineResult
     }
 
     LaunchedEffect(Unit) {
         if (startupText.isBlank()) return@LaunchedEffect
         launchRequest {
-            val shouldTranslate = translateStartupText &&
-                normalizedInputWordCount(startupText) >= 2
-            if (shouldTranslate) {
-                val decision = translateCurrentPhrase()
-                localResult = if (decision.disposition == PhraseTranslationDisposition.TRANSLATED) {
-                    null
-                } else {
-                    onLocalSearch(startupText, frenchToSaamaka).copy(exactMatch = null)
-                }
-            } else {
-                localResult = onLocalSearch(startupText, frenchToSaamaka)
-            }
+            // Opening the screen may prefill/search, but only the explicit button
+            // below is allowed to spend a phrase attempt.
+            localResult = onLocalSearch(startupText, frenchToSaamaka)
             onInitialTextHandled()
         }
     }
@@ -259,14 +255,15 @@ private fun UnifiedTranslateContent(
             modifier = Modifier.fillMaxWidth(),
             enabled = input.isNotBlank() && !isLoading,
             onClick = {
-                phraseResult = null
+                phraseDecision = null
                 launchRequest {
-                    if (normalizedInputWordCount(input) >= 2) {
+                    if (normalizedInputWordCount(input) >= 3) {
                         val decision = translateCurrentPhrase()
-                        localResult = if (decision.disposition == PhraseTranslationDisposition.TRANSLATED) {
-                            null
-                        } else {
-                            onLocalSearch(input, frenchToSaamaka).copy(exactMatch = null)
+                        localResult = when (decision.disposition) {
+                            PhraseTranslationDisposition.TRANSLATED -> null
+                            PhraseTranslationDisposition.FALLBACK ->
+                                onLocalSearch(input, frenchToSaamaka).copy(exactMatch = null)
+                            PhraseTranslationDisposition.PREMIUM_REQUIRED -> null
                         }
                     } else {
                         localResult = onLocalSearch(input, frenchToSaamaka)
@@ -280,7 +277,7 @@ private fun UnifiedTranslateContent(
             }
             Text(
                 if (isLoading) strings.ui(UiCopyKey.SEARCHING)
-                else if (normalizedInputWordCount(input) >= 2) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
+                else if (normalizedInputWordCount(input) >= 3) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
                 else strings.ui(UiCopyKey.SEARCH_ACTION)
             )
         }
@@ -309,6 +306,20 @@ private fun UnifiedTranslateContent(
                     )
                 }
             }
+        }
+
+        phraseDecision?.let { decision ->
+            Spacer(Modifier.height(16.dp))
+            PhraseDecisionBlocks(
+                decision = decision,
+                strings = strings,
+                showDetails = showDetails,
+                onToggleDetails = { showDetails = !showDetails },
+                ttsReady = ttsReady,
+                onListen = { text ->
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "phrase_result")
+                }
+            )
         }
 
         val usefulEntries = localResult?.usefulEntries.orEmpty()
@@ -354,7 +365,7 @@ private fun UnifiedTranslateContent(
             )
         }
 
-        if (shouldOfferPremiumTranslation(input, localResult) && phraseResult == null) {
+        if (shouldOfferPremiumTranslation(input, localResult) && phraseDecision == null) {
             Spacer(Modifier.height(16.dp))
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -415,62 +426,86 @@ private fun UnifiedTranslateContent(
             }
         }
 
-        phraseResult?.let { result ->
-            Spacer(Modifier.height(16.dp))
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        when {
-                            result.kind == PhraseTranslationKind.VALIDATED_RULE ->
-                                strings.ui(UiCopyKey.VALIDATED_RULE_TRANSLATION)
-                            result.kind == PhraseTranslationKind.GRAMMATICAL ->
-                                strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
-                            result.kind == PhraseTranslationKind.WORD_BY_WORD ->
-                                strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION)
-                            result.kind == PhraseTranslationKind.PARTIAL ->
-                                strings.ui(UiCopyKey.PARTIAL_TRANSLATION)
-                            result.isComplete -> strings.ui(UiCopyKey.LOCAL_DICTIONARY_SUGGESTION)
-                            else -> strings.ui(UiCopyKey.INCOMPLETE_SUGGESTION)
-                        },
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0B5D3B)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(result.translation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(strings.ui(UiCopyKey.RELIABILITY, strings.reliabilityLabel(result.reliability)))
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { showDetails = !showDetails }) {
-                        Text(if (showDetails) strings.ui(UiCopyKey.HIDE_DETAILS) else strings.ui(UiCopyKey.SHOW_DETAILS))
-                    }
-                    if (showDetails) {
-                        result.recognizedSegments.forEach { segment ->
-                            Text("${segment.source} → ${segment.matchedSource ?: segment.source} → ${segment.translation}")
-                            segment.alternatives.takeIf { it.isNotEmpty() }?.let {
-                                Text(strings.ui(UiCopyKey.OTHER_POSSIBILITIES, it.joinToString(", ")))
-                            }
-                        }
-                        if (result.untranslatedSegments.isNotEmpty()) {
-                            Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, result.untranslatedSegments.joinToString(", ")))
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    ResultActionRow(
-                        strings = strings,
-                        text = localizedShareableText(result, strings),
-                        canListen = ttsReady && result.isComplete,
-                        onListen = {
-                            tts.speak(result.translation, TextToSpeech.QUEUE_FLUSH, null, "phrase_result")
-                        }
-                    )
-                }
-            }
-        }
-
-        if (localResult != null || phraseResult != null) {
+        if (localResult != null || phraseDecision != null) {
             Spacer(Modifier.height(12.dp))
             OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
                 input = ""; resetResults()
             }) { Text(strings.ui(UiCopyKey.NEW_SEARCH)) }
+        }
+    }
+}
+
+@Composable
+private fun PhraseDecisionBlocks(
+    decision: PhraseTranslationPipelineResult,
+    strings: AppStrings,
+    showDetails: Boolean,
+    onToggleDetails: () -> Unit,
+    ttsReady: Boolean,
+    onListen: (String) -> Unit
+) {
+    val wordByWord = decision.wordByWordTranslation
+    val grammatical = decision.grammaticalTranslation
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION),
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0B5D3B)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                wordByWord?.translation ?: strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            wordByWord?.untranslatedSegments?.takeIf { it.isNotEmpty() }?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, it.joinToString(", ")))
+            }
+        }
+    }
+
+    Spacer(Modifier.height(10.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION),
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0B5D3B)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                grammatical?.translation
+                    ?: strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION_UNAVAILABLE),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            if (grammatical != null) {
+                Text(strings.ui(UiCopyKey.RELIABILITY, strings.reliabilityLabel(grammatical.reliability)))
+            }
+            if (wordByWord != null || grammatical != null) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onToggleDetails) {
+                    Text(if (showDetails) strings.ui(UiCopyKey.HIDE_DETAILS) else strings.ui(UiCopyKey.SHOW_DETAILS))
+                }
+            }
+            if (showDetails) {
+                grammatical?.recognizedSegments.orEmpty().forEach { segment ->
+                    Text("${segment.source} → ${segment.matchedSource ?: segment.source} → ${segment.translation}")
+                }
+            }
+            val shareResult = grammatical ?: wordByWord
+            if (shareResult != null) {
+                Spacer(Modifier.height(10.dp))
+                ResultActionRow(
+                    strings = strings,
+                    text = localizedShareableText(shareResult, strings),
+                    canListen = ttsReady && shareResult.isComplete,
+                    onListen = { onListen(shareResult.translation) }
+                )
+            }
         }
     }
 }

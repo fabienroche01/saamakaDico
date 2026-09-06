@@ -63,7 +63,7 @@ class SearchPipelineTest {
 
     @Test
     fun frenchHomePhrasesAreAlwaysRoutedThroughGrammar() {
-        listOf("je veux", "je veux manger", "je veux dormir", "tu veux dormir").forEach { text ->
+        listOf("je veux manger", "je veux dormir", "tu veux dormir").forEach { text ->
             assertEquals(
                 true,
                 shouldRouteHomePhraseThroughGrammar(
@@ -71,6 +71,12 @@ class SearchPipelineTest {
                 )
             )
         }
+        assertEquals(
+            false,
+            shouldRouteHomePhraseThroughGrammar(
+                SearchRequest("je veux", "fr", "fr", AccessLevel.FREE_ACCOUNT)
+            )
+        )
         assertEquals(
             false,
             shouldRouteHomePhraseThroughGrammar(
@@ -82,7 +88,8 @@ class SearchPipelineTest {
     @Test
     fun homePhraseUsesExistingTranslationAccessPolicy() {
         assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("mot", "fr", "fr", AccessLevel.FREE_ACCOUNT)))
-        assertEquals(true, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors", "fr", "fr", AccessLevel.GUEST)))
+        assertEquals(false, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors", "fr", "fr", AccessLevel.GUEST)))
+        assertEquals(true, shouldRouteHomePhraseThroughGrammar(SearchRequest("je dors ici", "fr", "fr", AccessLevel.GUEST)))
     }
 
     @Test

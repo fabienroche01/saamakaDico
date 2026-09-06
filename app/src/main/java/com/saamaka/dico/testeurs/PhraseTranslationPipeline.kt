@@ -11,6 +11,8 @@ enum class PhraseTranslationDisposition {
 data class PhraseTranslationPipelineResult(
     val text: String,
     val translation: PhraseTranslationResult? = null,
+    val wordByWordTranslation: PhraseTranslationResult? = null,
+    val grammaticalTranslation: PhraseTranslationResult? = null,
     val disposition: PhraseTranslationDisposition,
     val trialConsumed: Boolean = false,
     val remainingTrials: Int
@@ -19,6 +21,7 @@ data class PhraseTranslationPipelineResult(
 /** The single access/quota boundary around the dictionary phrase engine. */
 internal class PhraseTranslationPipeline(
     private val resolvePhrase: suspend (String, Boolean) -> PhraseTranslationResult?,
+    private val resolveWordByWord: (suspend (String, Boolean) -> PhraseTranslationResult?)? = null,
     private val remainingTrials: (AccessLevel) -> Int,
     private val consumeTrial: (AccessLevel) -> Boolean
 ) {
@@ -28,17 +31,23 @@ internal class PhraseTranslationPipeline(
         accessLevel: AccessLevel
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
-        if (normalizedInputWordCount(clean) <= 1) return fallback(clean, accessLevel)
+        if (normalizedInputWordCount(clean) < PHRASE_MINIMUM_WORDS) return fallback(clean, accessLevel)
 
-        val translation = resolvePhrase(clean, frenchToSaamaka)
-            ?.takeIf {
-                it.isComplete || (frenchToSaamaka && it.recognizedSegments.isNotEmpty())
-            }
-            ?: return fallback(clean, accessLevel)
+        val primary = resolvePhrase(clean, frenchToSaamaka)
+        val grammatical = primary?.takeUnless { it.isLexicalFallback() }
+        val wordByWord = resolveWordByWord?.invoke(clean, frenchToSaamaka)
+            ?: primary?.takeIf { it.isLexicalFallback() }
+        val translation = grammatical ?: wordByWord?.takeIf { it.recognizedSegments.isNotEmpty() }
         return PhraseTranslationPipelineResult(
             text = clean,
             translation = translation,
-            disposition = PhraseTranslationDisposition.TRANSLATED,
+            wordByWordTranslation = wordByWord,
+            grammaticalTranslation = grammatical,
+            disposition = if (translation != null) {
+                PhraseTranslationDisposition.TRANSLATED
+            } else {
+                PhraseTranslationDisposition.FALLBACK
+            },
             remainingTrials = remainingTrials(accessLevel)
         )
     }
@@ -49,7 +58,7 @@ internal class PhraseTranslationPipeline(
         alreadyConsumed: Boolean = false
     ): PhraseTranslationPipelineResult {
         if (result.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED ||
-            normalizedInputWordCount(result.text) <= 1 ||
+            normalizedInputWordCount(result.text) < PHRASE_MINIMUM_WORDS ||
             !isTrialLimited(accessLevel) ||
             alreadyConsumed
         ) return result
@@ -64,7 +73,7 @@ internal class PhraseTranslationPipeline(
         accessLevel: AccessLevel
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
-        if (normalizedInputWordCount(clean) <= 1) return fallback(clean, accessLevel)
+        if (normalizedInputWordCount(clean) < PHRASE_MINIMUM_WORDS) return fallback(clean, accessLevel)
 
         // The attempt is charged before any suspendable resolution work. A cancelled
         // search can therefore never bypass the persistent quota.
@@ -76,18 +85,7 @@ internal class PhraseTranslationPipeline(
             return authorization
         }
 
-        val translation = resolvePhrase(clean, frenchToSaamaka)
-            ?.takeIf {
-                it.isComplete || (frenchToSaamaka && it.recognizedSegments.isNotEmpty())
-            }
-        return PhraseTranslationPipelineResult(
-            text = clean,
-            translation = translation,
-            disposition = if (translation != null) {
-                PhraseTranslationDisposition.TRANSLATED
-            } else {
-                PhraseTranslationDisposition.FALLBACK
-            },
+        return resolve(clean, frenchToSaamaka, accessLevel).copy(
             trialConsumed = authorization.trialConsumed,
             remainingTrials = remainingTrials(accessLevel)
         )
@@ -107,4 +105,12 @@ internal class PhraseTranslationPipeline(
 
     private fun isTrialLimited(accessLevel: AccessLevel): Boolean =
         translationTrialLimit(accessLevel) != null
+
+    private fun PhraseTranslationResult.isLexicalFallback(): Boolean =
+        kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.WORD_BY_WORD ||
+            kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL
+
+    private companion object {
+        const val PHRASE_MINIMUM_WORDS = 3
+    }
 }

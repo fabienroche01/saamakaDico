@@ -48,6 +48,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import com.saamaka.dico.testeurs.PhraseTranslationPipelineResult
+import com.saamaka.dico.testeurs.normalizedInputWordCount
 
 enum class SearchLanguageFilter(val label: String, val language: AppLanguage?) {
     ALL("Tous", null),
@@ -55,6 +60,54 @@ enum class SearchLanguageFilter(val label: String, val language: AppLanguage?) {
     FRENCH("Français", AppLanguage.FRENCH),
     ENGLISH("English", AppLanguage.ENGLISH),
     DUTCH("Nederlands", AppLanguage.DUTCH)
+}
+
+@Composable
+private fun HomePhraseResultBlocks(
+    result: PhraseTranslationPipelineResult,
+    strings: AppStrings
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION),
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0B5D3B)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    result.wordByWordTranslation?.translation
+                        ?: strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                result.wordByWordTranslation?.untranslatedSegments
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, it.joinToString(", ")))
+                    }
+            }
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION),
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0B5D3B)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    result.grammaticalTranslation?.translation
+                        ?: strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION_UNAVAILABLE),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
 
 const val QUICK_SEARCH_TEST_TAG = "quick_search_field"
@@ -78,8 +131,9 @@ fun SearchScreen(
     onOpen: (DictionaryEntry, AppLanguage) -> Unit,
     onOpenExactDictionaryMatch: ((DictionaryEntry, AppLanguage) -> Unit)? = null,
     onTranslateClick: () -> Unit,
+    onPhraseSubmit: () -> Unit = {},
+    phraseResult: PhraseTranslationPipelineResult? = null,
     exactCompleteMatch: LocalExactMatch? = null,
-    canTranslatePhrase: Boolean = true,
     onLearnClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onHistoryClick: () -> Unit,
@@ -268,6 +322,12 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .testTag(QUICK_SEARCH_TEST_TAG),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    if (normalizedInputWordCount(query) >= 3) onPhraseSubmit()
+                }
+            ),
             shape = RoundedCornerShape(24.dp),
 
             colors = OutlinedTextFieldDefaults.colors(
@@ -841,6 +901,10 @@ fun SearchScreen(
                     }
                 }
 
+                phraseResult != null -> {
+                    HomePhraseResultBlocks(phraseResult, strings)
+                }
+
                 searchPresentation.showPhraseCta -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -870,7 +934,7 @@ fun SearchScreen(
                             Spacer(Modifier.height(12.dp))
                             Button(
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = canTranslatePhrase,
+                                enabled = normalizedInputWordCount(query) >= 3,
                                 onClick = onTranslateClick
                             ) {
                                 Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE))

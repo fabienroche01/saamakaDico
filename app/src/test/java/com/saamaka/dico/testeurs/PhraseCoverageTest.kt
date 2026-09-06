@@ -109,6 +109,28 @@ class PhraseCoverageTest {
         assertEquals(listOf("L'école", "écoute"), result.recognizedSegments.map { it.source })
     }
 
+    @Test
+    fun wordByWordKeepsKnownWordsAndMarksEveryUnknownTokenInPlace() {
+        val result = assembleWordByWordPhrase("je suis ton papa") { token ->
+            mapOf("je" to "mi", "papa" to "pee")[token.lowercase()]?.let {
+                RecognizedPhraseSegment(token, it)
+            }
+        }!!
+
+        assertEquals("mi [suis ?] [ton ?] pee", result.translation)
+        assertEquals(listOf("suis", "ton"), result.untranslatedSegments)
+        assertEquals(PhraseTranslationKind.PARTIAL, result.kind)
+    }
+
+    @Test
+    fun wordByWordWithNoKnownTokenStillShowsTheWholePhrase() {
+        val result = assembleWordByWordPhrase("alpha beta gamma") { null }!!
+
+        assertEquals("[alpha ?] [beta ?] [gamma ?]", result.translation)
+        assertTrue(result.recognizedSegments.isEmpty())
+        assertEquals(listOf("alpha", "beta", "gamma"), result.untranslatedSegments)
+    }
+
     private fun assemble(text: String, dictionary: Map<String, String>) =
         assembleAttestedPhrase(text) { candidate ->
             dictionary[candidate.lowercase()]?.let {

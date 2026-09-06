@@ -18,7 +18,7 @@ internal fun homeSearchPresentation(
     return HomeSearchPresentation(
         normalizedText = normalized,
         wordCount = wordCount,
-        showPhraseCta = wordCount >= 2 && !hasExactCompleteMatch,
+        showPhraseCta = wordCount >= 3 && !hasExactCompleteMatch,
         showNoResult = wordCount <= 1 && !hasAnyLocalResult
     )
 }

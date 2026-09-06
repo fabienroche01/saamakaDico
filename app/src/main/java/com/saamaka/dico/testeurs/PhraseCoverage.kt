@@ -77,3 +77,29 @@ internal fun PhraseTranslationResult.asFrenchLexicalFallback(): PhraseTranslatio
         kind = if (isComplete) PhraseTranslationKind.WORD_BY_WORD else PhraseTranslationKind.PARTIAL
     )
 }
+
+internal fun assembleWordByWordPhrase(
+    text: String,
+    lookupToken: (String) -> RecognizedPhraseSegment?
+): PhraseTranslationResult? {
+    val tokens = cleanPhraseInput(text)
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+    if (tokens.isEmpty()) return null
+
+    val recognized = mutableListOf<RecognizedPhraseSegment>()
+    val missing = mutableListOf<String>()
+    val output = tokens.map { token ->
+        lookupToken(token)?.takeIf { it.translation.isNotBlank() }?.also(recognized::add)
+            ?.translation
+            ?: "[$token ?]".also { missing += token }
+    }
+    return PhraseTranslationResult(
+        translation = output.joinToString(" "),
+        recognizedSegments = recognized,
+        untranslatedSegments = missing,
+        isComplete = missing.isEmpty(),
+        reliability = if (missing.isEmpty()) TranslationReliability.MEDIUM else TranslationReliability.LOW,
+        kind = if (missing.isEmpty()) PhraseTranslationKind.WORD_BY_WORD else PhraseTranslationKind.PARTIAL
+    )
+}

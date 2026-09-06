@@ -10,6 +10,49 @@ import org.junit.Test
 
 class PhraseTranslationPipelineTest {
     @Test
+    fun threeWordPhraseExposesSeparateWordAndGrammarBlocks() = runBlocking {
+        val wordByWord = PhraseTranslationResult(
+            translation = "mi kë Makandi",
+            recognizedSegments = listOf(RecognizedPhraseSegment("je", "mi")),
+            untranslatedSegments = emptyList(),
+            isComplete = true,
+            reliability = TranslationReliability.MEDIUM,
+            kind = PhraseTranslationKind.WORD_BY_WORD
+        )
+        val grammar = complete("mi kë Makandi")
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> grammar },
+            resolveWordByWord = { _, _ -> wordByWord },
+            remainingTrials = { 3 },
+            consumeTrial = { true }
+        )
+
+        val result = pipeline.resolve("je veux manger", true, AccessLevel.GUEST)
+
+        assertEquals(wordByWord, result.wordByWordTranslation)
+        assertEquals(grammar, result.grammaticalTranslation)
+        assertEquals(false, result.trialConsumed)
+    }
+
+    @Test
+    fun oneAndTwoWordsNeverConsumeWhileThreeWordsRequireExplicitTranslate() = runBlocking {
+        var consumptions = 0
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            remainingTrials = { 3 - consumptions },
+            consumeTrial = { consumptions++; true }
+        )
+
+        pipeline.translate("mot", true, AccessLevel.GUEST)
+        pipeline.translate("groupe simple", true, AccessLevel.GUEST)
+        pipeline.resolve("trois mots saisis", true, AccessLevel.GUEST)
+        assertEquals(0, consumptions)
+
+        pipeline.translate("trois mots valides", true, AccessLevel.GUEST)
+        assertEquals(1, consumptions)
+    }
+
+    @Test
     fun homeAndTranslateUseTheSamePhraseDecisionForAllRequiredCases() = runBlocking {
         val resolver = FrenchFallbackResolver(
             listOf(
@@ -29,12 +72,19 @@ class PhraseTranslationPipelineTest {
             "je veux manger",
             "tu veux dormir",
             "je suis en train de manger",
-            "phrase inconnue"
+            "phrase totalement inconnue"
         )
 
         inputs.forEach { input ->
             fun pipeline() = PhraseTranslationPipeline(
                 resolvePhrase = { text, _ -> grammar.translate(text) },
+                resolveWordByWord = { text, _ ->
+                    assembleWordByWordPhrase(text) { token ->
+                        resolver.resolve(token)?.let {
+                            RecognizedPhraseSegment(token, it.saamaka)
+                        }
+                    }
+                },
                 remainingTrials = { 3 },
                 consumeTrial = { true }
             )
@@ -48,6 +98,8 @@ class PhraseTranslationPipelineTest {
 
             assertEquals("Disposition différente pour $input", translate.disposition, home.disposition)
             assertEquals("Traduction différente pour $input", translate.translation, home.translation)
+            assertEquals("Mot à mot différent pour $input", translate.wordByWordTranslation, home.wordByWordTranslation)
+            assertEquals("Grammaire différente pour $input", translate.grammaticalTranslation, home.grammaticalTranslation)
         }
     }
 
@@ -66,13 +118,15 @@ class PhraseTranslationPipelineTest {
         )
 
         val translated = pipeline.translate("je veux manger", true, AccessLevel.FREE_ACCOUNT)
-        val unknown = pipeline.translate("phrase inconnue", true, AccessLevel.FREE_ACCOUNT)
+        val unknown = pipeline.translate("phrase vraiment inconnue", true, AccessLevel.FREE_ACCOUNT)
+        val twoWords = pipeline.translate("phrase inconnue", true, AccessLevel.FREE_ACCOUNT)
         val word = pipeline.translate("manger", true, AccessLevel.FREE_ACCOUNT)
 
         assertEquals(PhraseTranslationDisposition.TRANSLATED, translated.disposition)
         assertEquals(true, translated.trialConsumed)
         assertEquals(PhraseTranslationDisposition.FALLBACK, unknown.disposition)
         assertEquals(true, unknown.trialConsumed)
+        assertEquals(false, twoWords.trialConsumed)
         assertEquals(PhraseTranslationDisposition.FALLBACK, word.disposition)
         assertEquals(false, word.trialConsumed)
         assertEquals(0, remaining)
@@ -93,13 +147,13 @@ class PhraseTranslationPipelineTest {
         )
 
         repeat(3) {
-            val attempt = pipeline.translate("phrase inconnue", true, AccessLevel.GUEST)
+            val attempt = pipeline.translate("phrase encore inconnue", true, AccessLevel.GUEST)
             assertEquals(PhraseTranslationDisposition.FALLBACK, attempt.disposition)
             assertEquals(true, attempt.trialConsumed)
         }
         assertEquals(
             PhraseTranslationDisposition.PREMIUM_REQUIRED,
-            pipeline.translate("encore inconnue", true, AccessLevel.GUEST).disposition
+            pipeline.translate("encore une inconnue", true, AccessLevel.GUEST).disposition
         )
     }
 
@@ -140,7 +194,7 @@ class PhraseTranslationPipelineTest {
             remainingTrials = { remaining },
             consumeTrial = { remaining--; true }
         )
-        val resolved = pipeline.resolve("phrase inconnue", true, AccessLevel.GUEST)
+        val resolved = pipeline.resolve("phrase vraiment inconnue", true, AccessLevel.GUEST)
 
         val first = pipeline.authorizePhraseAttempt(resolved, AccessLevel.GUEST)
         val repeated = pipeline.authorizePhraseAttempt(
@@ -236,7 +290,7 @@ class PhraseTranslationPipelineTest {
         assertEquals(listOf(4, 3, 2, 1, 0), values)
         assertEquals(
             PhraseTranslationDisposition.PREMIUM_REQUIRED,
-            pipeline.translate("sixieme tentative", true, AccessLevel.FREE_ACCOUNT).disposition
+            pipeline.translate("sixieme tentative bloquee", true, AccessLevel.FREE_ACCOUNT).disposition
         )
     }
 
@@ -257,12 +311,12 @@ class PhraseTranslationPipelineTest {
         repeat(3) {
             assertEquals(
                 PhraseTranslationDisposition.FALLBACK,
-                pipeline.translate("même phrase", true, AccessLevel.GUEST).disposition
+                pipeline.translate("même longue phrase", true, AccessLevel.GUEST).disposition
             )
         }
         assertEquals(
             PhraseTranslationDisposition.PREMIUM_REQUIRED,
-            pipeline.translate("même phrase", true, AccessLevel.GUEST).disposition
+            pipeline.translate("même longue phrase", true, AccessLevel.GUEST).disposition
         )
     }
 

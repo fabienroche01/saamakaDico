@@ -31,7 +31,15 @@ class HomeSearchPresentationTest {
 
     @Test
     fun changingTextRecomputesAndClearsPreviousPhraseDecision() {
-        assertTrue(homeSearchPresentation("phrase inconnue", 0, false).showPhraseCta)
+        assertTrue(homeSearchPresentation("phrase vraiment inconnue", 0, false).showPhraseCta)
         assertFalse(homeSearchPresentation("mot", 1, true).showPhraseCta)
+    }
+
+    @Test
+    fun twoWordsRemainAFreeExpressionSearch() {
+        val state = homeSearchPresentation("bonjour maman", 0, false)
+
+        assertFalse(state.showPhraseCta)
+        assertFalse(state.showNoResult)
     }
 }

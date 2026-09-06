@@ -49,7 +49,7 @@ internal fun normalizedInputWordCount(text: String): Int =
         .count { it.isNotBlank() }
 
 internal fun unifiedSearchButtonLabel(text: String): String =
-    if (normalizedInputWordCount(text) <= 1) {
+    if (normalizedInputWordCount(text) < 3) {
         "Rechercher"
     } else {
         "Rechercher / Traduire"
@@ -58,6 +58,6 @@ internal fun unifiedSearchButtonLabel(text: String): String =
 internal fun shouldOfferPremiumTranslation(
     text: String,
     result: UnifiedLocalSearchResult?
-): Boolean = normalizedInputWordCount(text) > 1 &&
+): Boolean = normalizedInputWordCount(text) >= 3 &&
     result != null &&
     result.exactMatch == null

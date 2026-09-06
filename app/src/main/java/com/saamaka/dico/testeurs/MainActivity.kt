@@ -252,6 +252,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
                 }
             },
+            resolveWordByWord = { text, frenchToSaamaka ->
+                withContext(Dispatchers.IO) {
+                    database.preparePhraseTranslationIndex()
+                    database.translateWordByWordPhrase(
+                        text = text,
+                        frenchToSaamaka = frenchToSaamaka,
+                        localCorrections = correctionStore.all()
+                    )
+                }
+            },
             remainingTrials = translationTrialStore::remainingTrials,
             consumeTrial = translationTrialStore::useTrial
         )
@@ -306,6 +316,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
+    var homePhraseResult by remember { mutableStateOf<PhraseTranslationPipelineResult?>(null) }
     var pendingPhraseText by remember { mutableStateOf("") }
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
@@ -514,27 +525,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 AppLanguage.FRENCH.code,
                 AppLanguage.SAAMAKA.code
             )
-            // Debounced typing may preview a local result, but never consumes quota.
-            // Only the explicit action in TranslateScreen calls translate().
-            val phraseTranslation = if (shouldRouteHomePhraseThroughGrammar(request)) {
-                phraseTranslationPipeline.resolve(cleaned, true, request.accessLevel)
-            } else {
-                null
-            }
-            var exactMatch = phraseTranslation?.translation?.let { translation ->
-                LocalExactMatch(
-                    source = cleaned,
-                    translation = translation.translation,
-                    provenance = when (translation.kind) {
-                        PhraseTranslationKind.VALIDATED_RULE -> LocalMatchProvenance.ATTESTED_EXPRESSION
-                        PhraseTranslationKind.GRAMMATICAL -> LocalMatchProvenance.GRAMMATICAL
-                        PhraseTranslationKind.PROPOSAL -> LocalMatchProvenance.DICTIONARY
-                        PhraseTranslationKind.WORD_BY_WORD -> LocalMatchProvenance.WORD_BY_WORD
-                        PhraseTranslationKind.PARTIAL -> LocalMatchProvenance.PARTIAL
-                    },
-                    reliability = translation.reliability
-                )
-            } ?: if (supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 1) {
+            val phraseTranslation: PhraseTranslationPipelineResult? = null
+            var exactMatch = if (supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 2) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
                 val normalizedTranslation = normalizeAttestedPhraseKey(translation)
                 val linkedEntry = allEntries.firstOrNull { entry ->
@@ -549,7 +541,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             } else null
-            if (exactMatch == null && supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 1) {
+            if (exactMatch == null && supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 2) {
             correctedResults.firstOrNull { entry ->
                 val source = if (frenchToSaamaka) entry.french else entry.saamaka
                 normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
@@ -692,6 +684,25 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    fun submitHomePhrase() {
+        if (normalizedInputWordCount(query) < 3) return
+        coroutineScope.launch {
+            val result = phraseTranslationPipeline.translate(
+                text = query,
+                frenchToSaamaka = true,
+                accessLevel = accessLevel
+            )
+            if (result.trialConsumed) {
+                remainingTranslationTrials = result.remainingTrials
+            }
+            if (result.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
+                activeTab = MainTab.PREMIUM
+            } else {
+                homePhraseResult = result
+            }
+        }
+    }
 
     if (showTesterSetup) {
         TesterNameSetupScreen(
@@ -1212,6 +1223,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             accessLevel = accessLevel,
                             remainingTrials = remainingTranslationTrials,
                             onTrialsChanged = { remainingTranslationTrials = it },
+                            onPremiumRequired = { activeTab = MainTab.PREMIUM },
                             onLocalSearch = { text, frenchToSaamaka ->
                                 withContext(Dispatchers.IO) {
                                     database.preparePhraseTranslationIndex()
@@ -1241,7 +1253,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         normalizeAttestedPhraseKey(source) == normalizedInput
                                     }
 
-                                    val exactMatch = if (normalizedInputWordCount(text) > 1) {
+                                    val exactMatch = if (normalizedInputWordCount(text) >= 3) {
                                         null
                                     } else when {
                                         correctedDictionaryEntry != null -> {
@@ -1384,26 +1396,22 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
+                                homePhraseResult = null
                             },
                             onClear = {
                                 query = ""
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
+                                homePhraseResult = null
                                 status = appStrings.startSearching
                             },
                             strings = appStrings,
                             onOpen = ::openSearchEntry,
                             onOpenExactDictionaryMatch = ::openSearchEntry,
-                            onTranslateClick = {
-                                pendingPhraseText = query
-                                translatePendingPhraseImmediately = true
-                                activeTab = MainTab.TRANSLATE
-                            },
+                            onTranslateClick = ::submitHomePhrase,
+                            onPhraseSubmit = ::submitHomePhrase,
+                            phraseResult = homePhraseResult,
                             exactCompleteMatch = homeExactCompleteMatch,
-                            canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
-                                accessLevel == AccessLevel.TESTER ||
-                                ((accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) &&
-                                    remainingTranslationTrials > 0),
                             onFavoritesClick = {
                                 openFavorites()
                             },
@@ -1458,28 +1466,24 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             onQueryChange = {
                                 query = it
+                                homePhraseResult = null
                             },
 
                             onClear = {
                                 query = ""
                                 searchResults = emptyList()
                                 homeExactCompleteMatch = null
+                                homePhraseResult = null
                                 status = appStrings.startSearching
                             },
 
                             strings = appStrings,
                             onOpen = ::openSearchEntry,
 
-                            onTranslateClick = {
-                                pendingPhraseText = query
-                                translatePendingPhraseImmediately = true
-                                activeTab = MainTab.TRANSLATE
-                            },
+                            onTranslateClick = ::submitHomePhrase,
+                            onPhraseSubmit = ::submitHomePhrase,
+                            phraseResult = homePhraseResult,
                             exactCompleteMatch = homeExactCompleteMatch,
-                            canTranslatePhrase = accessLevel == AccessLevel.PREMIUM ||
-                                accessLevel == AccessLevel.TESTER ||
-                                ((accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) &&
-                                    remainingTranslationTrials > 0),
 
                             onFavoritesClick = {
                                 openFavorites()

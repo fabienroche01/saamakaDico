@@ -24,10 +24,10 @@ internal data class SearchOutcome(
 
 internal fun shouldRouteHomePhraseThroughGrammar(request: SearchRequest): Boolean =
     request.sourceLanguageCode == AppLanguage.FRENCH.code &&
-        normalizedInputWordCount(request.text) >= 2
+        normalizedInputWordCount(request.text) >= 3
 
 internal fun retainChargedHomePhrase(currentPhrase: String?, newQuery: String): String? =
-    currentPhrase.takeIf { normalizedInputWordCount(newQuery) >= 2 }
+    currentPhrase.takeIf { normalizedInputWordCount(newQuery) >= 3 }
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 internal fun <T> Flow<SearchRequest>.debouncedSearch(

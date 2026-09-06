@@ -12,8 +12,9 @@ class UnifiedTranslationModelsTest {
     }
 
     @Test
-    fun phraseUsesCombinedLabel() {
-        assertEquals("Rechercher / Traduire", unifiedSearchButtonLabel("je suis"))
+    fun onlyThreeOrMoreWordsUseCombinedLabel() {
+        assertEquals("Rechercher", unifiedSearchButtonLabel("je suis"))
+        assertEquals("Rechercher / Traduire", unifiedSearchButtonLabel("je suis ici"))
         assertEquals(2, normalizedInputWordCount("  je   suis   "))
     }
 
@@ -56,8 +57,14 @@ class UnifiedTranslationModelsTest {
 
     @Test
     fun unknownPhraseOffersPremiumOnlyAfterLocalSearchCompleted() {
-        assertFalse(shouldOfferPremiumTranslation("phrase inconnue", null))
+        assertFalse(shouldOfferPremiumTranslation("phrase vraiment inconnue", null))
         assertTrue(
+            shouldOfferPremiumTranslation(
+                "phrase vraiment inconnue",
+                UnifiedLocalSearchResult(exactMatch = null, usefulEntries = emptyList())
+            )
+        )
+        assertFalse(
             shouldOfferPremiumTranslation(
                 "phrase inconnue",
                 UnifiedLocalSearchResult(exactMatch = null, usefulEntries = emptyList())

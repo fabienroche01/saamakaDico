@@ -11,6 +11,7 @@ import com.saamaka.dico.testeurs.accentInsensitiveGlob
 import com.saamaka.dico.testeurs.requireBackgroundSearch
 import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
+import com.saamaka.dico.testeurs.assembleWordByWordPhrase
 import com.saamaka.dico.testeurs.asFrenchLexicalFallback
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
@@ -1244,6 +1245,62 @@ val frenchObject =
         }
 
         return null
+    }
+
+    fun translateWordByWordPhrase(
+        text: String,
+        frenchToSaamaka: Boolean,
+        localCorrections: List<CorrectionProposal> = emptyList()
+    ): PhraseTranslationResult? {
+        val resolver = if (frenchToSaamaka) phraseIndex().frenchFallbackResolver else null
+
+        fun correctionFor(token: String): String? {
+            val normalized = normalizeAttestedPhraseKey(token)
+            return localCorrections.mapNotNull { correction ->
+                val source = if (frenchToSaamaka) {
+                    correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                } else {
+                    correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                }
+                val translated = if (frenchToSaamaka) {
+                    correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                } else {
+                    correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                }
+                translated.trim().takeIf {
+                    it.isNotBlank() && normalizeAttestedPhraseKey(source) == normalized
+                }
+            }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
+        }
+
+        return assembleWordByWordPhrase(text) { token ->
+            correctionFor(token)?.let {
+                return@assembleWordByWordPhrase RecognizedPhraseSegment(token, it)
+            }
+            if (frenchToSaamaka) {
+                resolver?.resolve(token)
+                    ?.takeIf { it.isSafeForWordByWordFallback }
+                    ?.let { resolution ->
+                        return@assembleWordByWordPhrase RecognizedPhraseSegment(
+                            source = token,
+                            translation = cleanTranslationForDisplay(resolution.saamaka),
+                            detail = resolution.detail.takeUnless {
+                                resolution.kind == com.saamaka.dico.testeurs.FrenchResolutionKind.EXACT
+                            },
+                            matchedSource = resolution.matchedFrench,
+                            alternatives = resolution.alternatives
+                        )
+                    }
+            } else {
+                translateExactPhrase(token, false)?.let {
+                    return@assembleWordByWordPhrase RecognizedPhraseSegment(
+                        token,
+                        cleanTranslationForDisplay(it)
+                    )
+                }
+            }
+            null
+        }
     }
 
     fun translatePhrase(
