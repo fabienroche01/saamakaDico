@@ -10,6 +10,89 @@ import org.junit.Test
 
 class PhraseTranslationPipelineTest {
     @Test
+    fun recognizedTwoWordVerbShowsSeparateBlocksAndConsumesExactlyOnce() = runBlocking {
+        var remaining = 3
+        var calls = 0
+        val vouloir = FrenchFallbackResolver(
+            listOf(FrenchTranslationCandidate("vouloir", "kë", ""))
+        )
+        val grammar = SaamakaGrammarEngine(vouloir::resolve)
+        val wordByWord = PhraseTranslationResult(
+            translation = "mi • kë",
+            recognizedSegments = listOf(
+                RecognizedPhraseSegment("je", "mi"),
+                RecognizedPhraseSegment("veux", "kë", matchedSource = "vouloir")
+            ),
+            untranslatedSegments = emptyList(),
+            isComplete = true,
+            reliability = TranslationReliability.MEDIUM,
+            kind = PhraseTranslationKind.WORD_BY_WORD
+        )
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { text, _ -> grammar.translate(text) },
+            resolveWordByWord = { _, _ -> wordByWord },
+            remainingTrials = { remaining },
+            consumeTrial = {
+                calls++
+                remaining--
+                true
+            }
+        )
+
+        val result = pipeline.translate("je veux", true, AccessLevel.GUEST)
+
+        assertEquals("mi • kë", result.wordByWordTranslation?.translation)
+        assertEquals(null, result.grammaticalTranslation)
+        assertEquals(1, calls)
+        assertEquals(2, result.remainingTrials)
+    }
+
+    @Test
+    fun unrecognizedTwoWordGroupRemainsFreeDictionaryFallback() = runBlocking {
+        var calls = 0
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            resolveWordByWord = { _, _ -> error("word-by-word must not run for an unrecognized two-word group") },
+            remainingTrials = { 3 },
+            consumeTrial = { calls++; true }
+        )
+
+        val result = pipeline.translate("groupe simple", true, AccessLevel.GUEST)
+
+        assertEquals(PhraseTranslationDisposition.FALLBACK, result.disposition)
+        assertEquals(null, result.wordByWordTranslation)
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun supportedTwoWordActionKeepsWordByWordBesideRealGrammarResult() = runBlocking {
+        val resolver = FrenchFallbackResolver(
+            listOf(FrenchTranslationCandidate("dormir", "duumí", ""))
+        )
+        val grammar = SaamakaGrammarEngine(resolver::resolve)
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { text, _ -> grammar.translate(text) },
+            resolveWordByWord = { _, _ ->
+                PhraseTranslationResult(
+                    translation = "mi • duumí",
+                    recognizedSegments = listOf(RecognizedPhraseSegment("dors", "duumí")),
+                    untranslatedSegments = emptyList(),
+                    isComplete = true,
+                    reliability = TranslationReliability.MEDIUM,
+                    kind = PhraseTranslationKind.WORD_BY_WORD
+                )
+            },
+            remainingTrials = { 3 },
+            consumeTrial = { true }
+        )
+
+        val result = pipeline.translate("je dors", true, AccessLevel.GUEST)
+
+        assertEquals("mi • duumí", result.wordByWordTranslation?.translation)
+        assertEquals("mi ta duumí", result.grammaticalTranslation?.translation)
+    }
+
+    @Test
     fun threeWordPhraseExposesSeparateWordAndGrammarBlocks() = runBlocking {
         val wordByWord = PhraseTranslationResult(
             translation = "mi kë Makandi",

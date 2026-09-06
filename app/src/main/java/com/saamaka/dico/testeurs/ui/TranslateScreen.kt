@@ -255,18 +255,20 @@ private fun UnifiedTranslateContent(
             modifier = Modifier.fillMaxWidth(),
             enabled = input.isNotBlank() && !isLoading,
             onClick = {
-                phraseDecision = null
-                launchRequest {
-                    if (normalizedInputWordCount(input) >= 3) {
-                        val decision = translateCurrentPhrase()
-                        localResult = when (decision.disposition) {
-                            PhraseTranslationDisposition.TRANSLATED -> null
-                            PhraseTranslationDisposition.FALLBACK ->
-                                onLocalSearch(input, frenchToSaamaka).copy(exactMatch = null)
-                            PhraseTranslationDisposition.PREMIUM_REQUIRED -> null
+                if (runningJob?.isActive != true) {
+                    phraseDecision = null
+                    launchRequest {
+                        if (normalizedInputWordCount(input) >= 2) {
+                            val decision = translateCurrentPhrase()
+                            localResult = when (decision.disposition) {
+                                PhraseTranslationDisposition.TRANSLATED -> null
+                                PhraseTranslationDisposition.FALLBACK ->
+                                    onLocalSearch(input, frenchToSaamaka).copy(exactMatch = null)
+                                PhraseTranslationDisposition.PREMIUM_REQUIRED -> null
+                            }
+                        } else {
+                            localResult = onLocalSearch(input, frenchToSaamaka)
                         }
-                    } else {
-                        localResult = onLocalSearch(input, frenchToSaamaka)
                     }
                 }
             }
@@ -277,7 +279,7 @@ private fun UnifiedTranslateContent(
             }
             Text(
                 if (isLoading) strings.ui(UiCopyKey.SEARCHING)
-                else if (normalizedInputWordCount(input) >= 3) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
+                else if (normalizedInputWordCount(input) >= 2) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
                 else strings.ui(UiCopyKey.SEARCH_ACTION)
             )
         }

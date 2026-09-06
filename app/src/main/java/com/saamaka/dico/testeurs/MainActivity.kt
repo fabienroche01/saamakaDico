@@ -317,6 +317,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var query by remember { mutableStateOf("") }
     var homeExactCompleteMatch by remember { mutableStateOf<LocalExactMatch?>(null) }
     var homePhraseResult by remember { mutableStateOf<PhraseTranslationPipelineResult?>(null) }
+    var homePhraseSubmissionRunning by remember { mutableStateOf(false) }
     var pendingPhraseText by remember { mutableStateOf("") }
     var translatePendingPhraseImmediately by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf(AppLanguage.FRENCH)    }
@@ -686,20 +687,27 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val coroutineScope = rememberCoroutineScope()
 
     fun submitHomePhrase() {
-        if (normalizedInputWordCount(query) < 3) return
+        if (normalizedInputWordCount(query) < 2 || homePhraseSubmissionRunning) return
+        homePhraseSubmissionRunning = true
         coroutineScope.launch {
-            val result = phraseTranslationPipeline.translate(
-                text = query,
-                frenchToSaamaka = true,
-                accessLevel = accessLevel
-            )
-            if (result.trialConsumed) {
-                remainingTranslationTrials = result.remainingTrials
-            }
-            if (result.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
-                activeTab = MainTab.PREMIUM
-            } else {
-                homePhraseResult = result
+            try {
+                val result = phraseTranslationPipeline.translate(
+                    text = query,
+                    frenchToSaamaka = true,
+                    accessLevel = accessLevel
+                )
+                if (result.trialConsumed) {
+                    remainingTranslationTrials = result.remainingTrials
+                }
+                if (result.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
+                    activeTab = MainTab.PREMIUM
+                } else if (result.wordByWordTranslation != null ||
+                    normalizedInputWordCount(query) >= 3
+                ) {
+                    homePhraseResult = result
+                }
+            } finally {
+                homePhraseSubmissionRunning = false
             }
         }
     }

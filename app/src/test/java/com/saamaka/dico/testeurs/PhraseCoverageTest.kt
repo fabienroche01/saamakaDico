@@ -117,7 +117,7 @@ class PhraseCoverageTest {
             }
         }!!
 
-        assertEquals("mi [suis ?] [ton ?] pee", result.translation)
+        assertEquals("mi • [suis ?] • [ton ?] • pee", result.translation)
         assertEquals(listOf("suis", "ton"), result.untranslatedSegments)
         assertEquals(PhraseTranslationKind.PARTIAL, result.kind)
     }
@@ -126,7 +126,7 @@ class PhraseCoverageTest {
     fun wordByWordWithNoKnownTokenStillShowsTheWholePhrase() {
         val result = assembleWordByWordPhrase("alpha beta gamma") { null }!!
 
-        assertEquals("[alpha ?] [beta ?] [gamma ?]", result.translation)
+        assertEquals("[alpha ?] • [beta ?] • [gamma ?]", result.translation)
         assertTrue(result.recognizedSegments.isEmpty())
         assertEquals(listOf("alpha", "beta", "gamma"), result.untranslatedSegments)
     }

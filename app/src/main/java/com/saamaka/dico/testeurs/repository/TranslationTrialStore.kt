@@ -21,6 +21,7 @@ class TranslationTrialStore(context: Context) {
     fun canUseTrial(accessLevel: AccessLevel): Boolean =
         maximumTrials(accessLevel) == null || remainingTrials(accessLevel) > 0
 
+    @Synchronized
     fun useTrial(accessLevel: AccessLevel): Boolean {
         val maximum = maximumTrials(accessLevel)
         if (maximum == null) {

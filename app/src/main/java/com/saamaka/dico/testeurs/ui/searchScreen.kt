@@ -325,7 +325,7 @@ fun SearchScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = {
-                    if (normalizedInputWordCount(query) >= 3) onPhraseSubmit()
+                    if (normalizedInputWordCount(query) >= 2) onPhraseSubmit()
                 }
             ),
             shape = RoundedCornerShape(24.dp),

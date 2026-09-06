@@ -95,7 +95,7 @@ internal fun assembleWordByWordPhrase(
             ?: "[$token ?]".also { missing += token }
     }
     return PhraseTranslationResult(
-        translation = output.joinToString(" "),
+        translation = output.joinToString(" • "),
         recognizedSegments = recognized,
         untranslatedSegments = missing,
         isComplete = missing.isEmpty(),
