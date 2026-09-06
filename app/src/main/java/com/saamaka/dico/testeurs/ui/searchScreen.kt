@@ -94,7 +94,13 @@ private fun HomePhraseResultBlocks(
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text(
-                    strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION),
+                    strings.ui(
+                        if (result.grammaticalTranslation?.isComplete == false) {
+                            UiCopyKey.GRAMMATICAL_PARTIAL_TRANSLATION
+                        } else {
+                            UiCopyKey.GRAMMATICAL_TRANSLATION
+                        }
+                    ),
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0B5D3B)
                 )

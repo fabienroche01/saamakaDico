@@ -131,6 +131,30 @@ class PhraseCoverageTest {
         assertEquals(listOf("alpha", "beta", "gamma"), result.untranslatedSegments)
     }
 
+    @Test
+    fun grammaticalUnitsDecomposeElidedSubjectAndConjugatedVerb() {
+        assertEquals(
+            listOf("je", "avoir", "faim", "de", "toi"),
+            frenchGrammaticalUnits("j'ai faim de toi").map { it.lookup }
+        )
+        assertEquals(
+            listOf("je", "aimer", "ma", "maman"),
+            frenchGrammaticalUnits("j’aime ma maman").map { it.lookup }
+        )
+    }
+
+    @Test
+    fun partialGrammarKeepsResolvedUnitsAndMarksUnknownLemmas() {
+        val known = mapOf("je" to "mi", "faim" to "hángi", "toi" to "i")
+        val result = assemblePartialGrammaticalPhrase("j'ai faim de toi") { unit ->
+            known[unit.lookup]?.let { RecognizedPhraseSegment(unit.source, it, matchedSource = unit.lookup) }
+        }!!
+
+        assertEquals("mi [avoir ?] hángi [de ?] i", result.translation)
+        assertEquals(listOf("avoir", "de"), result.untranslatedSegments)
+        assertEquals(PhraseTranslationKind.PARTIAL, result.kind)
+    }
+
     private fun assemble(text: String, dictionary: Map<String, String>) =
         assembleAttestedPhrase(text) { candidate ->
             dictionary[candidate.lowercase()]?.let {

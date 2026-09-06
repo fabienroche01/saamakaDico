@@ -51,6 +51,10 @@ class UiLocalizationTest {
         assertEquals("Grammatical translation", stringsFor(UiLanguage.ENGLISH).ui(UiCopyKey.GRAMMATICAL_TRANSLATION))
         assertEquals("Grammaticale vertaling", stringsFor(UiLanguage.DUTCH).ui(UiCopyKey.GRAMMATICAL_TRANSLATION))
         assertEquals(
+            "Traduction grammaticale partielle",
+            stringsFor(UiLanguage.FRENCH).ui(UiCopyKey.GRAMMATICAL_PARTIAL_TRANSLATION)
+        )
+        assertEquals(
             "Grammatical translation",
             stringsFor(UiLanguage.SAAMAKA).ui(UiCopyKey.GRAMMATICAL_TRANSLATION)
         )

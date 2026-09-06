@@ -262,6 +262,16 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     )
                 }
             },
+            resolveGrammaticalPartial = { text, frenchToSaamaka ->
+                withContext(Dispatchers.IO) {
+                    database.preparePhraseTranslationIndex()
+                    database.translatePartialGrammaticalPhrase(
+                        text = text,
+                        frenchToSaamaka = frenchToSaamaka,
+                        localCorrections = correctionStore.all()
+                    )
+                }
+            },
             remainingTrials = translationTrialStore::remainingTrials,
             consumeTrial = translationTrialStore::useTrial
         )

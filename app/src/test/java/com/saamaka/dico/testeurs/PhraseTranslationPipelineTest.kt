@@ -93,6 +93,35 @@ class PhraseTranslationPipelineTest {
     }
 
     @Test
+    fun partialGrammarIsKeptWhenAttestedEngineCannotCompleteThePhrase() = runBlocking {
+        val lexical = PhraseTranslationResult(
+            translation = "[j'ai ?] • hángi • [de ?] • i",
+            recognizedSegments = listOf(RecognizedPhraseSegment("faim", "hángi")),
+            untranslatedSegments = listOf("j'ai", "de"),
+            isComplete = false,
+            reliability = TranslationReliability.LOW,
+            kind = PhraseTranslationKind.PARTIAL
+        )
+        val grammatical = lexical.copy(
+            translation = "mi [avoir ?] hángi [de ?] i",
+            untranslatedSegments = listOf("avoir", "de")
+        )
+        val pipeline = PhraseTranslationPipeline(
+            resolvePhrase = { _, _ -> null },
+            resolveWordByWord = { _, _ -> lexical },
+            resolveGrammaticalPartial = { _, _ -> grammatical },
+            remainingTrials = { Int.MAX_VALUE },
+            consumeTrial = { error("tester is unlimited") }
+        )
+
+        val result = pipeline.translate("j'ai faim de toi", true, AccessLevel.TESTER)
+
+        assertEquals(lexical, result.wordByWordTranslation)
+        assertEquals(grammatical, result.grammaticalTranslation)
+        assertEquals(PhraseTranslationDisposition.TRANSLATED, result.disposition)
+    }
+
+    @Test
     fun threeWordPhraseExposesSeparateWordAndGrammarBlocks() = runBlocking {
         val wordByWord = PhraseTranslationResult(
             translation = "mi kë Makandi",

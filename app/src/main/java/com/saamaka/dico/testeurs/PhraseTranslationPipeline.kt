@@ -22,6 +22,7 @@ data class PhraseTranslationPipelineResult(
 internal class PhraseTranslationPipeline(
     private val resolvePhrase: suspend (String, Boolean) -> PhraseTranslationResult?,
     private val resolveWordByWord: (suspend (String, Boolean) -> PhraseTranslationResult?)? = null,
+    private val resolveGrammaticalPartial: (suspend (String, Boolean) -> PhraseTranslationResult?)? = null,
     private val remainingTrials: (AccessLevel) -> Int,
     private val consumeTrial: (AccessLevel) -> Boolean
 ) {
@@ -35,14 +36,16 @@ internal class PhraseTranslationPipeline(
         if (wordCount < GRAMMATICAL_EXPRESSION_MINIMUM_WORDS) return fallback(clean, accessLevel)
 
         val primary = resolvePhrase(clean, frenchToSaamaka)
-        val grammatical = primary?.takeUnless { it.isLexicalFallback() }
+        val completeGrammar = primary?.takeUnless { it.isLexicalFallback() }
         val recognizedTwoWordStructure = wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS &&
             isRecognizedTwoWordVerbStructure(clean, frenchToSaamaka)
         if (wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS &&
-            grammatical == null && !recognizedTwoWordStructure
+            completeGrammar == null && !recognizedTwoWordStructure
         ) {
             return fallback(clean, accessLevel)
         }
+        val grammatical = completeGrammar
+            ?: resolveGrammaticalPartial?.invoke(clean, frenchToSaamaka)
         val wordByWord = resolveWordByWord?.invoke(clean, frenchToSaamaka)
             ?: primary?.takeIf { it.isLexicalFallback() }
         val translation = grammatical ?: wordByWord?.takeIf { it.recognizedSegments.isNotEmpty() }
@@ -140,8 +143,9 @@ internal class PhraseTranslationPipeline(
 
 private fun isRecognizedTwoWordVerbStructure(text: String, frenchToSaamaka: Boolean): Boolean {
     if (!frenchToSaamaka) return false
-    val words = cleanPhraseInput(text).split(Regex("\\s+")).filter(String::isNotBlank)
-    return words.size == 2 &&
-        resolveAttestedFrenchSubject(words[0]) != null &&
-        FrenchVerbInflections.lemma(words[1]) != null
+    val units = frenchGrammaticalUnits(text)
+    return normalizedInputWordCount(text) == 2 &&
+        units.size >= 2 &&
+        resolveAttestedFrenchSubject(units[0].lookup) != null &&
+        FrenchVerbInflections.lemma(units[1].source) != null
 }

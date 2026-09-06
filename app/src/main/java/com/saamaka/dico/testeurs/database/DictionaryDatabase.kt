@@ -12,6 +12,8 @@ import com.saamaka.dico.testeurs.requireBackgroundSearch
 import android.os.Looper
 import com.saamaka.dico.testeurs.assembleAttestedPhrase
 import com.saamaka.dico.testeurs.assembleWordByWordPhrase
+import com.saamaka.dico.testeurs.assemblePartialGrammaticalPhrase
+import com.saamaka.dico.testeurs.FrenchGrammaticalUnit
 import com.saamaka.dico.testeurs.asFrenchLexicalFallback
 import com.saamaka.dico.testeurs.cleanPhraseInput
 import com.saamaka.dico.testeurs.resolveAttestedFrenchSubject
@@ -1300,6 +1302,54 @@ val frenchObject =
                 }
             }
             null
+        }
+    }
+
+    fun translatePartialGrammaticalPhrase(
+        text: String,
+        frenchToSaamaka: Boolean,
+        localCorrections: List<CorrectionProposal> = emptyList()
+    ): PhraseTranslationResult? {
+        if (!frenchToSaamaka) return null
+        val resolver = phraseIndex().frenchFallbackResolver
+
+        fun corrected(unit: FrenchGrammaticalUnit): String? {
+            val normalized = normalizeAttestedPhraseKey(unit.lookup)
+            return localCorrections.mapNotNull { correction ->
+                val source = correction.frenchProposed.ifBlank { correction.frenchCurrent }
+                val translated = correction.saamakaProposed.ifBlank { correction.saamakaCurrent }
+                translated.trim().takeIf {
+                    it.isNotBlank() && normalizeAttestedPhraseKey(source) == normalized
+                }
+            }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
+        }
+
+        return assemblePartialGrammaticalPhrase(text) { unit ->
+            corrected(unit)?.let {
+                return@assemblePartialGrammaticalPhrase RecognizedPhraseSegment(
+                    source = unit.source,
+                    translation = it,
+                    matchedSource = unit.lookup
+                )
+            }
+            resolveAttestedFrenchSubject(unit.lookup)?.let {
+                return@assemblePartialGrammaticalPhrase RecognizedPhraseSegment(
+                    source = unit.source,
+                    translation = it,
+                    matchedSource = unit.lookup
+                )
+            }
+            resolver.resolve(unit.lookup)
+                ?.takeIf { it.isSafeForWordByWordFallback }
+                ?.let { resolution ->
+                    RecognizedPhraseSegment(
+                        source = unit.source,
+                        translation = cleanTranslationForDisplay(resolution.saamaka),
+                        detail = resolution.detail,
+                        matchedSource = resolution.matchedFrench,
+                        alternatives = resolution.alternatives
+                    )
+                }
         }
     }
 

@@ -103,3 +103,53 @@ internal fun assembleWordByWordPhrase(
         kind = if (missing.isEmpty()) PhraseTranslationKind.WORD_BY_WORD else PhraseTranslationKind.PARTIAL
     )
 }
+
+internal data class FrenchGrammaticalUnit(
+    val source: String,
+    val lookup: String
+)
+
+internal fun frenchGrammaticalUnits(text: String): List<FrenchGrammaticalUnit> =
+    cleanPhraseInput(text)
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+        .flatMap { token ->
+            val normalized = token.lowercase().replace('’', '\'')
+            val contraction = listOf(
+                "j'" to "je", "n'" to "ne", "d'" to "de", "qu'" to "que",
+                "m'" to "me", "t'" to "te", "s'" to "se", "c'" to "ce"
+            ).firstOrNull { normalized.startsWith(it.first) && normalized.length > it.first.length }
+            if (contraction == null) {
+                listOf(FrenchGrammaticalUnit(token, FrenchVerbInflections.lemma(token) ?: token))
+            } else {
+                val remainder = normalized.removePrefix(contraction.first)
+                listOf(
+                    FrenchGrammaticalUnit(contraction.first, contraction.second),
+                    FrenchGrammaticalUnit(remainder, FrenchVerbInflections.lemma(remainder) ?: remainder)
+                )
+            }
+        }
+
+internal fun assemblePartialGrammaticalPhrase(
+    text: String,
+    lookupUnit: (FrenchGrammaticalUnit) -> RecognizedPhraseSegment?
+): PhraseTranslationResult? {
+    val units = frenchGrammaticalUnits(text)
+    if (units.isEmpty()) return null
+    val recognized = mutableListOf<RecognizedPhraseSegment>()
+    val missing = mutableListOf<String>()
+    val output = units.map { unit ->
+        lookupUnit(unit)?.takeIf { it.translation.isNotBlank() }?.also(recognized::add)
+            ?.translation
+            ?: "[${unit.lookup} ?]".also { missing += unit.lookup }
+    }
+    if (recognized.isEmpty()) return null
+    return PhraseTranslationResult(
+        translation = output.joinToString(" "),
+        recognizedSegments = recognized,
+        untranslatedSegments = missing,
+        isComplete = false,
+        reliability = TranslationReliability.LOW,
+        kind = PhraseTranslationKind.PARTIAL
+    )
+}
