@@ -33,17 +33,13 @@ internal class PhraseTranslationPipeline(
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         val wordCount = normalizedInputWordCount(clean)
-        if (wordCount < GRAMMATICAL_EXPRESSION_MINIMUM_WORDS) return fallback(clean, accessLevel)
+        val recognizedShortStructure = isRecognizedShortVerbStructure(clean, frenchToSaamaka)
+        if (wordCount < PHRASE_MINIMUM_WORDS && !recognizedShortStructure) {
+            return fallback(clean, accessLevel)
+        }
 
         val primary = resolvePhrase(clean, frenchToSaamaka)
         val completeGrammar = primary?.takeUnless { it.isLexicalFallback() }
-        val recognizedTwoWordStructure = wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS &&
-            isRecognizedTwoWordVerbStructure(clean, frenchToSaamaka)
-        if (wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS &&
-            completeGrammar == null && !recognizedTwoWordStructure
-        ) {
-            return fallback(clean, accessLevel)
-        }
         val grammatical = completeGrammar
             ?: resolveGrammaticalPartial?.invoke(clean, frenchToSaamaka)
         val wordByWord = resolveWordByWord?.invoke(clean, frenchToSaamaka)
@@ -85,9 +81,12 @@ internal class PhraseTranslationPipeline(
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         val wordCount = normalizedInputWordCount(clean)
-        if (wordCount < GRAMMATICAL_EXPRESSION_MINIMUM_WORDS) return fallback(clean, accessLevel)
+        val recognizedShortStructure = isRecognizedShortVerbStructure(clean, frenchToSaamaka)
+        if (wordCount < PHRASE_MINIMUM_WORDS && !recognizedShortStructure) {
+            return fallback(clean, accessLevel)
+        }
 
-        if (wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS) {
+        if (wordCount < PHRASE_MINIMUM_WORDS) {
             val resolved = resolve(clean, frenchToSaamaka, accessLevel)
             if (resolved.wordByWordTranslation == null) return resolved
             return authorizePhraseAttempt(resolved, accessLevel)
@@ -127,8 +126,7 @@ internal class PhraseTranslationPipeline(
     private fun isChargeableAttempt(result: PhraseTranslationPipelineResult): Boolean {
         val wordCount = normalizedInputWordCount(result.text)
         return wordCount >= PHRASE_MINIMUM_WORDS ||
-            (wordCount == GRAMMATICAL_EXPRESSION_MINIMUM_WORDS &&
-                result.wordByWordTranslation != null)
+            isRecognizedShortVerbStructure(result.text, frenchToSaamaka = true)
     }
 
     private fun PhraseTranslationResult.isLexicalFallback(): Boolean =
@@ -136,16 +134,18 @@ internal class PhraseTranslationPipeline(
             kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL
 
     private companion object {
-        const val GRAMMATICAL_EXPRESSION_MINIMUM_WORDS = 2
         const val PHRASE_MINIMUM_WORDS = 3
     }
 }
 
-private fun isRecognizedTwoWordVerbStructure(text: String, frenchToSaamaka: Boolean): Boolean {
+internal fun isRecognizedShortVerbStructure(text: String, frenchToSaamaka: Boolean = true): Boolean {
     if (!frenchToSaamaka) return false
     val units = frenchGrammaticalUnits(text)
-    return normalizedInputWordCount(text) == 2 &&
+    return normalizedInputWordCount(text) <= 2 &&
         units.size >= 2 &&
         resolveAttestedFrenchSubject(units[0].lookup) != null &&
         FrenchVerbInflections.lemma(units[1].source) != null
 }
+
+internal fun shouldAnalyzeAsPhrase(text: String, frenchToSaamaka: Boolean = true): Boolean =
+    normalizedInputWordCount(text) >= 3 || isRecognizedShortVerbStructure(text, frenchToSaamaka)

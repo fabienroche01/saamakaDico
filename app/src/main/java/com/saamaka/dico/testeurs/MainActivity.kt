@@ -697,7 +697,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val coroutineScope = rememberCoroutineScope()
 
     fun submitHomePhrase() {
-        if (normalizedInputWordCount(query) < 2 || homePhraseSubmissionRunning) return
+        if (!shouldAnalyzeAsPhrase(query) || homePhraseSubmissionRunning) return
         homePhraseSubmissionRunning = true
         coroutineScope.launch {
             try {

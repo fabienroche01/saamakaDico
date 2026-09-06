@@ -10,6 +10,18 @@ import org.junit.Test
 
 class PhraseTranslationPipelineTest {
     @Test
+    fun allRecognizedShortPronounVerbFormsRouteToDirectAnalysis() {
+        listOf(
+            "je veux", "tu veux", "il veut", "je dors",
+            "tu manges", "je dois", "j'aime", "je peux"
+        ).forEach { text ->
+            assertEquals("Direct short analysis expected for $text", true, shouldAnalyzeAsPhrase(text))
+        }
+        assertEquals(false, shouldAnalyzeAsPhrase("si possible"))
+        assertEquals(false, shouldAnalyzeAsPhrase("avoir pouvoir"))
+    }
+
+    @Test
     fun recognizedTwoWordVerbShowsSeparateBlocksAndConsumesExactlyOnce() = runBlocking {
         var remaining = 3
         var calls = 0

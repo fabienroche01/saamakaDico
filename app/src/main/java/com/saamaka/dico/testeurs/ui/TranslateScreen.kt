@@ -44,6 +44,7 @@ import com.saamaka.dico.testeurs.PhraseTranslationPipelineResult
 import com.saamaka.dico.testeurs.unifiedSearchButtonLabel
 import com.saamaka.dico.testeurs.shouldOfferPremiumTranslation
 import com.saamaka.dico.testeurs.normalizedInputWordCount
+import com.saamaka.dico.testeurs.shouldAnalyzeAsPhrase
 import com.saamaka.dico.testeurs.relatedExpressionLabel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -258,7 +259,7 @@ private fun UnifiedTranslateContent(
                 if (runningJob?.isActive != true) {
                     phraseDecision = null
                     launchRequest {
-                        if (normalizedInputWordCount(input) >= 2) {
+                        if (shouldAnalyzeAsPhrase(input, frenchToSaamaka)) {
                             val decision = translateCurrentPhrase()
                             localResult = when (decision.disposition) {
                                 PhraseTranslationDisposition.TRANSLATED -> null
@@ -279,7 +280,7 @@ private fun UnifiedTranslateContent(
             }
             Text(
                 if (isLoading) strings.ui(UiCopyKey.SEARCHING)
-                else if (normalizedInputWordCount(input) >= 2) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
+                else if (shouldAnalyzeAsPhrase(input, frenchToSaamaka)) strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE)
                 else strings.ui(UiCopyKey.SEARCH_ACTION)
             )
         }

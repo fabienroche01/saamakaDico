@@ -1281,6 +1281,13 @@ val frenchObject =
                 return@assembleWordByWordPhrase RecognizedPhraseSegment(token, it)
             }
             if (frenchToSaamaka) {
+                resolveAttestedFrenchSubject(token)?.let {
+                    return@assembleWordByWordPhrase RecognizedPhraseSegment(
+                        source = token,
+                        translation = it,
+                        matchedSource = token
+                    )
+                }
                 val lemma = FrenchVerbInflections.lemma(token) ?: token
                 val lemmaResolution = resolver?.resolveLemmaThroughExpressions(lemma)
                 lemmaResolution?.relatedExpressions?.takeIf { it.isNotEmpty() }?.let {

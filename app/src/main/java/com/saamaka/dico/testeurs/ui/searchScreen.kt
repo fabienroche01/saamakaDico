@@ -53,6 +53,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import com.saamaka.dico.testeurs.PhraseTranslationPipelineResult
 import com.saamaka.dico.testeurs.normalizedInputWordCount
+import com.saamaka.dico.testeurs.shouldAnalyzeAsPhrase
 
 enum class SearchLanguageFilter(val label: String, val language: AppLanguage?) {
     ALL("Tous", null),
@@ -340,7 +341,7 @@ fun SearchScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = {
-                    if (normalizedInputWordCount(query) >= 2) onPhraseSubmit()
+                    if (shouldAnalyzeAsPhrase(query)) onPhraseSubmit()
                 }
             ),
             shape = RoundedCornerShape(24.dp),
@@ -918,6 +919,33 @@ fun SearchScreen(
 
                 phraseResult != null -> {
                     HomePhraseResultBlocks(phraseResult, strings)
+                    if (entries.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
+                        entries.take(5).forEach { entry ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp)
+                                    .clickable {
+                                        onOpen(
+                                            entry,
+                                            matchingLanguageForEntry(
+                                                entry,
+                                                query,
+                                                searchLanguageFilter.language,
+                                                selectedLanguage
+                                            )
+                                        )
+                                    }
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(entry.french, fontWeight = FontWeight.Bold)
+                                    Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE) })
+                                }
+                            }
+                        }
+                    }
                 }
 
                 searchPresentation.showPhraseCta -> {
