@@ -93,6 +93,20 @@ class SearchPipelineTest {
     }
 
     @Test
+    fun recognizedShortHomePhraseIsPreviewedWithoutTreatingRelatedTextAsDirect() {
+        listOf("je veux", "tu veux", "je dors", "je mange", "je peux").forEach { text ->
+            assertEquals(
+                true,
+                shouldPreviewShortHomePhrase(SearchRequest(text, "fr", "fr", AccessLevel.GUEST))
+            )
+        }
+        assertEquals(
+            false,
+            shouldPreviewShortHomePhrase(SearchRequest("si tu veux", "fr", "fr", AccessLevel.GUEST))
+        )
+    }
+
+    @Test
     fun clearingAndRetypingDoesNotResetThePersistentTranslationQuota() {
         val chargedPhrase = normalizeAttestedPhraseKey("je veux dormir")
 

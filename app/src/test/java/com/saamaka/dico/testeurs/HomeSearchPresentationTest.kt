@@ -42,4 +42,16 @@ class HomeSearchPresentationTest {
         assertFalse(state.showPhraseCta)
         assertFalse(state.showNoResult)
     }
+
+    @Test
+    fun structuredShortPhraseNeverFallsThroughToNoResult() {
+        val state = homeSearchPresentation(
+            text = "je veux",
+            localResultCount = 0,
+            hasExactCompleteMatch = false,
+            hasStructuredPhraseResult = true
+        )
+
+        assertFalse(state.showNoResult)
+    }
 }

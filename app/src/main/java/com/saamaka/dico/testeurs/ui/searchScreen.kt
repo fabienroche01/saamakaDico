@@ -169,7 +169,8 @@ fun SearchScreen(
     val searchPresentation = homeSearchPresentation(
         text = query,
         localResultCount = entries.size,
-        hasExactCompleteMatch = exactCompleteMatch != null
+        hasExactCompleteMatch = exactCompleteMatch != null,
+        hasStructuredPhraseResult = phraseResult != null
     )
 
     Column(
@@ -875,6 +876,37 @@ fun SearchScreen(
                     )
                 }
 
+                phraseResult != null -> {
+                    HomePhraseResultBlocks(phraseResult, strings)
+                    if (entries.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
+                        entries.take(5).forEach { entry ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp)
+                                    .clickable {
+                                        onOpen(
+                                            entry,
+                                            matchingLanguageForEntry(
+                                                entry,
+                                                query,
+                                                searchLanguageFilter.language,
+                                                selectedLanguage
+                                            )
+                                        )
+                                    }
+                            ) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text(entry.french, fontWeight = FontWeight.Bold)
+                                    Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE) })
+                                }
+                            }
+                        }
+                    }
+                }
+
                 exactCompleteMatch != null -> {
                     val dictionaryEntry = exactCompleteMatch.entry
                     val exactMatchModifier = if (
@@ -913,37 +945,6 @@ fun SearchScreen(
                                     strings.reliabilityLabel(exactCompleteMatch.reliability)
                                 )
                             )
-                        }
-                    }
-                }
-
-                phraseResult != null -> {
-                    HomePhraseResultBlocks(phraseResult, strings)
-                    if (entries.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
-                        Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
-                        entries.take(5).forEach { entry ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 6.dp)
-                                    .clickable {
-                                        onOpen(
-                                            entry,
-                                            matchingLanguageForEntry(
-                                                entry,
-                                                query,
-                                                searchLanguageFilter.language,
-                                                selectedLanguage
-                                            )
-                                        )
-                                    }
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(entry.french, fontWeight = FontWeight.Bold)
-                                    Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE) })
-                                }
-                            }
                         }
                     }
                 }

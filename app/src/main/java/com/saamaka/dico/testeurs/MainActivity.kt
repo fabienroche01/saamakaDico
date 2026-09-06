@@ -536,8 +536,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 AppLanguage.FRENCH.code,
                 AppLanguage.SAAMAKA.code
             )
-            val phraseTranslation: PhraseTranslationPipelineResult? = null
-            var exactMatch = if (supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 2) {
+            // A short recognized structure is previewed without consuming quota.
+            // Only submitHomePhrase() calls translate() and charges an explicit action.
+            val phraseTranslation = if (shouldPreviewShortHomePhrase(request)) {
+                phraseTranslationPipeline.resolve(cleaned, true, request.accessLevel)
+            } else {
+                null
+            }
+            var exactMatch = if (
+                phraseTranslation == null && supportsLocalExactMatch &&
+                normalizedInputWordCount(cleaned) <= 2
+            ) {
             findAttestedPhraseRule(cleaned, frenchToSaamaka)?.let { translation ->
                 val normalizedTranslation = normalizeAttestedPhraseKey(translation)
                 val linkedEntry = allEntries.firstOrNull { entry ->
@@ -552,7 +561,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 )
             }
             } else null
-            if (exactMatch == null && supportsLocalExactMatch && normalizedInputWordCount(cleaned) <= 2) {
+            if (phraseTranslation == null && exactMatch == null && supportsLocalExactMatch &&
+                normalizedInputWordCount(cleaned) <= 2
+            ) {
             correctedResults.firstOrNull { entry ->
                 val source = if (frenchToSaamaka) entry.french else entry.saamaka
                 normalizeAttestedPhraseKey(source) == normalizeAttestedPhraseKey(cleaned)
@@ -587,6 +598,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             .collectLatest { outcome ->
                 searchResults = outcome.results
                 val authorizedPhrase = outcome.phraseTranslation
+                homePhraseResult = authorizedPhrase
                 if (authorizedPhrase?.disposition == PhraseTranslationDisposition.PREMIUM_REQUIRED) {
                     activeTab = MainTab.PREMIUM
                 }

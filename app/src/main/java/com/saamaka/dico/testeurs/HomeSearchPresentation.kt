@@ -10,11 +10,12 @@ internal data class HomeSearchPresentation(
 internal fun homeSearchPresentation(
     text: String,
     localResultCount: Int,
-    hasExactCompleteMatch: Boolean
+    hasExactCompleteMatch: Boolean,
+    hasStructuredPhraseResult: Boolean = false
 ): HomeSearchPresentation {
     val normalized = cleanPhraseInput(text)
     val wordCount = normalizedInputWordCount(normalized)
-    val hasAnyLocalResult = localResultCount > 0 || hasExactCompleteMatch
+    val hasAnyLocalResult = localResultCount > 0 || hasExactCompleteMatch || hasStructuredPhraseResult
     return HomeSearchPresentation(
         normalizedText = normalized,
         wordCount = wordCount,
