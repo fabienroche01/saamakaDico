@@ -179,6 +179,51 @@ class FrenchFallbackResolverTest {
         assertEquals(2, result.recognizedSegments.size)
     }
 
+    @Test
+    fun exactNonEmptyLemmaAlwaysWinsBeforeExpressionEvidence() {
+        val result = resolver(
+            candidate("pouvoir", "SAFU", ""),
+            candidate("avoir pouvoir", "abi kaakiti", "O")
+        ).resolveLemmaThroughExpressions("pouvoir")
+
+        assertEquals("SAFU", result.resolution?.saamaka)
+        assertEquals(FrenchResolutionKind.EXACT, result.resolution?.kind)
+    }
+
+    @Test
+    fun validatedExpressionCanIsolateLemmaOnlyWhenOtherWordsAreExactlyAligned() {
+        val result = resolver(
+            candidate("force", "kaakiti", "O"),
+            candidate("force pouvoir", "kaakiti paaua", "O")
+        ).resolveLemmaThroughExpressions("pouvoir")
+
+        assertEquals("paaua", result.resolution?.saamaka)
+        assertEquals(FrenchResolutionKind.EXPRESSION_DERIVED, result.resolution?.kind)
+    }
+
+    @Test
+    fun ambiguousExpressionIsReportedButNeverUsedAsLemmaTranslation() {
+        val result = resolver(
+            candidate("pouvoir", "", ""),
+            candidate("avoir", "", ""),
+            candidate("avoir pouvoir", "abi kaakiti", "O")
+        ).resolveLemmaThroughExpressions("pouvoir")
+
+        assertNull(result.resolution)
+        assertEquals(listOf("avoir pouvoir"), result.relatedExpressions)
+    }
+
+    @Test
+    fun substringDoesNotCountAsRelatedLemmaExpression() {
+        val result = resolver(
+            candidate("repouvoir", "UNRELATED", "O"),
+            candidate("impouvoir", "UNRELATED_TOO", "O")
+        ).resolveLemmaThroughExpressions("pouvoir")
+
+        assertNull(result.resolution)
+        assertTrue(result.relatedExpressions.isEmpty())
+    }
+
     private fun resolver(vararg candidates: FrenchTranslationCandidate) =
         FrenchFallbackResolver(candidates.toList())
 

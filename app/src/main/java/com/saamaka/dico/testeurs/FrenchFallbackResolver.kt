@@ -6,7 +6,8 @@ internal enum class FrenchResolutionKind(val detailLabel: String) {
     ELISION("élision française normalisée"),
     INFLECTION("flexion grammaticale normalisée"),
     SYNONYM("formulation proche utilisée"),
-    SPELLING("correction orthographique")
+    SPELLING("correction orthographique"),
+    EXPRESSION_DERIVED("valeur isolée depuis une expression attestée")
 }
 
 internal data class FrenchTranslationCandidate(
@@ -30,9 +31,15 @@ internal data class FrenchFallbackResolution(
         get() = kind in setOf(
             FrenchResolutionKind.EXACT,
             FrenchResolutionKind.ELISION,
-            FrenchResolutionKind.INFLECTION
+            FrenchResolutionKind.INFLECTION,
+            FrenchResolutionKind.EXPRESSION_DERIVED
         )
 }
+
+internal data class FrenchLemmaResolution(
+    val resolution: FrenchFallbackResolution?,
+    val relatedExpressions: List<String> = emptyList()
+)
 
 private val attestedFrenchSynonyms = mapOf(
     "pere" to setOf("papa"),
@@ -123,6 +130,66 @@ internal class FrenchFallbackResolver(
             resolution(word, it, FrenchResolutionKind.SPELLING, 400)
         }?.takeIf { it.score >= MIN_ACCEPTED_SCORE }
     }
+
+    fun resolveLemmaThroughExpressions(lemma: String): FrenchLemmaResolution {
+        resolve(lemma)?.takeIf { it.isSafeForWordByWordFallback }?.let {
+            return FrenchLemmaResolution(it)
+        }
+        val normalizedLemma = normalizeAttestedPhraseKey(lemma)
+        val related = indexedCandidates
+            .filter { candidate ->
+                candidate.normalizedFrench.split(Regex("\\s+")).any { it == normalizedLemma }
+            }
+            .sortedWith(
+                compareBy<IndexedCandidate> { it.normalizedFrench.split(Regex("\\s+")).size }
+                    .thenByDescending { validationScore(it.value.validationStatus) }
+            )
+        val inferred = related.mapNotNull { inferLemmaFromExpression(normalizedLemma, it) }
+        val grouped = inferred.groupBy { normalizeAttestedPhraseKey(it.first) }
+        val accepted = grouped.values
+            .mapNotNull { evidence ->
+                val validated = evidence.firstOrNull { (_, candidate) ->
+                    candidate.value.validationStatus.trim().equals("O", ignoreCase = true)
+                }
+                (validated ?: evidence.firstOrNull()?.takeIf { evidence.size >= 2 })
+            }
+            .maxByOrNull { (_, candidate) -> validationScore(candidate.value.validationStatus) }
+        val resolution = accepted?.let { (saamaka, candidate) ->
+            FrenchFallbackResolution(
+                requested = lemma,
+                matchedFrench = lemma,
+                saamaka = saamaka,
+                kind = FrenchResolutionKind.EXPRESSION_DERIVED,
+                score = 700 + validationScore(candidate.value.validationStatus),
+                alternatives = emptyList()
+            )
+        }
+        return FrenchLemmaResolution(
+            resolution = resolution,
+            relatedExpressions = related.map { it.value.french }.distinct().take(3)
+        )
+    }
+
+    private fun inferLemmaFromExpression(
+        lemma: String,
+        candidate: IndexedCandidate
+    ): Pair<String, IndexedCandidate>? {
+        val frenchWords = candidate.normalizedFrench.split(Regex("\\s+")).filter(String::isNotBlank)
+        val lemmaIndex = frenchWords.indexOf(lemma)
+        if (lemmaIndex < 0 || frenchWords.count { it == lemma } != 1) return null
+        val saamakaWords = candidate.value.saamaka.trim().split(Regex("\\s+")).filter(String::isNotBlank)
+        val before = frenchWords.take(lemmaIndex).flatMap { exactSaamakaWords(it) ?: return null }
+        val after = frenchWords.drop(lemmaIndex + 1).flatMap { exactSaamakaWords(it) ?: return null }
+        if (saamakaWords.size <= before.size + after.size ||
+            saamakaWords.take(before.size).map(::normalizeAttestedPhraseKey) != before.map(::normalizeAttestedPhraseKey) ||
+            saamakaWords.takeLast(after.size).map(::normalizeAttestedPhraseKey) != after.map(::normalizeAttestedPhraseKey)
+        ) return null
+        val isolated = saamakaWords.subList(before.size, saamakaWords.size - after.size).joinToString(" ")
+        return isolated.takeIf(String::isNotBlank)?.let { it to candidate }
+    }
+
+    private fun exactSaamakaWords(french: String): List<String>? =
+        bestCandidate(french)?.saamaka?.trim()?.split(Regex("\\s+"))?.filter(String::isNotBlank)
 
     private fun exact(normalizedWord: String, requested: String): FrenchFallbackResolution? =
         bestCandidate(normalizedWord)?.let {

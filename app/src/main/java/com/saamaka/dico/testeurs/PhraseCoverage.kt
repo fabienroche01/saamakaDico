@@ -148,7 +148,7 @@ internal fun assemblePartialGrammaticalPhrase(
         translation = output.joinToString(" "),
         recognizedSegments = recognized,
         untranslatedSegments = missing,
-        isComplete = false,
+        isComplete = missing.isEmpty(),
         reliability = TranslationReliability.LOW,
         kind = PhraseTranslationKind.PARTIAL
     )

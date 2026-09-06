@@ -474,7 +474,7 @@ private fun PhraseDecisionBlocks(
         Column(Modifier.padding(16.dp)) {
             Text(
                 strings.ui(
-                    if (grammatical?.isComplete == false) {
+                    if (grammatical?.kind == PhraseTranslationKind.PARTIAL) {
                         UiCopyKey.GRAMMATICAL_PARTIAL_TRANSLATION
                     } else {
                         UiCopyKey.GRAMMATICAL_TRANSLATION
@@ -492,6 +492,14 @@ private fun PhraseDecisionBlocks(
             )
             if (grammatical != null) {
                 Text(strings.ui(UiCopyKey.RELIABILITY, strings.reliabilityLabel(grammatical.reliability)))
+                grammatical.unresolvedHints.takeIf { it.isNotEmpty() }?.let { hints ->
+                    Text(
+                        strings.ui(
+                            UiCopyKey.RELATED_DICTIONARY_EXPRESSIONS,
+                            hints.values.flatten().distinct().joinToString(", ")
+                        )
+                    )
+                }
             }
             if (wordByWord != null || grammatical != null) {
                 Spacer(Modifier.height(10.dp))

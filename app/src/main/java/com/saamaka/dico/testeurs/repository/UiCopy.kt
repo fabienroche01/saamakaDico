@@ -28,7 +28,7 @@ enum class UiCopyKey {
     GRAMMATICAL_TRANSLATION, GRAMMATICAL_PARTIAL_TRANSLATION, GRAMMATICAL_TRANSLATION_UNAVAILABLE,
     WORD_BY_WORD_TRANSLATION, PARTIAL_TRANSLATION,
     INCOMPLETE_SUGGESTION, RELIABILITY, SHOW_DETAILS, HIDE_DETAILS, OTHER_POSSIBILITIES,
-    ITEMS_TO_REVIEW, NEW_SEARCH, COPY_ACTION, SHARE_ACTION, CREATE_FREE_ACCOUNT,
+    ITEMS_TO_REVIEW, RELATED_DICTIONARY_EXPRESSIONS, NEW_SEARCH, COPY_ACTION, SHARE_ACTION, CREATE_FREE_ACCOUNT,
     FREE_TRANSLATION_TRIALS, CREATE_MY_FREE_ACCOUNT, PREMIUM_BENEFITS,
     DISCOVER_PREMIUM, REMAINING_TRANSLATIONS, FREE_ACCOUNT_TRIAL_INFO,
     START_TRANSLATION, PREMIUM_UNLIMITED, TRANSLATE_NOW, TEST_TRANSLATOR_ENABLED,
@@ -170,6 +170,7 @@ private val uiCopy = mapOf(
     ,UiCopyKey.HIDE_DETAILS to UiCopyValue("Masquer les détails", "Hide details", "Details verbergen")
     ,UiCopyKey.OTHER_POSSIBILITIES to UiCopyValue("Autres possibilités : %s", "Other possibilities: %s", "Andere mogelijkheden: %s")
     ,UiCopyKey.ITEMS_TO_REVIEW to UiCopyValue("Éléments à vérifier : %s", "Items to review: %s", "Te controleren onderdelen: %s")
+    ,UiCopyKey.RELATED_DICTIONARY_EXPRESSIONS to UiCopyValue("Expressions liées dans le dictionnaire : %s", "Related dictionary expressions: %s", "Verwante woordenboekuitdrukkingen: %s")
     ,UiCopyKey.NEW_SEARCH to UiCopyValue("Nouvelle recherche / Nouveau texte", "New search / New text", "Nieuwe zoekopdracht / Nieuwe tekst")
     ,UiCopyKey.COPY_ACTION to UiCopyValue("Copier", "Copy", "Kopiëren", "Kopi")
     ,UiCopyKey.SHARE_ACTION to UiCopyValue("Partager", "Share", "Delen", "Deli")

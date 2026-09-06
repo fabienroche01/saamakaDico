@@ -28,7 +28,8 @@ data class PhraseTranslationResult(
     val untranslatedSegments: List<String>,
     val isComplete: Boolean,
     val reliability: TranslationReliability,
-    val kind: PhraseTranslationKind = PhraseTranslationKind.PROPOSAL
+    val kind: PhraseTranslationKind = PhraseTranslationKind.PROPOSAL,
+    val unresolvedHints: Map<String, List<String>> = emptyMap()
 ) {
     init {
         require(translation.isNotBlank()) { "A valid request must expose a visible proposal" }

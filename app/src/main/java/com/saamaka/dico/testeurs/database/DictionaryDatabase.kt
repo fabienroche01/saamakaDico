@@ -1275,13 +1275,18 @@ val frenchObject =
             }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
         }
 
-        return assembleWordByWordPhrase(text) { token ->
+        val unresolvedHints = mutableMapOf<String, List<String>>()
+        val result = assembleWordByWordPhrase(text) { token ->
             correctionFor(token)?.let {
                 return@assembleWordByWordPhrase RecognizedPhraseSegment(token, it)
             }
             if (frenchToSaamaka) {
-                resolver?.resolve(token)
-                    ?.takeIf { it.isSafeForWordByWordFallback }
+                val lemma = FrenchVerbInflections.lemma(token) ?: token
+                val lemmaResolution = resolver?.resolveLemmaThroughExpressions(lemma)
+                lemmaResolution?.relatedExpressions?.takeIf { it.isNotEmpty() }?.let {
+                    unresolvedHints[lemma] = it
+                }
+                lemmaResolution?.resolution
                     ?.let { resolution ->
                         return@assembleWordByWordPhrase RecognizedPhraseSegment(
                             source = token,
@@ -1303,6 +1308,12 @@ val frenchObject =
             }
             null
         }
+        return result?.copy(unresolvedHints = unresolvedHints.filterKeys { key ->
+            result.untranslatedSegments.any {
+                normalizeAttestedPhraseKey(FrenchVerbInflections.lemma(it) ?: it) ==
+                    normalizeAttestedPhraseKey(key)
+            }
+        })
     }
 
     fun translatePartialGrammaticalPhrase(
@@ -1324,7 +1335,8 @@ val frenchObject =
             }.distinctBy(::normalizeAttestedPhraseKey).singleOrNull()
         }
 
-        return assemblePartialGrammaticalPhrase(text) { unit ->
+        val unresolvedHints = mutableMapOf<String, List<String>>()
+        val result = assemblePartialGrammaticalPhrase(text) { unit ->
             corrected(unit)?.let {
                 return@assemblePartialGrammaticalPhrase RecognizedPhraseSegment(
                     source = unit.source,
@@ -1339,8 +1351,11 @@ val frenchObject =
                     matchedSource = unit.lookup
                 )
             }
-            resolver.resolve(unit.lookup)
-                ?.takeIf { it.isSafeForWordByWordFallback }
+            val lemmaResolution = resolver.resolveLemmaThroughExpressions(unit.lookup)
+            lemmaResolution.relatedExpressions.takeIf { it.isNotEmpty() }?.let {
+                unresolvedHints[unit.lookup] = it
+            }
+            lemmaResolution.resolution
                 ?.let { resolution ->
                     RecognizedPhraseSegment(
                         source = unit.source,
@@ -1351,6 +1366,7 @@ val frenchObject =
                     )
                 }
         }
+        return result?.copy(unresolvedHints = unresolvedHints.filterKeys { it in result.untranslatedSegments })
     }
 
     fun translatePhrase(
