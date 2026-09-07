@@ -681,26 +681,21 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
     fun openNextUnvalidated() {
         val validatedIds = validationStore.ids()
-        val availableEntries = allEntries.filter { entry ->
-            entry.id !in validatedIds &&
-                    entry.french.isNotBlank() &&
-                    entry.saamaka.isNotBlank() &&
-                    !entry.french.equals("#NAME?", ignoreCase = true) &&
-                    !entry.saamaka.equals("#NAME?", ignoreCase = true)
-        }
+        val deletionProposalIds = deletionProposalStore.all()
+            .asSequence()
+            .map { it.entryId }
+            .toSet()
+        val nextEntry = nextTesterEntry(
+            allEntries = allEntries,
+            currentId = selectedEntry?.id,
+            validatedIds = validatedIds,
+            deletionProposalIds = deletionProposalIds
+        )
 
-        if (availableEntries.isEmpty()) {
+        if (nextEntry == null) {
             selectedEntry = null
             Toast.makeText(context, appStrings.ui(UiCopyKey.NO_OTHER_WORD), Toast.LENGTH_SHORT).show()
             return
-        }
-
-        val currentId = selectedEntry?.id
-        val currentIndex = availableEntries.indexOfFirst { it.id == currentId }
-        val nextEntry = when {
-            currentIndex == -1 -> availableEntries.first()
-            currentIndex < availableEntries.lastIndex -> availableEntries[currentIndex + 1]
-            else -> availableEntries.first()
         }
         openEntry(nextEntry)
     }
