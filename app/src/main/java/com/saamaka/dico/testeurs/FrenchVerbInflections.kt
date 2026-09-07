@@ -244,7 +244,14 @@ internal object FrenchVerbInflections {
     fun tense(form: String): FrenchVerbTense? = tenseByForm[normalizeAttestedPhraseKey(form)]
 
     fun canComposeFromAttestedTranslation(lemma: String): Boolean =
-        normalizeAttestedPhraseKey(lemma) in setOf("devoir", "aimer", "manger", "dormir")
+        normalizeAttestedPhraseKey(lemma) in setOf(
+            "devoir",
+            "aimer",
+            "manger",
+            "dormir",
+            "voir",
+            "aider"
+        )
 
     private fun verb(
         lemma: String,
@@ -263,29 +270,26 @@ internal object FrenchVerbInflections {
     private fun regularEr(
         lemma: String,
         stem: String,
+        nousPresent: String = "${stem}ons",
+        nousPast: String = "${stem}ions",
         presentOverride: String? = null,
-        futureOverride: String? = null,
-        nousPresent: String? = null,
-        nousPast: String? = null
+        futureOverride: String? = null
     ): VerbForms {
+        val root = lemma.removeSuffix("er")
         val present = presentOverride ?: listOf(
-            "${stem}e", "${stem}es", "${stem}e",
-            nousPresent ?: "${stem}ons",
-            "${stem}ez", "${stem}ent"
+            "${stem}e", "${stem}es", "${stem}e", nousPresent, "${stem}ez", "${stem}ent"
         ).joinToString(" ")
         val past = listOf(
-            "${stem}ais", "${stem}ait",
-            nousPast ?: "${stem}ions",
-            "${stem}iez", "${stem}aient"
+            "${stem}ais", "${stem}ais", "${stem}ait", nousPast, "${stem}iez", "${stem}aient"
         ).joinToString(" ")
-        val futureStem = lemma
         val future = futureOverride ?: listOf(
-            "${futureStem}ai", "${futureStem}as", "${futureStem}a",
-            "${futureStem}ons", "${futureStem}ez", "${futureStem}ont"
+            "${root}erai", "${root}eras", "${root}era", "${root}erons", "${root}erez", "${root}eront"
         ).joinToString(" ")
         return verb(lemma, present, past, future)
     }
 
-    private fun forms(value: String): List<String> =
-        value.split(' ').map(String::trim).filter(String::isNotBlank)
+    private fun forms(values: String): List<String> = values
+        .split(' ')
+        .map(String::trim)
+        .filter(String::isNotBlank)
 }
