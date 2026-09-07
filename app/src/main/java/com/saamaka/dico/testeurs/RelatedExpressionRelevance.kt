@@ -14,7 +14,12 @@ internal fun relevantRelatedExpressions(
     languageCode: String?,
     limit: Int = 20
 ): List<DictionaryEntry> {
-    val allInputWords = normalizedWholeWords(input)
+    val rawInputWords = normalizedWholeWords(input)
+    val allInputWords = if (languageCode == null || languageCode == AppLanguage.FRENCH.code) {
+        (rawInputWords + rawInputWords.mapNotNull(FrenchVerbInflections::lemma)).distinct()
+    } else {
+        rawInputWords
+    }
     val meaningfulInputWords = allInputWords.filterNot { it in irrelevantSearchWords }.toSet()
         .ifEmpty { allInputWords.toSet() }
     if (meaningfulInputWords.isEmpty()) return emptyList()
@@ -58,12 +63,18 @@ internal fun relevantRelatedExpressions(
 
 internal fun relatedCandidateSearchTerms(input: String, languageCode: String?): Set<String> {
     val words = normalizedWholeWords(input).filterNot { it in irrelevantSearchWords }
-    val synonyms = if (languageCode == null || languageCode == AppLanguage.FRENCH.code) {
-        words.flatMap(::attestedFrenchSynonymsOf)
+    val frenchLookup = languageCode == null || languageCode == AppLanguage.FRENCH.code
+    val lemmas = if (frenchLookup) {
+        words.mapNotNull(FrenchVerbInflections::lemma)
     } else {
         emptyList()
     }
-    return (words + synonyms).toSet()
+    val synonyms = if (frenchLookup) {
+        (words + lemmas).flatMap(::attestedFrenchSynonymsOf)
+    } else {
+        emptyList()
+    }
+    return (words + lemmas + synonyms).toSet()
 }
 
 private fun searchableValues(entry: DictionaryEntry, languageCode: String?): List<String> = when (languageCode) {
