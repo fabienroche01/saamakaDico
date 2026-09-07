@@ -11,6 +11,41 @@ internal fun cleanPhraseInput(value: String): String = value
     .replace(Regex("\\s+"), " ")
     .trim()
 
+private val frenchElisionPrefixes = listOf(
+    "j'" to "je", "n'" to "ne", "d'" to "de", "qu'" to "que",
+    "m'" to "me", "t'" to "te", "s'" to "se", "c'" to "ce"
+)
+
+private val separatedFrenchElisionPrefixes = mapOf(
+    "j" to "je", "n" to "ne", "d" to "de", "qu" to "que",
+    "m" to "me", "t" to "te", "s" to "se", "c" to "ce"
+)
+
+private fun frenchLexicalTokens(text: String): List<String> {
+    val rawTokens = cleanPhraseInput(text)
+        .split(Regex("\\s+"))
+        .filter(String::isNotBlank)
+
+    return buildList {
+        rawTokens.forEachIndexed { index, token ->
+            val normalized = token.lowercase().replace('’', '\'')
+            val contraction = frenchElisionPrefixes.firstOrNull {
+                normalized.startsWith(it.first) && normalized.length > it.first.length
+            }
+            when {
+                contraction != null -> {
+                    add(contraction.second)
+                    add(normalized.removePrefix(contraction.first))
+                }
+                index < rawTokens.lastIndex && separatedFrenchElisionPrefixes.containsKey(normalized) -> {
+                    add(separatedFrenchElisionPrefixes.getValue(normalized))
+                }
+                else -> add(token)
+            }
+        }
+    }
+}
+
 internal fun assembleAttestedPhrase(
     text: String,
     maxExpressionWords: Int = 8,
@@ -82,9 +117,7 @@ internal fun assembleWordByWordPhrase(
     text: String,
     lookupToken: (String) -> RecognizedPhraseSegment?
 ): PhraseTranslationResult? {
-    val tokens = cleanPhraseInput(text)
-        .split(Regex("\\s+"))
-        .filter(String::isNotBlank)
+    val tokens = frenchLexicalTokens(text)
     if (tokens.isEmpty()) return null
 
     val recognized = mutableListOf<RecognizedPhraseSegment>()
@@ -110,25 +143,12 @@ internal data class FrenchGrammaticalUnit(
 )
 
 internal fun frenchGrammaticalUnits(text: String): List<FrenchGrammaticalUnit> =
-    cleanPhraseInput(text)
-        .split(Regex("\\s+"))
-        .filter(String::isNotBlank)
-        .flatMap { token ->
-            val normalized = token.lowercase().replace('’', '\'')
-            val contraction = listOf(
-                "j'" to "je", "n'" to "ne", "d'" to "de", "qu'" to "que",
-                "m'" to "me", "t'" to "te", "s'" to "se", "c'" to "ce"
-            ).firstOrNull { normalized.startsWith(it.first) && normalized.length > it.first.length }
-            if (contraction == null) {
-                listOf(FrenchGrammaticalUnit(token, FrenchVerbInflections.lemma(token) ?: token))
-            } else {
-                val remainder = normalized.removePrefix(contraction.first)
-                listOf(
-                    FrenchGrammaticalUnit(contraction.first, contraction.second),
-                    FrenchGrammaticalUnit(remainder, FrenchVerbInflections.lemma(remainder) ?: remainder)
-                )
-            }
-        }
+    frenchLexicalTokens(text).map { token ->
+        FrenchGrammaticalUnit(
+            source = token,
+            lookup = FrenchVerbInflections.lemma(token) ?: token
+        )
+    }
 
 internal fun assemblePartialGrammaticalPhrase(
     text: String,
