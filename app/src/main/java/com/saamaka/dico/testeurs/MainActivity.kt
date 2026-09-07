@@ -305,6 +305,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     audioStore.updateStrings(appStrings)
 
     var validatedCount by remember { mutableStateOf(validationStore.count()) }
+    var lastValidationAt by remember { mutableStateOf(0L) }
     var activeTab by remember {
         mutableStateOf(MainTab.HOME)
     }
@@ -1153,6 +1154,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             ) {
                                 return@validate
                             }
+                            val now = android.os.SystemClock.elapsedRealtime()
+
+                            if (now - lastValidationAt < 900L) {
+                                return@validate
+                            }
+
+                            lastValidationAt = now
                             val reviewerName = correctionStore
                                 .testerName()
                                 .ifBlank { "Fucia" }
@@ -1425,6 +1433,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onQueryChange = {
                                 query = it
                                 homePhraseResult = null
+                                status = if (it.isBlank()) {
+                                    appStrings.startSearching
+                                } else {
+                                    appStrings.ui(UiCopyKey.SEARCHING)
+                                }
                             },
                             onClear = {
                                 query = ""
@@ -1495,6 +1508,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onQueryChange = {
                                 query = it
                                 homePhraseResult = null
+                                status = if (it.isBlank()) {
+                                    appStrings.startSearching
+                                } else {
+                                    appStrings.ui(UiCopyKey.SEARCHING)
+                                }
                             },
 
                             onClear = {
