@@ -1379,15 +1379,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 .sortedBy { it.lowercase() }
                         }
 
-                        val wordsOfDay = remember(allEntries) {
+                        val wordsOfDay = remember(allEntries, accessLevel) {
                             allEntries
                                 .filter { entry ->
                                     entry.saamaka.isNotBlank() &&
-                                        entry.french.isNotBlank()
+                                            entry.french.isNotBlank() &&
+                                            (
+                                                    accessLevel == AccessLevel.TESTER ||
+                                                            entry.valide.trim().equals("O", ignoreCase = true)
+                                                    )
                                 }
                                 .sortedBy { it.id }
                         }
-
                         val calendar = java.util.Calendar.getInstance()
 
                         val dayNumber =
