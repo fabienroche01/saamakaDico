@@ -224,7 +224,28 @@ internal class SaamakaGrammarEngine(
         resolveFrenchWord(word)?.takeIf {
             it.kind == FrenchResolutionKind.EXACT &&
                 normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(word)
+        } ?: resolveAttestedComplementPronoun(word)
+
+    private fun resolveAttestedComplementPronoun(word: String): FrenchFallbackResolution? {
+        val normalized = normalizeAttestedPhraseKey(word)
+        val saamaka = when (normalized) {
+            "moi" -> "mi"
+            "toi" -> "i"
+            "lui", "elle" -> "a"
+            "nous" -> "u"
+            "vous" -> "unu"
+            "eux", "elles" -> "de"
+            else -> return null
         }
+        return FrenchFallbackResolution(
+            requested = word,
+            matchedFrench = word,
+            saamaka = saamaka,
+            kind = FrenchResolutionKind.EXACT,
+            score = 1300,
+            alternatives = emptyList()
+        )
+    }
 
     private fun grammatical(
         sourceWords: List<String>,
