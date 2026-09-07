@@ -26,37 +26,48 @@ internal class SaamakaGrammarEngine(
     }
 
     private fun translateProgressive(words: List<String>, subject: String): PhraseTranslationResult? {
-        if (words.size != 6 ||
+        if (words.size < 6 ||
             FrenchVerbInflections.lemma(words[1]) != "être" ||
             FrenchVerbInflections.tense(words[1]) != FrenchVerbTense.PRESENT ||
             words.subList(2, 5).map(::normalizeAttestedPhraseKey) != listOf("en", "train", "de")
         ) return null
 
         val verb = resolveSafeVerb(words[5]) ?: return null
-        return grammatical(words, listOf(subject, "ta", verb.saamaka), listOf(words[5] to verb))
+        val complements = resolveComplements(words.drop(6)) ?: return null
+        return grammatical(
+            words,
+            listOf(subject, "ta", verb.saamaka) + complements.map { it.second.saamaka },
+            listOf(words[5] to verb) + complements
+        )
     }
 
     private fun translateNearFuture(words: List<String>, subject: String): PhraseTranslationResult? {
-        if (words.size != 3 ||
+        if (words.size < 3 ||
             FrenchVerbInflections.lemma(words[1]) != "aller" ||
             FrenchVerbInflections.tense(words[1]) != FrenchVerbTense.PRESENT
         ) return null
 
         val verb = resolveSafeVerb(words[2]) ?: return null
-        return grammatical(words, listOf(subject, "o", verb.saamaka), listOf(words[2] to verb))
+        val complements = resolveComplements(words.drop(3)) ?: return null
+        return grammatical(
+            words,
+            listOf(subject, "o", verb.saamaka) + complements.map { it.second.saamaka },
+            listOf(words[2] to verb) + complements
+        )
     }
 
     private fun translateVouloir(words: List<String>, subject: String): PhraseTranslationResult? {
-        if (words.size != 3 ||
+        if (words.size < 3 ||
             FrenchVerbInflections.lemma(words[1]) != "vouloir" ||
             FrenchVerbInflections.tense(words[1]) != FrenchVerbTense.PRESENT
         ) return null
         val vouloir = resolveLemma(words[1], "vouloir") ?: return null
         val verb = resolveSafeVerb(words[2]) ?: return null
+        val complements = resolveComplements(words.drop(3)) ?: return null
         return grammatical(
             words,
-            listOf(subject, vouloir.saamaka, verb.saamaka),
-            listOf(words[1] to vouloir, words[2] to verb)
+            listOf(subject, vouloir.saamaka, verb.saamaka) + complements.map { it.second.saamaka },
+            listOf(words[1] to vouloir, words[2] to verb) + complements
         )
     }
 
