@@ -78,7 +78,8 @@ private data class SearchRelevance(
 
 private data class FuzzySearchRelevance(
     val distance: Int,
-    val lengthDelta: Int
+    val lengthDelta: Int,
+    val containerPenalty: Int
 )
 
 private fun searchRelevance(text: String, normalizedQuery: String): SearchRelevance? {
@@ -127,6 +128,15 @@ private fun fuzzyComparable(value: String): String =
     normalizeMultilingualSearch(value)
         .replace(Regex("[^a-z0-9]+"), "")
 
+private fun sharesStableFuzzyPrefix(left: String, right: String): Boolean {
+    val prefixLength = when {
+        minOf(left.length, right.length) >= 6 -> 3
+        minOf(left.length, right.length) >= 4 -> 2
+        else -> 1
+    }
+    return left.take(prefixLength) == right.take(prefixLength)
+}
+
 private fun boundedLevenshtein(left: String, right: String, maxDistance: Int): Int? {
     if (kotlin.math.abs(left.length - right.length) > maxDistance) return null
     if (left == right) return 0
@@ -158,30 +168,43 @@ private fun boundedLevenshtein(left: String, right: String, maxDistance: Int): I
 
 private fun fuzzySearchRelevance(text: String, normalizedQuery: String): FuzzySearchRelevance? {
     val queryComparable = fuzzyComparable(normalizedQuery)
-    val textComparable = fuzzyComparable(text)
+    val normalizedText = normalizeMultilingualSearch(text)
+    val textComparable = fuzzyComparable(normalizedText)
     if (queryComparable.isBlank() || textComparable.isBlank()) return null
 
     val threshold = fuzzyThreshold(queryComparable.length)
     if (threshold == 0) return null
 
+    data class Candidate(val value: String, val containerPenalty: Int)
+
     val candidates = buildList {
-        add(textComparable)
-        normalizeMultilingualSearch(text)
+        add(Candidate(textComparable, 0))
+        normalizedText
             .split(' ')
             .map(::fuzzyComparable)
             .filter { it.length >= 3 }
-            .forEach(::add)
-    }.distinct()
+            .forEach { add(Candidate(it, 1)) }
+    }.distinctBy { it.value to it.containerPenalty }
 
     return candidates.mapNotNull { candidate ->
-        val candidateThreshold = minOf(threshold, fuzzyThreshold(maxOf(queryComparable.length, candidate.length)))
-        boundedLevenshtein(queryComparable, candidate, candidateThreshold)?.let { distance ->
+        if (!sharesStableFuzzyPrefix(queryComparable, candidate.value)) return@mapNotNull null
+
+        val candidateThreshold = minOf(
+            threshold,
+            fuzzyThreshold(maxOf(queryComparable.length, candidate.value.length))
+        )
+        boundedLevenshtein(queryComparable, candidate.value, candidateThreshold)?.let { distance ->
             FuzzySearchRelevance(
                 distance = distance,
-                lengthDelta = kotlin.math.abs(queryComparable.length - candidate.length)
+                lengthDelta = kotlin.math.abs(queryComparable.length - candidate.value.length),
+                containerPenalty = candidate.containerPenalty
             )
         }
-    }.minWithOrNull(compareBy<FuzzySearchRelevance> { it.distance }.thenBy { it.lengthDelta })
+    }.minWithOrNull(
+        compareBy<FuzzySearchRelevance> { it.distance }
+            .thenBy { it.containerPenalty }
+            .thenBy { it.lengthDelta }
+    )
 }
 
 internal fun filterAndRankAcrossLanguages(
@@ -253,16 +276,21 @@ internal fun filterAndRankFuzzyAcrossLanguages(
         .mapNotNull { entry ->
             val relevance = languageCodes.mapNotNull { languageCode ->
                 fuzzySearchRelevance(searchTextForLanguage(entry, languageCode), normalizedQuery)
-            }.minWithOrNull(compareBy<FuzzySearchRelevance> { it.distance }.thenBy { it.lengthDelta })
+            }.minWithOrNull(
+                compareBy<FuzzySearchRelevance> { it.distance }
+                    .thenBy { it.containerPenalty }
+                    .thenBy { it.lengthDelta }
+            )
             relevance?.let { entry to it }
         }
         .distinctBy { it.first.id }
         .sortedWith(
             compareBy<Pair<DictionaryEntry, FuzzySearchRelevance>> { it.second.distance }
+                .thenBy { it.second.containerPenalty }
                 .thenBy { it.second.lengthDelta }
                 .thenBy { it.first.id }
         )
-        .take(limit)
+        .take(minOf(limit, 8))
         .map { it.first }
         .toList()
 }
@@ -282,10 +310,11 @@ internal fun filterAndRankFuzzyByLanguage(
         .distinctBy { it.first.id }
         .sortedWith(
             compareBy<Pair<DictionaryEntry, FuzzySearchRelevance>> { it.second.distance }
+                .thenBy { it.second.containerPenalty }
                 .thenBy { it.second.lengthDelta }
                 .thenBy { normalizeMultilingualSearch(searchTextForLanguage(it.first, languageCode)) }
         )
-        .take(limit)
+        .take(minOf(limit, 8))
         .map { it.first }
         .toList()
 }
