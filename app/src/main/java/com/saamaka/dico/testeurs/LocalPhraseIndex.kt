@@ -6,6 +6,14 @@ internal class LocalPhraseIndex(entries: List<DictionaryEntry>) {
     private val usableEntries = entries.filter {
         it.french.isNotBlank() && it.saamaka.isNotBlank()
     }
+
+    /**
+     * Entries already loaded while preparing the local phrase index.
+     * Reusing them avoids reopening SQLite and rebuilding the whole dictionary
+     * when a typo fallback search is triggered.
+     */
+    val searchEntries: List<DictionaryEntry> = usableEntries
+
     private val frenchIndex = usableEntries.groupBy {
         normalizeAttestedPhraseKey(it.french)
     }
