@@ -329,11 +329,16 @@ internal class SaamakaGrammarEngine(
         return resolveLemma(form, lemma)
     }
 
-    private fun resolveLemma(form: String, lemma: String): FrenchFallbackResolution? =
-        resolveFrenchWord(form)?.takeIf {
-            normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(lemma) &&
+    private fun resolveLemma(form: String, lemma: String): FrenchFallbackResolution? {
+        val normalizedLemma = normalizeAttestedPhraseKey(lemma)
+        return resolveFrenchWord(form)?.takeIf {
+            normalizeAttestedPhraseKey(it.matchedFrench) == normalizedLemma &&
                 it.kind in setOf(FrenchResolutionKind.EXACT, FrenchResolutionKind.INFLECTION)
+        } ?: resolveFrenchWord(lemma)?.takeIf {
+            normalizeAttestedPhraseKey(it.matchedFrench) == normalizedLemma &&
+                it.kind == FrenchResolutionKind.EXACT
         }
+    }
 
     private fun resolveExact(word: String): FrenchFallbackResolution? =
         resolveFrenchWord(word)?.takeIf {
