@@ -225,17 +225,17 @@ internal object FrenchVerbInflections {
         verbs.forEach { forms ->
             put(normalizeAttestedPhraseKey(forms.lemma), forms.lemma)
             (forms.present + forms.past + forms.future + forms.other).forEach { form ->
-                put(normalizeAttestedPhraseKey(form), forms.lemma)
+                putIfAbsent(normalizeAttestedPhraseKey(form), forms.lemma)
             }
         }
     }
 
     private val tenseByForm: Map<String, FrenchVerbTense> = buildMap {
         verbs.forEach { forms ->
-            forms.present.forEach { put(normalizeAttestedPhraseKey(it), FrenchVerbTense.PRESENT) }
-            forms.past.forEach { put(normalizeAttestedPhraseKey(it), FrenchVerbTense.PAST) }
-            forms.future.forEach { put(normalizeAttestedPhraseKey(it), FrenchVerbTense.FUTURE) }
-            forms.other.forEach { put(normalizeAttestedPhraseKey(it), FrenchVerbTense.OTHER) }
+            forms.present.forEach { putIfAbsent(normalizeAttestedPhraseKey(it), FrenchVerbTense.PRESENT) }
+            forms.past.forEach { putIfAbsent(normalizeAttestedPhraseKey(it), FrenchVerbTense.PAST) }
+            forms.future.forEach { putIfAbsent(normalizeAttestedPhraseKey(it), FrenchVerbTense.FUTURE) }
+            forms.other.forEach { putIfAbsent(normalizeAttestedPhraseKey(it), FrenchVerbTense.OTHER) }
         }
     }
 

@@ -13,11 +13,11 @@ class TesterExportConsolidatorTest {
     fun `groups validations and reports conflicting corrections`() {
         val first = zip(
             "SaamakaDico_Ana_2026-01-01_1200.zip",
-            review(12, "VALIDATED", "Ana") + review(42, "CORRECTED", "Ana", saamaka = "odi")
+            review(12, "VALIDATED", "Ana") + "\n" + review(42, "CORRECTED", "Ana", saamaka = "odi")
         )
         val second = zip(
             "SaamakaDico_Bob_2026-01-01_1201.zip",
-            review(12, "VALIDATED", "Bob") + review(42, "CORRECTED", "Bob", saamaka = "odii")
+            review(12, "VALIDATED", "Bob") + "\n" + review(42, "CORRECTED", "Bob", saamaka = "odii")
         )
 
         val report = TesterExportConsolidator().consolidate(listOf(first, second))
