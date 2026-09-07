@@ -106,10 +106,10 @@ internal class PhraseTranslationPipeline(
             return fallback(clean, accessLevel)
         }
 
+        // Recognized short French structures are deliberately free. They can be
+        // previewed and explicitly submitted without consuming the 3+ word quota.
         if (wordCount < PHRASE_MINIMUM_WORDS) {
-            val resolved = resolve(clean, frenchToSaamaka, accessLevel)
-            if (resolved.wordByWordTranslation == null) return resolved
-            return authorizePhraseAttempt(resolved, accessLevel)
+            return resolve(clean, frenchToSaamaka, accessLevel)
         }
 
         // The attempt is charged before any suspendable resolution work. A cancelled
@@ -146,11 +146,8 @@ internal class PhraseTranslationPipeline(
     private fun isTrialLimited(accessLevel: AccessLevel): Boolean =
         translationTrialLimit(accessLevel) != null
 
-    private fun isChargeableAttempt(result: PhraseTranslationPipelineResult): Boolean {
-        val wordCount = normalizedInputWordCount(result.text)
-        return wordCount >= PHRASE_MINIMUM_WORDS ||
-            isRecognizedShortVerbStructure(result.text, frenchToSaamaka = true)
-    }
+    private fun isChargeableAttempt(result: PhraseTranslationPipelineResult): Boolean =
+        normalizedInputWordCount(result.text) >= PHRASE_MINIMUM_WORDS
 
     private fun PhraseTranslationResult.isLexicalFallback(): Boolean =
         kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.WORD_BY_WORD ||
@@ -169,12 +166,27 @@ internal class PhraseTranslationPipeline(
 }
 
 internal fun isRecognizedShortVerbStructure(text: String, frenchToSaamaka: Boolean = true): Boolean {
-    if (!frenchToSaamaka) return false
+    if (!frenchToSaamaka || normalizedInputWordCount(text) > 2) return false
+
     val units = frenchGrammaticalUnits(text)
-    return normalizedInputWordCount(text) <= 2 &&
-        units.size >= 2 &&
-        resolveAttestedFrenchSubject(units[0].lookup) != null &&
-        FrenchVerbInflections.lemma(units[1].source) != null
+    if (units.size < 2 || resolveAttestedFrenchSubject(units.first().lookup) == null) return false
+
+    // Simple short form: "je veux", "tu dors", etc.
+    if (units.size == 2 && FrenchVerbInflections.lemma(units[1].source) != null) {
+        return true
+    }
+
+    // Elided object clitic counts as one typed word in French:
+    // "je t'aide", "je l'aime", "je m'aide". frenchGrammaticalUnits expands
+    // the apostrophe to subject + clitic + verb, so inspect the final verb unit.
+    if (units.size == 3 &&
+        normalizeAttestedPhraseKey(units[1].source) in setOf("me", "te", "le", "la") &&
+        FrenchVerbInflections.lemma(units[2].source) != null
+    ) {
+        return true
+    }
+
+    return false
 }
 
 internal fun shouldAnalyzeAsPhrase(text: String, frenchToSaamaka: Boolean = true): Boolean =
