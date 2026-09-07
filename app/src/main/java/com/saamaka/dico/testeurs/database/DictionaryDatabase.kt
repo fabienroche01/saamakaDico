@@ -30,6 +30,8 @@ import com.saamaka.dico.testeurs.model.TranslationReliability
 import java.io.FileOutputStream
 import java.io.File
 import java.text.Normalizer
+import com.saamaka.dico.testeurs.filterAndRankFuzzyAcrossLanguages
+import com.saamaka.dico.testeurs.filterAndRankFuzzyByLanguage
 import java.util.Locale
 
 class DictionaryDatabase(private val context: Context) {
@@ -419,10 +421,37 @@ class DictionaryDatabase(private val context: Context) {
             db.close()
         }
 
-        return if (languageCode == null) {
+        val rankedResults = if (languageCode == null) {
             filterAndRankAcrossLanguages(candidates, normalizedQuery, languageCodes, limit)
         } else {
             filterAndRankByLanguageNormalized(candidates, normalizedQuery, languageCode, limit)
+        }
+
+        if (rankedResults.isNotEmpty()) {
+            return rankedResults
+        }
+
+        val fallbackEntries = loadFuzzySearchCandidates(
+            context = context,
+            databaseName = databaseName,
+            normalizedQuery = normalizedQuery,
+            languageCode = languageCode
+        )
+
+        return if (languageCode == null) {
+            filterAndRankFuzzyAcrossLanguages(
+                fallbackEntries,
+                normalizedQuery,
+                languageCodes,
+                limit = 20
+            )
+        } else {
+            filterAndRankFuzzyByLanguage(
+                fallbackEntries,
+                normalizedQuery,
+                languageCode,
+                limit = 20
+            )
         }
     }
 
@@ -2144,7 +2173,7 @@ val frenchObject =
             .lowercase(Locale.ROOT)
 
     companion object {
-        const val EMBEDDED_DB_VERSION = 2
+        const val EMBEDDED_DB_VERSION = 3
         private const val DATABASE_PREFERENCES_NAME = "embedded_dictionary"
         private const val INSTALLED_DB_VERSION_KEY = "installed_db_version"
         private const val TAG = "DictionaryDatabase"
