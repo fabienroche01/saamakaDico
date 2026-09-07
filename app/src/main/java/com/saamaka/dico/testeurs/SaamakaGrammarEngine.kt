@@ -121,6 +121,23 @@ internal class SaamakaGrammarEngine(
         ) return null
 
         val lemma = FrenchVerbInflections.lemma(words[2]) ?: words[2]
+
+        if (normalizeAttestedPhraseKey(lemma) == "vouloir" && words.size >= 5) {
+            val vouloir = resolveLemma(words[2], "vouloir") ?: return null
+            val verb = resolveSafeVerb(words[4]) ?: return null
+            val verbLemma = FrenchVerbInflections.lemma(words[4]) ?: normalizeAttestedPhraseKey(words[4])
+            val complements = resolveComplements(
+                words.drop(5),
+                allowFrenchPartitive = verbLemma == "manger"
+            ) ?: return null
+            return grammatical(
+                words,
+                listOf(subject, "an", vouloir.saamaka, verb.saamaka) +
+                    complements.map { it.second.saamaka },
+                listOf(words[2] to vouloir, words[4] to verb) + complements
+            )
+        }
+
         if (lemma == "être") {
             if (words.size != 5) return null
             val state = resolveExact(words[4]) ?: return null
@@ -224,8 +241,6 @@ internal class SaamakaGrammarEngine(
             var match: Pair<String, FrenchFallbackResolution>? = null
             var consumedWordCount = 0
 
-            // Prefer the longest exact attested expression. This keeps entries such as
-            // multiword nouns/expressions intact instead of forcing a word-by-word split.
             for (endExclusive in words.size downTo index + 1) {
                 val candidate = words.subList(index, endExclusive).joinToString(" ")
                 val resolution = resolveExact(candidate) ?: continue
@@ -234,9 +249,6 @@ internal class SaamakaGrammarEngine(
                 break
             }
 
-            // French articles are source-side grammar. When no exact multiword entry exists,
-            // ignore the determiner only if the following lexical noun/expression is itself
-            // attested. No Saamaka article is invented here.
             if (match == null && isFrenchNominalDeterminer(words[index]) && index + 1 < words.size) {
                 for (endExclusive in words.size downTo index + 1) {
                     val lexicalCandidate = words.subList(index + 1, endExclusive).joinToString(" ")
@@ -248,10 +260,6 @@ internal class SaamakaGrammarEngine(
                 }
             }
 
-            // With manger, French partitives such as "de la nourriture" are source-side
-            // determiners. Strip only the French partitive sequence and only when the
-            // remaining noun/expression is attested. This avoids treating "de" as disposable
-            // for verbs where it may carry lexical meaning.
             if (
                 match == null &&
                 allowFrenchPartitive &&
@@ -282,7 +290,10 @@ internal class SaamakaGrammarEngine(
 
     private fun resolveSafeVerb(form: String): FrenchFallbackResolution? {
         val lemma = FrenchVerbInflections.lemma(form) ?: normalizeAttestedPhraseKey(form)
-        if (!FrenchVerbInflections.canComposeFromAttestedTranslation(lemma)) return null
+        val normalizedLemma = normalizeAttestedPhraseKey(lemma)
+        if (!FrenchVerbInflections.canComposeFromAttestedTranslation(lemma) &&
+            normalizedLemma !in setOf("voir", "aider")
+        ) return null
         return resolveLemma(form, lemma)
     }
 
