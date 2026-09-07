@@ -33,7 +33,11 @@ internal class SaamakaGrammarEngine(
         ) return null
 
         val verb = resolveSafeVerb(words[5]) ?: return null
-        val complements = resolveComplements(words.drop(6)) ?: return null
+        val verbLemma = FrenchVerbInflections.lemma(words[5]) ?: normalizeAttestedPhraseKey(words[5])
+        val complements = resolveComplements(
+            words.drop(6),
+            allowFrenchPartitive = verbLemma == "manger"
+        ) ?: return null
         return grammatical(
             words,
             listOf(subject, "ta", verb.saamaka) + complements.map { it.second.saamaka },
@@ -48,7 +52,11 @@ internal class SaamakaGrammarEngine(
         ) return null
 
         val verb = resolveSafeVerb(words[2]) ?: return null
-        val complements = resolveComplements(words.drop(3)) ?: return null
+        val verbLemma = FrenchVerbInflections.lemma(words[2]) ?: normalizeAttestedPhraseKey(words[2])
+        val complements = resolveComplements(
+            words.drop(3),
+            allowFrenchPartitive = verbLemma == "manger"
+        ) ?: return null
         return grammatical(
             words,
             listOf(subject, "o", verb.saamaka) + complements.map { it.second.saamaka },
@@ -63,7 +71,11 @@ internal class SaamakaGrammarEngine(
         ) return null
         val vouloir = resolveLemma(words[1], "vouloir") ?: return null
         val verb = resolveSafeVerb(words[2]) ?: return null
-        val complements = resolveComplements(words.drop(3)) ?: return null
+        val verbLemma = FrenchVerbInflections.lemma(words[2]) ?: normalizeAttestedPhraseKey(words[2])
+        val complements = resolveComplements(
+            words.drop(3),
+            allowFrenchPartitive = verbLemma == "manger"
+        ) ?: return null
         return grammatical(
             words,
             listOf(subject, vouloir.saamaka, verb.saamaka) + complements.map { it.second.saamaka },
@@ -96,7 +108,10 @@ internal class SaamakaGrammarEngine(
         }
 
         val verb = resolveSafeVerb(words[2]) ?: return null
-        val complements = resolveComplements(words.drop(4)) ?: return null
+        val complements = resolveComplements(
+            words.drop(4),
+            allowFrenchPartitive = normalizeAttestedPhraseKey(lemma) == "manger"
+        ) ?: return null
         return grammatical(
             words,
             listOf(subject, "an", verb.saamaka) + complements.map { it.second.saamaka },
@@ -106,7 +121,11 @@ internal class SaamakaGrammarEngine(
 
     private fun translateSafeAction(words: List<String>, subject: String): PhraseTranslationResult? {
         val verb = resolveSafeVerb(words[1]) ?: return null
-        val complements = resolveComplements(words.drop(2)) ?: return null
+        val verbLemma = FrenchVerbInflections.lemma(words[1]) ?: normalizeAttestedPhraseKey(words[1])
+        val complements = resolveComplements(
+            words.drop(2),
+            allowFrenchPartitive = verbLemma == "manger"
+        ) ?: return null
         val markers = when (FrenchVerbInflections.tense(words[1])) {
             FrenchVerbTense.FUTURE -> listOf("o")
             FrenchVerbTense.PRESENT -> listOf("ta")
@@ -120,7 +139,10 @@ internal class SaamakaGrammarEngine(
         )
     }
 
-    private fun resolveComplements(words: List<String>): List<Pair<String, FrenchFallbackResolution>>? {
+    private fun resolveComplements(
+        words: List<String>,
+        allowFrenchPartitive: Boolean = false
+    ): List<Pair<String, FrenchFallbackResolution>>? {
         if (words.isEmpty()) return emptyList()
 
         val resolved = mutableListOf<Pair<String, FrenchFallbackResolution>>()
@@ -146,6 +168,27 @@ internal class SaamakaGrammarEngine(
             if (match == null && isFrenchNominalDeterminer(words[index]) && index + 1 < words.size) {
                 for (endExclusive in words.size downTo index + 1) {
                     val lexicalCandidate = words.subList(index + 1, endExclusive).joinToString(" ")
+                    val resolution = resolveExact(lexicalCandidate) ?: continue
+                    val sourceCandidate = words.subList(index, endExclusive).joinToString(" ")
+                    match = sourceCandidate to resolution
+                    consumedWordCount = endExclusive - index
+                    break
+                }
+            }
+
+            // With manger, French partitives such as "de la nourriture" are source-side
+            // determiners. Strip only the French partitive sequence and only when the
+            // remaining noun/expression is attested. This avoids treating "de" as disposable
+            // for verbs where it may carry lexical meaning.
+            if (
+                match == null &&
+                allowFrenchPartitive &&
+                normalizeAttestedPhraseKey(words[index]) == "de" &&
+                index + 2 < words.size &&
+                normalizeAttestedPhraseKey(words[index + 1]) in setOf("la", "le", "les")
+            ) {
+                for (endExclusive in words.size downTo index + 2) {
+                    val lexicalCandidate = words.subList(index + 2, endExclusive).joinToString(" ")
                     val resolution = resolveExact(lexicalCandidate) ?: continue
                     val sourceCandidate = words.subList(index, endExclusive).joinToString(" ")
                     match = sourceCandidate to resolution
