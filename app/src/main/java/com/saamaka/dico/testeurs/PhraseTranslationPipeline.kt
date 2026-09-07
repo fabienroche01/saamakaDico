@@ -26,6 +26,13 @@ internal class PhraseTranslationPipeline(
     private val remainingTrials: (AccessLevel) -> Int,
     private val consumeTrial: (AccessLevel) -> Boolean
 ) {
+    /**
+     * Prevents an Enter key repeat / fast double submit from spending several trials
+     * for the exact same unchanged phrase. A different phrase becomes chargeable as
+     * usual; coming back to the first phrase later is a new attempt.
+     */
+    private var lastConsumedAttemptKey: String? = null
+
     suspend fun resolve(
         text: String,
         frenchToSaamaka: Boolean,
@@ -71,7 +78,19 @@ internal class PhraseTranslationPipeline(
             alreadyConsumed
         ) return result
 
-        if (!consumeTrial(accessLevel)) return premiumRequired(result.text, accessLevel)
+        val attemptKey = quotaAttemptKey(result.text, accessLevel)
+        synchronized(this) {
+            if (lastConsumedAttemptKey == attemptKey) {
+                return result.copy(
+                    trialConsumed = false,
+                    remainingTrials = remainingTrials(accessLevel)
+                )
+            }
+
+            if (!consumeTrial(accessLevel)) return premiumRequired(result.text, accessLevel)
+            lastConsumedAttemptKey = attemptKey
+        }
+
         return result.copy(trialConsumed = true, remainingTrials = remainingTrials(accessLevel))
     }
 
@@ -108,6 +127,9 @@ internal class PhraseTranslationPipeline(
             remainingTrials = remainingTrials(accessLevel)
         )
     }
+
+    private fun quotaAttemptKey(text: String, accessLevel: AccessLevel): String =
+        "${accessLevel.name}:${normalizeAttestedPhraseKey(cleanPhraseInput(text))}"
 
     private fun fallback(text: String, accessLevel: AccessLevel) = PhraseTranslationPipelineResult(
         text = text,
