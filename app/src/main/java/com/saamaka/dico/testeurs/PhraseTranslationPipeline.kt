@@ -40,8 +40,9 @@ internal class PhraseTranslationPipeline(
 
         val primary = resolvePhrase(clean, frenchToSaamaka)
         val completeGrammar = primary?.takeUnless { it.isLexicalFallback() }
-        val grammatical = completeGrammar
-            ?: resolveGrammaticalPartial?.invoke(clean, frenchToSaamaka)
+        val grammatical = (completeGrammar
+            ?: resolveGrammaticalPartial?.invoke(clean, frenchToSaamaka))
+            ?.asCompleteGrammarWhenFullyResolved()
         val wordByWord = resolveWordByWord?.invoke(clean, frenchToSaamaka)
             ?: primary?.takeIf { it.isLexicalFallback() }
         val translation = grammatical ?: wordByWord?.takeIf { it.recognizedSegments.isNotEmpty() }
@@ -132,6 +133,13 @@ internal class PhraseTranslationPipeline(
     private fun PhraseTranslationResult.isLexicalFallback(): Boolean =
         kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.WORD_BY_WORD ||
             kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL
+
+    private fun PhraseTranslationResult.asCompleteGrammarWhenFullyResolved(): PhraseTranslationResult =
+        if (isComplete && kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL) {
+            copy(kind = com.saamaka.dico.testeurs.model.PhraseTranslationKind.GRAMMATICAL)
+        } else {
+            this
+        }
 
     private companion object {
         const val PHRASE_MINIMUM_WORDS = 3
