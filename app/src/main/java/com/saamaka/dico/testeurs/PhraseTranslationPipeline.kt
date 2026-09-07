@@ -40,8 +40,12 @@ internal class PhraseTranslationPipeline(
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         val wordCount = normalizedInputWordCount(clean)
-        val recognizedShortStructure = isRecognizedShortVerbStructure(clean, frenchToSaamaka)
-        if (wordCount < PHRASE_MINIMUM_WORDS && !recognizedShortStructure) {
+
+        // One lexical word stays a normal dictionary lookup. For two typed French
+        // words, always let the safe grammar engine decide: this is required for
+        // elisions such as "je t'aide", where the apostrophe expands internally to
+        // subject + clitic + verb even though the user typed only two words.
+        if (wordCount < 2) {
             return fallback(clean, accessLevel)
         }
 
@@ -101,13 +105,12 @@ internal class PhraseTranslationPipeline(
     ): PhraseTranslationPipelineResult {
         val clean = text.trim()
         val wordCount = normalizedInputWordCount(clean)
-        val recognizedShortStructure = isRecognizedShortVerbStructure(clean, frenchToSaamaka)
-        if (wordCount < PHRASE_MINIMUM_WORDS && !recognizedShortStructure) {
+        if (wordCount < 2) {
             return fallback(clean, accessLevel)
         }
 
-        // Recognized short French structures are deliberately free. They can be
-        // previewed and explicitly submitted without consuming the 3+ word quota.
+        // Two-word input is always free. The engine may return a grammatical result
+        // (e.g. "je t'aide") or simply fall back when the structure is not supported.
         if (wordCount < PHRASE_MINIMUM_WORDS) {
             return resolve(clean, frenchToSaamaka, accessLevel)
         }
@@ -171,14 +174,10 @@ internal fun isRecognizedShortVerbStructure(text: String, frenchToSaamaka: Boole
     val units = frenchGrammaticalUnits(text)
     if (units.size < 2 || resolveAttestedFrenchSubject(units.first().lookup) == null) return false
 
-    // Simple short form: "je veux", "tu dors", etc.
     if (units.size == 2 && FrenchVerbInflections.lemma(units[1].source) != null) {
         return true
     }
 
-    // Elided object clitic counts as one typed word in French:
-    // "je t'aide", "je l'aime", "je m'aide". frenchGrammaticalUnits expands
-    // the apostrophe to subject + clitic + verb, so inspect the final verb unit.
     if (units.size == 3 &&
         normalizeAttestedPhraseKey(units[1].source) in setOf("me", "te", "le", "la") &&
         FrenchVerbInflections.lemma(units[2].source) != null
@@ -190,4 +189,5 @@ internal fun isRecognizedShortVerbStructure(text: String, frenchToSaamaka: Boole
 }
 
 internal fun shouldAnalyzeAsPhrase(text: String, frenchToSaamaka: Boolean = true): Boolean =
-    normalizedInputWordCount(text) >= 3 || isRecognizedShortVerbStructure(text, frenchToSaamaka)
+    normalizedInputWordCount(text) >= 3 ||
+        (frenchToSaamaka && normalizedInputWordCount(text) == 2)
