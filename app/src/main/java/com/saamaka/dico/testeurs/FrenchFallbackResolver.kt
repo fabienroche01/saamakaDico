@@ -60,6 +60,17 @@ internal fun resolveAttestedFrenchSubject(subject: String): String? =
         else -> null
     }
 
+internal fun resolveAttestedFrenchPersonalPronoun(pronoun: String): String? =
+    when (normalizeAttestedPhraseKey(pronoun)) {
+        "je", "moi" -> "mi"
+        "tu", "toi" -> "i"
+        "il", "elle", "lui" -> "a"
+        "nous" -> "u"
+        "vous" -> "unu"
+        "ils", "elles", "eux" -> "de"
+        else -> null
+    }
+
 internal class FrenchFallbackResolver(
     candidates: List<FrenchTranslationCandidate>
 ) {
@@ -82,6 +93,17 @@ internal class FrenchFallbackResolver(
     fun resolve(word: String): FrenchFallbackResolution? {
         val normalizedWord = normalizeAttestedPhraseKey(word)
         if (normalizedWord.isBlank()) return null
+
+        resolveAttestedFrenchPersonalPronoun(word)?.let { saamaka ->
+            return FrenchFallbackResolution(
+                requested = word,
+                matchedFrench = word,
+                saamaka = saamaka,
+                kind = FrenchResolutionKind.EXACT,
+                score = 1300,
+                alternatives = emptyList()
+            )
+        }
 
         exact(normalizedWord, word)?.let { return it }
 
