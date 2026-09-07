@@ -70,6 +70,26 @@ internal class SaamakaGrammarEngine(
             FrenchVerbInflections.tense(words[1]) != FrenchVerbTense.PRESENT
         ) return null
         val vouloir = resolveLemma(words[1], "vouloir") ?: return null
+
+        resolveNaturalObjectClitic(words.drop(2))?.let { parsed ->
+            val verbLemma = FrenchVerbInflections.lemma(parsed.verbSource)
+                ?: normalizeAttestedPhraseKey(parsed.verbSource)
+            val complements = resolveComplements(
+                words.drop(2 + parsed.consumedWords),
+                allowFrenchPartitive = verbLemma == "manger"
+            ) ?: return null
+            return grammatical(
+                words,
+                listOf(subject, vouloir.saamaka, parsed.verb.saamaka, parsed.objectPronoun.saamaka) +
+                    complements.map { it.second.saamaka },
+                listOf(
+                    words[1] to vouloir,
+                    parsed.verbSource to parsed.verb,
+                    parsed.objectSource to parsed.objectPronoun
+                ) + complements
+            )
+        }
+
         val verb = resolveSafeVerb(words[2]) ?: return null
         val verbLemma = FrenchVerbInflections.lemma(words[2]) ?: normalizeAttestedPhraseKey(words[2])
         val complements = resolveComplements(
@@ -136,6 +156,58 @@ internal class SaamakaGrammarEngine(
             words,
             listOf(subject) + markers + verb.saamaka + complements.map { it.second.saamaka },
             listOf(words[1] to verb) + complements
+        )
+    }
+
+    private data class NaturalObjectClitic(
+        val objectSource: String,
+        val objectPronoun: FrenchFallbackResolution,
+        val verbSource: String,
+        val verb: FrenchFallbackResolution,
+        val consumedWords: Int
+    )
+
+    private fun resolveNaturalObjectClitic(words: List<String>): NaturalObjectClitic? {
+        if (words.isEmpty()) return null
+
+        val first = words[0]
+        val normalizedFirst = normalizeAttestedPhraseKey(first)
+        val detachedPronoun = when (normalizedFirst) {
+            "me" -> "moi"
+            "te" -> "toi"
+            "le", "la" -> "lui"
+            "nous" -> "nous"
+            "vous" -> "vous"
+            "les" -> "eux"
+            else -> null
+        }
+        if (detachedPronoun != null && words.size >= 2) {
+            val verb = resolveSafeVerb(words[1]) ?: return null
+            val pronoun = resolveAttestedComplementPronoun(detachedPronoun) ?: return null
+            return NaturalObjectClitic(
+                objectSource = first,
+                objectPronoun = pronoun,
+                verbSource = words[1],
+                verb = verb,
+                consumedWords = 2
+            )
+        }
+
+        val attached = listOf(
+            "m'" to "moi",
+            "t'" to "toi",
+            "l'" to "lui"
+        ).firstOrNull { (prefix, _) -> first.startsWith(prefix) && first.length > prefix.length }
+            ?: return null
+        val verbSource = first.removePrefix(attached.first)
+        val verb = resolveSafeVerb(verbSource) ?: return null
+        val pronoun = resolveAttestedComplementPronoun(attached.second) ?: return null
+        return NaturalObjectClitic(
+            objectSource = attached.first.dropLast(1),
+            objectPronoun = pronoun,
+            verbSource = verbSource,
+            verb = verb,
+            consumedWords = 1
         )
     }
 
