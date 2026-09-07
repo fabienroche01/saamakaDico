@@ -28,7 +28,7 @@ internal fun shouldRouteHomePhraseThroughGrammar(request: SearchRequest): Boolea
 
 internal fun shouldPreviewShortHomePhrase(request: SearchRequest): Boolean =
     request.sourceLanguageCode == AppLanguage.FRENCH.code &&
-        isRecognizedShortVerbStructure(request.text)
+        normalizedInputWordCount(request.text) == 2
 
 internal fun retainChargedHomePhrase(currentPhrase: String?, newQuery: String): String? =
     currentPhrase.takeIf { normalizedInputWordCount(newQuery) >= 3 }
