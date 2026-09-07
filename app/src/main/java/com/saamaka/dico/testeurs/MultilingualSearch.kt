@@ -78,8 +78,9 @@ private data class SearchRelevance(
 
 private data class FuzzySearchRelevance(
     val distance: Int,
-    val lengthDelta: Int,
-    val containerPenalty: Int
+    val lexicalHeadPenalty: Int,
+    val containerPenalty: Int,
+    val lengthDelta: Int
 )
 
 private fun searchRelevance(text: String, normalizedQuery: String): SearchRelevance? {
@@ -175,16 +176,22 @@ private fun fuzzySearchRelevance(text: String, normalizedQuery: String): FuzzySe
     val threshold = fuzzyThreshold(queryComparable.length)
     if (threshold == 0) return null
 
-    data class Candidate(val value: String, val containerPenalty: Int)
+    data class Candidate(
+        val value: String,
+        val containerPenalty: Int,
+        val isFirstToken: Boolean
+    )
 
+    val words = normalizedText.split(' ').filter(String::isNotBlank)
     val candidates = buildList {
-        add(Candidate(textComparable, 0))
-        normalizedText
-            .split(' ')
+        add(Candidate(textComparable, 0, true))
+        words
             .map(::fuzzyComparable)
             .filter { it.length >= 3 }
-            .forEach { add(Candidate(it, 1)) }
-    }.distinctBy { it.value to it.containerPenalty }
+            .forEachIndexed { index, value ->
+                add(Candidate(value, 1, index == 0))
+            }
+    }.distinctBy { Triple(it.value, it.containerPenalty, it.isFirstToken) }
 
     return candidates.mapNotNull { candidate ->
         if (!sharesStableFuzzyPrefix(queryComparable, candidate.value)) return@mapNotNull null
@@ -194,14 +201,22 @@ private fun fuzzySearchRelevance(text: String, normalizedQuery: String): FuzzySe
             fuzzyThreshold(maxOf(queryComparable.length, candidate.value.length))
         )
         boundedLevenshtein(queryComparable, candidate.value, candidateThreshold)?.let { distance ->
+            val lexicalHeadPenalty = when {
+                candidate.containerPenalty == 0 && words.size == 1 -> 0
+                candidate.isFirstToken && Regex("[,;/]").containsMatchIn(text) -> 0
+                candidate.isFirstToken -> 1
+                else -> 2
+            }
             FuzzySearchRelevance(
                 distance = distance,
-                lengthDelta = kotlin.math.abs(queryComparable.length - candidate.value.length),
-                containerPenalty = candidate.containerPenalty
+                lexicalHeadPenalty = lexicalHeadPenalty,
+                containerPenalty = candidate.containerPenalty,
+                lengthDelta = kotlin.math.abs(queryComparable.length - candidate.value.length)
             )
         }
     }.minWithOrNull(
         compareBy<FuzzySearchRelevance> { it.distance }
+            .thenBy { it.lexicalHeadPenalty }
             .thenBy { it.containerPenalty }
             .thenBy { it.lengthDelta }
     )
@@ -278,6 +293,7 @@ internal fun filterAndRankFuzzyAcrossLanguages(
                 fuzzySearchRelevance(searchTextForLanguage(entry, languageCode), normalizedQuery)
             }.minWithOrNull(
                 compareBy<FuzzySearchRelevance> { it.distance }
+                    .thenBy { it.lexicalHeadPenalty }
                     .thenBy { it.containerPenalty }
                     .thenBy { it.lengthDelta }
             )
@@ -286,6 +302,7 @@ internal fun filterAndRankFuzzyAcrossLanguages(
         .distinctBy { it.first.id }
         .sortedWith(
             compareBy<Pair<DictionaryEntry, FuzzySearchRelevance>> { it.second.distance }
+                .thenBy { it.second.lexicalHeadPenalty }
                 .thenBy { it.second.containerPenalty }
                 .thenBy { it.second.lengthDelta }
                 .thenBy { it.first.id }
@@ -310,6 +327,7 @@ internal fun filterAndRankFuzzyByLanguage(
         .distinctBy { it.first.id }
         .sortedWith(
             compareBy<Pair<DictionaryEntry, FuzzySearchRelevance>> { it.second.distance }
+                .thenBy { it.second.lexicalHeadPenalty }
                 .thenBy { it.second.containerPenalty }
                 .thenBy { it.second.lengthDelta }
                 .thenBy { normalizeMultilingualSearch(searchTextForLanguage(it.first, languageCode)) }
