@@ -121,10 +121,28 @@ internal class SaamakaGrammarEngine(
     }
 
     private fun resolveComplements(words: List<String>): List<Pair<String, FrenchFallbackResolution>>? {
+        if (words.isEmpty()) return emptyList()
+
         val resolved = mutableListOf<Pair<String, FrenchFallbackResolution>>()
-        for (word in words) {
-            resolved += word to (resolveExact(word) ?: return null)
+        var index = 0
+
+        while (index < words.size) {
+            var match: Pair<String, FrenchFallbackResolution>? = null
+
+            // Prefer the longest exact attested expression. This keeps entries such as
+            // multiword nouns/expressions intact instead of forcing a word-by-word split.
+            for (endExclusive in words.size downTo index + 1) {
+                val candidate = words.subList(index, endExclusive).joinToString(" ")
+                val resolution = resolveExact(candidate) ?: continue
+                match = candidate to resolution
+                break
+            }
+
+            val resolvedMatch = match ?: return null
+            resolved += resolvedMatch
+            index += resolvedMatch.first.split(' ').size
         }
+
         return resolved
     }
 
