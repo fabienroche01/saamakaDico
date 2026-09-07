@@ -128,6 +128,7 @@ internal class SaamakaGrammarEngine(
 
         while (index < words.size) {
             var match: Pair<String, FrenchFallbackResolution>? = null
+            var consumedWordCount = 0
 
             // Prefer the longest exact attested expression. This keeps entries such as
             // multiword nouns/expressions intact instead of forcing a word-by-word split.
@@ -135,16 +136,34 @@ internal class SaamakaGrammarEngine(
                 val candidate = words.subList(index, endExclusive).joinToString(" ")
                 val resolution = resolveExact(candidate) ?: continue
                 match = candidate to resolution
+                consumedWordCount = endExclusive - index
                 break
+            }
+
+            // French articles are source-side grammar. When no exact multiword entry exists,
+            // ignore the determiner only if the following lexical noun/expression is itself
+            // attested. No Saamaka article is invented here.
+            if (match == null && isFrenchNominalDeterminer(words[index]) && index + 1 < words.size) {
+                for (endExclusive in words.size downTo index + 1) {
+                    val lexicalCandidate = words.subList(index + 1, endExclusive).joinToString(" ")
+                    val resolution = resolveExact(lexicalCandidate) ?: continue
+                    val sourceCandidate = words.subList(index, endExclusive).joinToString(" ")
+                    match = sourceCandidate to resolution
+                    consumedWordCount = endExclusive - index
+                    break
+                }
             }
 
             val resolvedMatch = match ?: return null
             resolved += resolvedMatch
-            index += resolvedMatch.first.split(' ').size
+            index += consumedWordCount
         }
 
         return resolved
     }
+
+    private fun isFrenchNominalDeterminer(word: String): Boolean =
+        normalizeAttestedPhraseKey(word) in setOf("le", "la", "les", "un", "une", "des", "du")
 
     private fun resolveSafeVerb(form: String): FrenchFallbackResolution? {
         val lemma = FrenchVerbInflections.lemma(form) ?: normalizeAttestedPhraseKey(form)
