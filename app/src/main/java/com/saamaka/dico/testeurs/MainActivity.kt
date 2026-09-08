@@ -14,6 +14,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -80,7 +82,6 @@ import com.saamaka.dico.testeurs.ui.TranslateScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.ui.Alignment
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -89,6 +90,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
@@ -188,6 +190,45 @@ enum class MainTab {
     MISSION,
     HISTORY,
     CORRECTIONS
+}
+
+@Composable
+private fun RowScope.CompactBottomNavigationItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    iconDescription: String,
+    label: String
+) {
+    val itemColor = if (selected) Color(0xFF0B5D3B) else Color(0xFF68736C)
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            modifier = Modifier.size(width = 42.dp, height = 28.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected) Color(0xFFDCEEE2) else Color.Transparent
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = iconDescription,
+                    modifier = Modifier.size(23.dp),
+                    tint = itemColor
+                )
+            }
+        }
+        Spacer(Modifier.height(2.dp))
+        CompositionLocalProvider(LocalContentColor provides itemColor) {
+            BottomNavigationLabel(label)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -942,104 +983,68 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         bottomBar = {
             if (selectedEntry == null && correctionEntry == null) {
 
-                NavigationBar(
-                    containerColor = Color(0xFFFFFBF3),
+                Surface(
+                    color = Color(0xFFFFFBF3),
                     contentColor = Color(0xFF234437),
-                    tonalElevation = 4.dp
+                    tonalElevation = 2.dp
                 ) {
-
-                    val navigationItemColors =
-                        NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF0B5D3B),
-                            selectedTextColor = Color(0xFF0B5D3B),
-
-                            indicatorColor = Color(0xFFDCEEE2),
-
-                            unselectedIconColor = Color(0xFF68736C),
-                            unselectedTextColor = Color(0xFF68736C)
-                        )
+                    Row(
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .fillMaxWidth()
+                            .height(68.dp)
+                            .selectableGroup(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
 
                     // Recherche : tout le monde
                     // Accueil
-                    NavigationBarItem(
-                        modifier = Modifier.weight(1f),
+                    CompactBottomNavigationItem(
                         selected = activeTab == MainTab.HOME ||
                             activeTab == MainTab.CATEGORIES,
                         onClick = {
                             activeTab = MainTab.HOME
                         },
-                        colors = navigationItemColors,
-                        icon = {
-                            Icon(
-                                Icons.Default.Home,
-                                contentDescription = appStrings.ui(UiCopyKey.HOME_DESCRIPTION)
-                            )
-                        },
-                        label = {
-                            BottomNavigationLabel(appStrings.ui(UiCopyKey.HOME))
-                        }
+                        icon = Icons.Default.Home,
+                        iconDescription = appStrings.ui(UiCopyKey.HOME_DESCRIPTION),
+                        label = appStrings.ui(UiCopyKey.HOME)
                     )
 
                     // Recherche
-                    NavigationBarItem(
-                        modifier = Modifier.weight(1f),
+                    CompactBottomNavigationItem(
                         selected = activeTab == MainTab.SEARCH,
                         onClick = {
                             activeTab = MainTab.SEARCH
                         },
-                        colors = navigationItemColors,
-                        icon = {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = appStrings.ui(UiCopyKey.SEARCH_DESCRIPTION)
-                            )
-                        },
-                        label = {
-                            BottomNavigationLabel(appStrings.search)
-                        }
+                        icon = Icons.Default.Search,
+                        iconDescription = appStrings.ui(UiCopyKey.SEARCH_DESCRIPTION),
+                        label = appStrings.search
                     )
 
                     // Favoris
-                    NavigationBarItem(
-                        modifier = Modifier.weight(1f),
+                    CompactBottomNavigationItem(
                         selected = activeTab == MainTab.FAVORITES,
                         onClick = {
                             openFavorites()
                         },
-                        colors = navigationItemColors,
-                        icon = {
-                            Icon(
-                                Icons.Default.Favorite,
-                                contentDescription = appStrings.ui(UiCopyKey.FAVORITES_DESCRIPTION)
-                            )
-                        },
-                        label = {
-                            BottomNavigationLabel(appStrings.favorites)
-                        }
+                        icon = Icons.Default.Favorite,
+                        iconDescription = appStrings.ui(UiCopyKey.FAVORITES_DESCRIPTION),
+                        label = appStrings.favorites
                     )
 
                     // Apprendre
-                    NavigationBarItem(
-                        modifier = Modifier.weight(1f),
+                    CompactBottomNavigationItem(
                         selected = activeTab == MainTab.LEARN,
                         onClick = {
                             activeTab = MainTab.LEARN
                         },
-                        colors = navigationItemColors,
-                        icon = {
-                            Icon(
-                                Icons.Default.School,
-                                contentDescription = appStrings.ui(UiCopyKey.LEARN_DESCRIPTION)
-                            )
-                        },
-                        label = {
-                            BottomNavigationLabel(appStrings.ui(UiCopyKey.LEARN))
-                        }
+                        icon = Icons.Default.School,
+                        iconDescription = appStrings.ui(UiCopyKey.LEARN_DESCRIPTION),
+                        label = appStrings.ui(UiCopyKey.LEARN)
                     )
 
                     // Plus
-                    NavigationBarItem(
-                        modifier = Modifier.weight(1f),
+                    CompactBottomNavigationItem(
                         selected = activeTab == MainTab.MORE ||
                             activeTab == MainTab.PREMIUM ||
                             activeTab == MainTab.TRANSLATE ||
@@ -1049,20 +1054,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         onClick = {
                             activeTab = MainTab.MORE
                         },
-                        colors = navigationItemColors,
-                        icon = {
-                            Icon(
-                                Icons.Default.MoreHoriz,
-                                contentDescription = appStrings.ui(UiCopyKey.MORE_DESCRIPTION)
-                            )
-                        },
-                        label = {
-                            BottomNavigationLabel(appStrings.ui(UiCopyKey.MORE))
-                        }
+                        icon = Icons.Default.MoreHoriz,
+                        iconDescription = appStrings.ui(UiCopyKey.MORE_DESCRIPTION),
+                        label = appStrings.ui(UiCopyKey.MORE)
                     )
-
-
-
+                    }
                 }
             }
         }

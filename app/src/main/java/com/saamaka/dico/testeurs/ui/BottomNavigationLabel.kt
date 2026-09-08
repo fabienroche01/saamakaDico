@@ -21,7 +21,7 @@ internal fun BottomNavigationLabel(text: String) {
     Text(
         text = text,
         modifier = Modifier.fillMaxWidth(),
-        fontSize = 10.sp,
+        fontSize = 11.sp,
         lineHeight = 12.sp,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
