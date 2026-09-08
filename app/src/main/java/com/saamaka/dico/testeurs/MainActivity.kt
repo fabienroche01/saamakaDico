@@ -2016,7 +2016,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         }
                     }
 
-                    MainTab.FAVORITES -> SavedScreen(
+                    MainTab.FAVORITES -> EnhancedSavedScreen(
                         strings = appStrings,
                         title = if (favoriteResults.isEmpty()) {
                             appStrings.ui(UiCopyKey.NO_FAVORITE)
@@ -2046,7 +2046,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         }
                     )
 
-                    MainTab.HISTORY -> HistoryScreen(
+                    MainTab.HISTORY -> EnhancedHistoryScreen(
                         strings = appStrings,
                         entries = historyResults,
                         onClear = {
@@ -2323,7 +2323,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 "WORDS" -> LearningActivity.REVIEW
                                 "PHRASES" -> LearningActivity.PHRASES
                                 "GAMES" -> LearningActivity.GAMES
-                                "FAVORITES", "WORD_OF_DAY" -> LearningActivity.REVIEW
+                                "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW
                                 else -> null
                             }
                             if (
@@ -2479,6 +2479,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     LearnAccessCard(appStrings.reviewFavorites, "${favoriteLearningEntries.size} ${appStrings.favorites.lowercase()}", "FAVORITES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                     LearnAccessCard(appStrings.learningWordOfDay, appStrings.ui(UiCopyKey.REVIEW_VOCABULARY), "WORD_OF_DAY", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    LearnAccessCard("Quiz audio", appStrings.listen.replace("▶", "").trim(), "AUDIO", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                    Spacer(Modifier.weight(1f))
                                 }
                             }
 
@@ -2947,6 +2951,15 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             }
                                         }
                                     }
+                                }
+
+                                "AUDIO" -> {
+                                    AudioLearningSection(
+                                        strings = appStrings,
+                                        entries = quizEntries,
+                                        audioStore = audioStore,
+                                        onConsumeTrial = { consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW) }
+                                    )
                                 }
 
                                 "FAVORITES" -> {
