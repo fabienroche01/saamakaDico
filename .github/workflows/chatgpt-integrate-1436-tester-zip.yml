@@ -1,0 +1,134 @@
+name: ChatGPT integrate tester zip 1436
+on:
+  push:
+    branches: ["master"]
+    paths: [".github/workflows/chatgpt-integrate-1436-tester-zip.yml"]
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Integrate tester actions safely
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sqlite3, re
+          from pathlib import Path
+
+          db_path = Path('app/src/main/assets/SaamakaDico_v11_25.db')
+          conn = sqlite3.connect(db_path)
+          cur = conn.cursor()
+
+          # Find the dictionary table by schema rather than hardcoding its name.
+          tables = [r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+          table = None
+          columns = None
+          for name in tables:
+              info = cur.execute(f'PRAGMA table_info("{name}")').fetchall()
+              cols = {r[1] for r in info}
+              if {'id','french','saamaka','valide'}.issubset(cols):
+                  table = name
+                  columns = cols
+                  break
+          if table is None:
+              raise SystemExit('Dictionary table not found')
+          qtable = '"' + table.replace('"','""') + '"'
+          print('Dictionary table:', table)
+
+          validations = [8284,9035,9304,8967,8603,9382,8811,9377,6457,6848,11206,8047,7630,7629,8703,2521,8633,7106,9717]
+          corrections = {
+              8006: ('Eclair', 'Gadu ta giita'),
+              5657: ('descendre', 'saka'),
+          }
+          deletions = [394,1626,8018,9483,8769,7906,8590,8793,8805,8915,9141,201,1066,2353,11667,337,350,311,307,227,8510,9230,8507,8895,3874,7884,8638,2806,9209,9294,8342,11102,6579,549,8806,8386,9452,1159,8221,11705,9453,9398,7497,9054,6903]
+
+          existing_before = {r[0] for r in cur.execute(f'SELECT id FROM {qtable} WHERE id IN ({",".join("?" for _ in set(validations+list(corrections)+deletions))})', tuple(set(validations+list(corrections)+deletions)))}
+
+          validated_applied = []
+          for entry_id in validations:
+              if entry_id in existing_before:
+                  cur.execute(f'UPDATE {qtable} SET valide=? WHERE id=?', ('O', entry_id))
+                  validated_applied.append(entry_id)
+
+          corrected_applied = []
+          for entry_id, (french, saamaka) in corrections.items():
+              if entry_id in existing_before:
+                  cur.execute(f'UPDATE {qtable} SET french=?, saamaka=? WHERE id=?', (french, saamaka, entry_id))
+                  corrected_applied.append(entry_id)
+
+          deleted_applied = []
+          for entry_id in deletions:
+              cur.execute(f'DELETE FROM {qtable} WHERE id=?', (entry_id,))
+              if cur.rowcount:
+                  deleted_applied.append(entry_id)
+
+          # Historical new-entry proposal: keep exactly one if already present; insert only if absent.
+          ude_count = cur.execute(f"SELECT COUNT(*) FROM {qtable} WHERE lower(trim(saamaka))=lower(trim(?)) AND lower(trim(french))=lower(trim(?))", ('úde no','bonsoir')).fetchone()[0]
+          inserted_ude = False
+          if ude_count == 0:
+              values = {'saamaka':'úde no','french':'bonsoir','english':'good evening','dutch':'','categorie':'Action','valide':'O'}
+              usable = [(k,v) for k,v in values.items() if k in columns]
+              cols = ','.join('"'+k+'"' for k,_ in usable)
+              marks = ','.join('?' for _ in usable)
+              cur.execute(f'INSERT INTO {qtable} ({cols}) VALUES ({marks})', tuple(v for _,v in usable))
+              inserted_ude = True
+          elif ude_count > 1:
+              raise SystemExit(f'Unexpected duplicate úde no entries: {ude_count}')
+
+          conn.commit()
+          quick = cur.execute('PRAGMA quick_check').fetchone()[0]
+          if quick != 'ok':
+              raise SystemExit('quick_check failed: ' + str(quick))
+
+          # Assert deletions are gone.
+          remaining_deleted = [i for i in deletions if cur.execute(f'SELECT 1 FROM {qtable} WHERE id=?',(i,)).fetchone()]
+          if remaining_deleted:
+              raise SystemExit('Deletion IDs still present: ' + str(remaining_deleted))
+
+          # Assert correction values when rows exist.
+          for entry_id,(fr,sa) in corrections.items():
+              row = cur.execute(f'SELECT french, saamaka FROM {qtable} WHERE id=?',(entry_id,)).fetchone()
+              if row and row != (fr,sa):
+                  raise SystemExit(f'Correction mismatch for {entry_id}: {row}')
+
+          conn.close()
+          print('Validated rows touched:', validated_applied)
+          print('Corrections touched:', corrected_applied)
+          print('Deletions newly applied:', deleted_applied)
+          print('ude no inserted:', inserted_ude)
+          print('quick_check:', quick)
+
+          # Bump embedded DB version exactly once.
+          p = Path('app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt')
+          s = p.read_text()
+          m = re.search(r'(EMBEDDED_DB_VERSION\s*=\s*)(\d+)', s)
+          if not m:
+              raise SystemExit('EMBEDDED_DB_VERSION not found')
+          old = int(m.group(2))
+          new = old + 1
+          p.write_text(s[:m.start(2)] + str(new) + s[m.end(2):])
+          print('EMBEDDED_DB_VERSION:', old, '->', new)
+          PY
+      - name: Verify only intended files changed
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = $'app/src/main/assets/SaamakaDico_v11_25.db\napp/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt' || {
+            echo 'Unexpected changed files'
+            exit 1
+          }
+      - name: Commit integration
+        shell: bash
+        run: |
+          rm .github/workflows/chatgpt-integrate-1436-tester-zip.yml
+          git config user.name "ChatGPT"
+          git config user.email "chatgpt@users.noreply.github.com"
+          git add app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt .github/workflows/chatgpt-integrate-1436-tester-zip.yml
+          git commit -m "data(tester): integrate ff export 2026-09-08 1436"
+          git push origin master
