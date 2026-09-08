@@ -54,6 +54,7 @@ data class AppStrings(
     val listen: String,
     val deleteRedo: String,
     val nextWord: String,
+    val previousWord: String,
     val removeFavorite: String,
     val addFavorite: String,
     val copy: String,
@@ -160,6 +161,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             listen = "▶ Taki",
             deleteRedo = "🗑 Puru / du baka",
             nextWord = "Go na a tra wootu",
+            previousWord = "Fosi wootu",
             // SAAMAKA — provisoire à valider
             removeFavorite = "Puru na lobi",
             addFavorite = "Putu na lobi",
@@ -270,6 +272,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             listen = "▶ Prononcer",
             deleteRedo = "🗑 Supprimer / Refaire",
             nextWord = "Passer au mot suivant",
+            previousWord = "Précédent",
             removeFavorite = "Retirer des favoris",
             addFavorite = "Ajouter aux favoris",
             copy = "Copier",
@@ -386,6 +389,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             listen = "▶ Pronounce",
             deleteRedo = "🗑 Delete / Record again",
             nextWord = "Go to next word",
+            previousWord = "Previous",
             // ENGLISH
             removeFavorite = "Remove from favorites",
             addFavorite = "Add to favorites",
@@ -499,6 +503,7 @@ fun stringsFor(language: UiLanguage): AppStrings {
             listen = "▶ Uitspreken",
             deleteRedo = "🗑 Verwijderen / Opnieuw opnemen",
             nextWord = "Ga naar het volgende woord",
+            previousWord = "Vorige",
             // DUTCH
             removeFavorite = "Uit favorieten verwijderen",
             addFavorite = "Aan favorieten toevoegen",

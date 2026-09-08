@@ -5460,7 +5460,7 @@ private fun DetailScreen(
                     text = when (effectiveTesterStatus) {
                         TesterEntryStatus.DELETION_PROPOSED -> strings.deletionProposed
                         TesterEntryStatus.CORRECTED -> "✎ ${strings.corrections}"
-                        TesterEntryStatus.VALIDATED -> "✓ ${strings.validatedO}"
+                        TesterEntryStatus.VALIDATED -> "✓ " + strings.validatedO.replace("✓", "").removeSuffix("O").trim()
                         TesterEntryStatus.TO_REVIEW -> strings.missionStatusLabel(classification.visualStatus)
                         TesterEntryStatus.UNTOUCHED -> strings.missionStatusLabel(MissionVisualStatus.NEW)
                     },
@@ -5885,7 +5885,7 @@ private fun DetailScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text(strings.back.removePrefix("← "))
+                            Text(strings.previousWord)
                         }
 
                         OutlinedButton(
