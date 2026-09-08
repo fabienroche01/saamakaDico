@@ -37,7 +37,10 @@ jobs:
           p.write_text(s)
           PY
       - name: Run tests
-        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin --no-daemon
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin --no-daemon
       - name: Verify protected files unchanged
         shell: bash
         run: test -z "$(git diff --name-only -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt)"
