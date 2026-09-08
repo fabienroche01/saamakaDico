@@ -1,0 +1,323 @@
+name: ChatGPT tester workflow patch
+
+on:
+  push:
+    branches:
+      - chatgpt/tester-workflow-priorities-1-3
+    paths:
+      - .github/workflows/chatgpt-tester-workflow.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/tester-workflow-priorities-1-3
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Apply targeted tester UX patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt')
+          s = p.read_text()
+
+          def replace_once(old, new, label):
+              global s
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly 1 match, found {count}')
+              s = s.replace(old, new, 1)
+
+          replace_once(
+              '    var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }\n    var openCategory by remember { mutableStateOf<String?>(null) }',
+              '    var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }\n    var detailNavigationIds by remember { mutableStateOf<List<Int>>(emptyList()) }\n    var openCategory by remember { mutableStateOf<String?>(null) }',
+              'detail navigation state'
+          )
+
+          replace_once(
+              '''    fun openEntry(entry: DictionaryEntry) {\n        selectedEntry = applyCorrection(entry)\n        historyStore.add(entry.id)\n        refreshHistory()\n    }\n\n    fun openSearchEntry(entry: DictionaryEntry, matchedLanguage: AppLanguage) {\n        preferredConsultationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {\n            preferredDetailLanguage(entry)\n        } else {\n            matchedLanguage\n        }\n        selectedEntry = applyCorrection(entry)\n        historyStore.add(entry.id)\n        refreshHistory()\n    }''',
+              '''    fun openEntry(entry: DictionaryEntry) {\n        if (entry.id !in detailNavigationIds) {\n            detailNavigationIds = listOf(entry.id)\n        }\n        selectedEntry = applyCorrection(entry)\n        historyStore.add(entry.id)\n        refreshHistory()\n    }\n\n    fun openEntryInContext(entry: DictionaryEntry, entries: List<DictionaryEntry>) {\n        detailNavigationIds = entries.map { it.id }.distinct()\n        openEntry(entry)\n    }\n\n    fun openSearchEntry(entry: DictionaryEntry, matchedLanguage: AppLanguage) {\n        detailNavigationIds = searchResults.map { it.id }.distinct()\n        preferredConsultationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {\n            preferredDetailLanguage(entry)\n        } else {\n            matchedLanguage\n        }\n        selectedEntry = applyCorrection(entry)\n        historyStore.add(entry.id)\n        refreshHistory()\n    }\n\n    fun openAdjacentDetail(offset: Int) {\n        val currentId = selectedEntry?.id ?: return\n        val targetId = adjacentEntryId(detailNavigationIds, currentId, offset) ?: return\n        val target = allEntries.firstOrNull { it.id == targetId } ?: return\n        openEntry(target)\n    }''',
+              'entry open helpers'
+          )
+
+          replace_once(
+              '''                    MainTab.CATEGORIES -> {\n                        CategoriesScreen(\n                            strings = appStrings,\n                            database = database,\n                            selectedCategory = openCategory,\n                            onSelectedCategoryChange = { openCategory = it },\n                            onBack = {\n                                activeTab = MainTab.SEARCH\n                            },\n                            onOpen = ::openEntry\n                        )\n                    }''',
+              '''                    MainTab.CATEGORIES -> {\n                        CategoriesScreen(\n                            strings = appStrings,\n                            database = database,\n                            selectedCategory = openCategory,\n                            onSelectedCategoryChange = { openCategory = it },\n                            onBack = {\n                                activeTab = MainTab.SEARCH\n                            },\n                            onOpen = ::openEntryInContext\n                        )\n                    }''',
+              'categories invocation'
+          )
+
+          replace_once(
+              '                        onOpen = ::openEntry,\n                        onRemove = { entry ->\n                            updateFavorite(entry.id, false)',
+              '                        onOpen = { entry -> openEntryInContext(entry, favoriteResults) },\n                        onRemove = { entry ->\n                            updateFavorite(entry.id, false)',
+              'favorites context'
+          )
+
+          replace_once(
+              '                        onOpen = ::openEntry,\n                        onRemove = { entry ->\n                            val previousIndex = historyStore.remove(entry.id)',
+              '                        onOpen = { entry -> openEntryInContext(entry, historyResults) },\n                        onRemove = { entry ->\n                            val previousIndex = historyStore.remove(entry.id)',
+              'history context'
+          )
+
+          replace_once(
+              '''                                            .clickable {\n                                                openEntry(entry)\n                                            },''',
+              '''                                            .clickable {\n                                                openEntryInContext(entry, filteredMissionEntries)\n                                            },''',
+              'mission context'
+          )
+
+          replace_once(
+              '''                selectedEntry != null -> {\n                    val entry = selectedEntry!!\n                    DetailScreen(''',
+              '''                selectedEntry != null -> {\n                    val entry = selectedEntry!!\n                    val detailIndex = detailNavigationIds.indexOf(entry.id)\n                    val testerStatus = testerEntryStatus(\n                        databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),\n                        locallyValidated = validationStore.isValidated(entry.id),\n                        corrected = correctionProposals.any { it.entryId == entry.id && it.hasChanges() },\n                        deletionProposed = deletionProposals.any { it.entryId == entry.id },\n                        toReview = classificationNeedsReview(\n                            classifyMissionEntry(\n                                entry = entry,\n                                hasLocalValidation = validationStore.isValidated(entry.id)\n                            )\n                        )\n                    )\n                    DetailScreen(''',
+              'detail derived state'
+          )
+
+          replace_once(
+              '''                        classification = classifyMissionEntry(\n                            entry = entry,\n                            hasLocalValidation = validationStore.isValidated(entry.id)\n                        ),\n                        initialDeletionProposal = deletionProposalStore.proposalFor(entry.id),''',
+              '''                        classification = classifyMissionEntry(\n                            entry = entry,\n                            hasLocalValidation = validationStore.isValidated(entry.id)\n                        ),\n                        testerStatus = testerStatus,\n                        canGoPrevious = detailIndex > 0,\n                        canGoNext = detailIndex >= 0 && detailIndex < detailNavigationIds.lastIndex,\n                        initialDeletionProposal = deletionProposalStore.proposalFor(entry.id),''',
+              'detail status args'
+          )
+
+          replace_once(
+              '''                            Toast.makeText(\n                                context,\n                                appStrings.ui(UiCopyKey.VALIDATED_BY, reviewerName),\n                                Toast.LENGTH_SHORT\n                            ).show()\n\n                            openNextUnvalidated()\n                        },\n                        onNext = { openNextUnvalidated() },''',
+              '''                            Toast.makeText(\n                                context,\n                                appStrings.ui(UiCopyKey.VALIDATED_BY, reviewerName),\n                                Toast.LENGTH_SHORT\n                            ).show()\n                        },\n                        onPrevious = { openAdjacentDetail(-1) },\n                        onNext = { openAdjacentDetail(1) },''',
+              'manual detail navigation after validate'
+          )
+
+          replace_once(
+              '''                    MainTab.CORRECTIONS -> CorrectionsScreen(\n                        strings = appStrings,\n                        testerName = correctionStore.testerName(),\n                        correctionCount = reviewStore.validatedCount() + correctionProposals.size +\n                            deletionProposals.size + newEntryProposals.size,''',
+              '''                    MainTab.CORRECTIONS -> {\n                        val progress = testerProgressStats(\n                            validatedIds = reviewStore.all()\n                                .filter { it.action == ReviewActionType.VALIDATED }\n                                .map { it.entryId }\n                                .toSet() + validationStore.ids(),\n                            correctedIds = correctionProposals\n                                .filter { it.hasChanges() }\n                                .map { it.entryId }\n                                .toSet(),\n                            deletionIds = deletionProposals.map { it.entryId }.toSet(),\n                            newEntryCount = newEntryProposals.size\n                        )\n                        CorrectionsScreen(\n                        strings = appStrings,\n                        testerName = correctionStore.testerName(),\n                        correctionCount = reviewStore.validatedCount() + correctionProposals.size +\n                            deletionProposals.size + newEntryProposals.size,''',
+              'corrections progress wrapper'
+          )
+
+          replace_once(
+              '''                        correctedReviewCount = correctionProposals.size,\n                        onOpenDeletionProposal = { proposal ->''',
+              '''                        correctedReviewCount = correctionProposals.size,\n                        treatedWordCount = progress.treatedWordCount,\n                        deletionCount = progress.deletionCount,\n                        newEntryCount = progress.newEntryCount,\n                        onOpenDeletionProposal = { proposal ->''',
+              'corrections stats args'
+          )
+
+          replace_once(
+              '''                        onClearValidations = {\n                            validationStore.clear()\n                            validatedCount = 0\n                            Toast.makeText(\n                                context,\n                                appStrings.ui(UiCopyKey.LOCAL_VALIDATIONS_CLEARED),\n                                Toast.LENGTH_SHORT\n                            ).show()\n                        }\n                    )\n                }''',
+              '''                        onClearValidations = {\n                            validationStore.clear()\n                            validatedCount = 0\n                            Toast.makeText(\n                                context,\n                                appStrings.ui(UiCopyKey.LOCAL_VALIDATIONS_CLEARED),\n                                Toast.LENGTH_SHORT\n                            ).show()\n                        }\n                    )\n                    }\n                }''',
+              'close corrections wrapper'
+          )
+
+          replace_once(
+              '''    validatedReviewCount: Int,\n    correctedReviewCount: Int,\n    onOpenDeletionProposal: (DeletionProposal) -> Unit,''',
+              '''    validatedReviewCount: Int,\n    correctedReviewCount: Int,\n    treatedWordCount: Int,\n    deletionCount: Int,\n    newEntryCount: Int,\n    onOpenDeletionProposal: (DeletionProposal) -> Unit,''',
+              'corrections screen params'
+          )
+
+          replace_once(
+              '''                        StatCard(\n                            modifier = Modifier.weight(1f),\n                            value = "$total",\n                            label = strings.ui(UiCopyKey.TESTER_WORDS)\n                        )''',
+              '''                        StatCard(\n                            modifier = Modifier.weight(1f),\n                            value = "$treatedWordCount / $total",\n                            label = strings.ui(UiCopyKey.TESTER_WORDS)\n                        )''',
+              'treated unique count'
+          )
+
+          replace_once(
+              '''                    Spacer(Modifier.height(8.dp))\n\n                    Text(\n                        text = strings.ui(UiCopyKey.LOCAL_VALIDATIONS_COUNT, validatedCount),''',
+              '''                    Spacer(Modifier.height(8.dp))\n\n                    Row(\n                        modifier = Modifier.fillMaxWidth(),\n                        horizontalArrangement = Arrangement.spacedBy(8.dp)\n                    ) {\n                        StatCard(\n                            modifier = Modifier.weight(1f),\n                            value = "$deletionCount",\n                            label = strings.proposedDeletionsSection\n                        )\n                        StatCard(\n                            modifier = Modifier.weight(1f),\n                            value = "$newEntryCount",\n                            label = strings.proposedNewEntries\n                        )\n                    }\n\n                    Spacer(Modifier.height(8.dp))\n\n                    Text(\n                        text = strings.ui(UiCopyKey.LOCAL_VALIDATIONS_COUNT, validatedCount),''',
+              'deletion and new entry stats'
+          )
+
+          replace_once(
+              '''    initiallyFavorite: Boolean,\n    classification: MissionEntryClassification,\n    initialDeletionProposal: DeletionProposal?,''',
+              '''    initiallyFavorite: Boolean,\n    classification: MissionEntryClassification,\n    testerStatus: TesterEntryStatus,\n    canGoPrevious: Boolean,\n    canGoNext: Boolean,\n    initialDeletionProposal: DeletionProposal?,''',
+              'detail params status'
+          )
+
+          replace_once(
+              '''    onCancelDeletionProposal: () -> Unit,\n    onValidate: () -> Unit,\n    onNext: () -> Unit,''',
+              '''    onCancelDeletionProposal: () -> Unit,\n    onValidate: () -> Unit,\n    onPrevious: () -> Unit,\n    onNext: () -> Unit,''',
+              'detail previous callback'
+          )
+
+          replace_once(
+              '''            Surface(\n                shape = RoundedCornerShape(50),\n                color = if (deletionProposal != null) Color(0xFFFFE1E1) else when (classification.visualStatus) {\n                    MissionVisualStatus.DOUBTFUL -> Color(0xFFFFEFC4)\n                    MissionVisualStatus.TO_COMPLETE -> Color(0xFFFFE1E1)\n                    MissionVisualStatus.ALREADY_VALIDATED -> Color(0xFFDCEEE2)\n                    MissionVisualStatus.NEW -> MaterialTheme.colorScheme.surfaceVariant\n                }\n            ) {\n                Text(\n                    text = deletionProposal?.let { strings.deletionProposed }\n                        ?: strings.missionStatusLabel(classification.visualStatus),\n                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),\n                    style = MaterialTheme.typography.labelLarge,\n                    fontWeight = FontWeight.Bold,\n                    color = if (deletionProposal != null) Color(0xFF8B2F2F) else when (classification.visualStatus) {\n                        MissionVisualStatus.DOUBTFUL -> Color(0xFF8A6712)\n                        MissionVisualStatus.TO_COMPLETE -> Color(0xFF8B2F2F)\n                        else -> Color(0xFF0B5D3B)\n                    }\n                )\n            }''',
+              '''            val effectiveTesterStatus = if (deletionProposal != null) {\n                TesterEntryStatus.DELETION_PROPOSED\n            } else {\n                testerStatus\n            }\n            Surface(\n                shape = RoundedCornerShape(50),\n                color = when (effectiveTesterStatus) {\n                    TesterEntryStatus.DELETION_PROPOSED -> Color(0xFFFFE1E1)\n                    TesterEntryStatus.CORRECTED -> Color(0xFFE8E1F7)\n                    TesterEntryStatus.VALIDATED -> Color(0xFFDCEEE2)\n                    TesterEntryStatus.TO_REVIEW -> Color(0xFFFFEFC4)\n                    TesterEntryStatus.UNTOUCHED -> MaterialTheme.colorScheme.surfaceVariant\n                }\n            ) {\n                Text(\n                    text = when (effectiveTesterStatus) {\n                        TesterEntryStatus.DELETION_PROPOSED -> strings.deletionProposed\n                        TesterEntryStatus.CORRECTED -> "✎ ${strings.corrections}"\n                        TesterEntryStatus.VALIDATED -> "✓ ${strings.validatedO}"\n                        TesterEntryStatus.TO_REVIEW -> strings.missionStatusLabel(classification.visualStatus)\n                        TesterEntryStatus.UNTOUCHED -> strings.missionStatusLabel(MissionVisualStatus.NEW)\n                    },\n                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),\n                    style = MaterialTheme.typography.labelLarge,\n                    fontWeight = FontWeight.Bold,\n                    color = when (effectiveTesterStatus) {\n                        TesterEntryStatus.DELETION_PROPOSED -> Color(0xFF8B2F2F)\n                        TesterEntryStatus.CORRECTED -> Color(0xFF5D3B7A)\n                        TesterEntryStatus.TO_REVIEW -> Color(0xFF8A6712)\n                        else -> Color(0xFF0B5D3B)\n                    }\n                )\n            }''',
+              'tester detail badge'
+          )
+
+          replace_once(
+              '''                    OutlinedButton(\n                        modifier = Modifier.fillMaxWidth(),\n                        shape = RoundedCornerShape(14.dp),\n                        onClick = onNext\n                    ) {\n                        Icon(\n                            Icons.Default.SkipNext,\n                            contentDescription = null,\n                            tint = MaterialTheme.colorScheme.primary\n                        )\n\n                        Spacer(Modifier.width(8.dp))\n\n                        Text(strings.nextWord)\n                    }''',
+              '''                    Row(\n                        modifier = Modifier.fillMaxWidth(),\n                        horizontalArrangement = Arrangement.spacedBy(8.dp)\n                    ) {\n                        OutlinedButton(\n                            modifier = Modifier.weight(1f),\n                            shape = RoundedCornerShape(14.dp),\n                            enabled = canGoPrevious,\n                            onClick = onPrevious\n                        ) {\n                            Icon(\n                                Icons.AutoMirrored.Filled.ArrowBack,\n                                contentDescription = null,\n                                tint = MaterialTheme.colorScheme.primary\n                            )\n                            Spacer(Modifier.width(6.dp))\n                            Text(strings.back.removePrefix("← "))\n                        }\n\n                        OutlinedButton(\n                            modifier = Modifier.weight(1f),\n                            shape = RoundedCornerShape(14.dp),\n                            enabled = canGoNext,\n                            onClick = onNext\n                        ) {\n                            Icon(\n                                Icons.Default.SkipNext,\n                                contentDescription = null,\n                                tint = MaterialTheme.colorScheme.primary\n                            )\n                            Spacer(Modifier.width(6.dp))\n                            Text(strings.nextWord)\n                        }\n                    }''',
+              'previous next buttons'
+          )
+
+          replace_once(
+              '''    onSelectedCategoryChange: (String?) -> Unit,\n    onBack: () -> Unit,\n    onOpen: (DictionaryEntry) -> Unit\n) {''',
+              '''    onSelectedCategoryChange: (String?) -> Unit,\n    onBack: () -> Unit,\n    onOpen: (DictionaryEntry, List<DictionaryEntry>) -> Unit\n) {''',
+              'categories callback signature'
+          )
+
+          replace_once(
+              '''                        .clickable {\n                            onOpen(entry)\n                        },''',
+              '''                        .clickable {\n                            onOpen(entry, categoryEntries)\n                        },''',
+              'category open context'
+          )
+
+          p.write_text(s)
+          PY
+
+          cat > app/src/main/java/com/saamaka/dico/testeurs/TesterWorkflowState.kt <<'EOF'
+          package com.saamaka.dico.testeurs
+
+          internal enum class TesterEntryStatus {
+              UNTOUCHED,
+              VALIDATED,
+              CORRECTED,
+              DELETION_PROPOSED,
+              TO_REVIEW
+          }
+
+          internal data class TesterProgressStats(
+              val treatedEntryIds: Set<Int>,
+              val validationCount: Int,
+              val correctionCount: Int,
+              val deletionCount: Int,
+              val newEntryCount: Int
+          ) {
+              val treatedWordCount: Int get() = treatedEntryIds.size
+          }
+
+          internal fun testerEntryStatus(
+              databaseValidated: Boolean,
+              locallyValidated: Boolean,
+              corrected: Boolean,
+              deletionProposed: Boolean,
+              toReview: Boolean
+          ): TesterEntryStatus = when {
+              deletionProposed -> TesterEntryStatus.DELETION_PROPOSED
+              corrected -> TesterEntryStatus.CORRECTED
+              databaseValidated || locallyValidated -> TesterEntryStatus.VALIDATED
+              toReview -> TesterEntryStatus.TO_REVIEW
+              else -> TesterEntryStatus.UNTOUCHED
+          }
+
+          internal fun adjacentEntryId(
+              entryIds: List<Int>,
+              currentId: Int,
+              offset: Int
+          ): Int? {
+              if (offset == 0) return currentId.takeIf { it in entryIds }
+              val currentIndex = entryIds.indexOf(currentId)
+              if (currentIndex < 0) return null
+              return entryIds.getOrNull(currentIndex + offset)
+          }
+
+          internal fun testerProgressStats(
+              validatedIds: Set<Int>,
+              correctedIds: Set<Int>,
+              deletionIds: Set<Int>,
+              newEntryCount: Int
+          ): TesterProgressStats = TesterProgressStats(
+              treatedEntryIds = validatedIds + correctedIds + deletionIds,
+              validationCount = validatedIds.size,
+              correctionCount = correctedIds.size,
+              deletionCount = deletionIds.size,
+              newEntryCount = newEntryCount.coerceAtLeast(0)
+          )
+
+          internal fun classificationNeedsReview(classification: MissionEntryClassification): Boolean =
+              classification.visualStatus == MissionVisualStatus.DOUBTFUL ||
+                  classification.visualStatus == MissionVisualStatus.TO_COMPLETE
+          EOF
+
+          cat > app/src/test/java/com/saamaka/dico/testeurs/TesterWorkflowStateTest.kt <<'EOF'
+          package com.saamaka.dico.testeurs
+
+          import org.junit.Assert.assertEquals
+          import org.junit.Assert.assertNull
+          import org.junit.Test
+
+          class TesterWorkflowStateTest {
+              @Test
+              fun `deletion outranks correction and validation`() {
+                  assertEquals(
+                      TesterEntryStatus.DELETION_PROPOSED,
+                      testerEntryStatus(true, true, true, true, true)
+                  )
+              }
+
+              @Test
+              fun `correction outranks validation`() {
+                  assertEquals(
+                      TesterEntryStatus.CORRECTED,
+                      testerEntryStatus(true, true, true, false, false)
+                  )
+              }
+
+              @Test
+              fun `local validation is validated`() {
+                  assertEquals(
+                      TesterEntryStatus.VALIDATED,
+                      testerEntryStatus(false, true, false, false, false)
+                  )
+              }
+
+              @Test
+              fun `review state is kept for untouched doubtful entry`() {
+                  assertEquals(
+                      TesterEntryStatus.TO_REVIEW,
+                      testerEntryStatus(false, false, false, false, true)
+                  )
+              }
+
+              @Test
+              fun `adjacent navigation never wraps`() {
+                  val ids = listOf(10, 20, 30)
+                  assertEquals(10, adjacentEntryId(ids, 20, -1))
+                  assertEquals(30, adjacentEntryId(ids, 20, 1))
+                  assertNull(adjacentEntryId(ids, 10, -1))
+                  assertNull(adjacentEntryId(ids, 30, 1))
+              }
+
+              @Test
+              fun `treated words use unique dictionary ids`() {
+                  val stats = testerProgressStats(
+                      validatedIds = setOf(1, 2),
+                      correctedIds = setOf(2, 3),
+                      deletionIds = setOf(3, 4),
+                      newEntryCount = 2
+                  )
+                  assertEquals(4, stats.treatedWordCount)
+                  assertEquals(2, stats.validationCount)
+                  assertEquals(2, stats.correctionCount)
+                  assertEquals(2, stats.deletionCount)
+                  assertEquals(2, stats.newEntryCount)
+              }
+          }
+          EOF
+
+      - name: Run unit tests and compile Android tests
+        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin
+
+      - name: Verify protected files unchanged
+        shell: bash
+        run: |
+          if ! git diff --quiet HEAD -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt; then
+            echo 'Protected release/data file changed unexpectedly'
+            git diff -- app/build.gradle.kts app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
+            exit 1
+          fi
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name 'ChatGPT'
+          git config user.email 'chatgpt@users.noreply.github.com'
+          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt \
+                  app/src/main/java/com/saamaka/dico/testeurs/TesterWorkflowState.kt \
+                  app/src/test/java/com/saamaka/dico/testeurs/TesterWorkflowStateTest.kt
+          git commit -m 'feat(tester): improve review workflow and progress'
+          git push origin HEAD:chatgpt/tester-workflow-priorities-1-3
