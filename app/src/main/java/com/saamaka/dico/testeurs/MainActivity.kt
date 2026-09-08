@@ -276,6 +276,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val favoritesStore = remember { FavoritesStore(context) }
     val historyStore = remember { HistoryStore(context) }
     val correctionStore = remember { CorrectionStore(context) }
+    var correctionProposals by remember { mutableStateOf(correctionStore.all()) }
     val deletionProposalStore = remember { DeletionProposalStore(context) }
     var deletionProposals by remember { mutableStateOf(deletionProposalStore.all()) }
     val newEntryProposalStore = remember { NewEntryProposalStore(context) }
@@ -1083,9 +1084,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         defaultTesterName = correctionStore.testerName(),
                         categories = remember { database.categories() },
                         strings = appStrings,
-                        onSave = { proposal ->
+                        onSave = saveCorrection@{ proposal ->
+                            if (!proposal.hasChanges()) {
+                                correctionEntry = null
+                                return@saveCorrection
+                            }
                             correctionStore.setTesterName(proposal.testerName)
                             correctionStore.save(proposal)
+                            correctionProposals = correctionStore.all()
                             selectedEntry = selectedEntry?.copy(
                                 french = proposal.frenchProposed.ifBlank { proposal.frenchCurrent },
                                 saamaka = proposal.saamakaProposed.ifBlank { proposal.saamakaCurrent },
@@ -3524,7 +3530,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                     MainTab.MORE -> {
                         val historyCount = historyStore.ids().size
-                        val correctionsCount = reviewStore.all().size
+                        val correctionsCount = correctionProposals.size
                         val installedVersionName = remember(context) {
                             context.packageManager
                                 .getPackageInfo(context.packageName, 0)
@@ -3741,7 +3747,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     MainTab.CORRECTIONS -> CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),
-                        correctionCount = reviewStore.all().size + deletionProposals.size + newEntryProposals.size,
+                        correctionCount = reviewStore.validatedCount() + correctionProposals.size +
+                            deletionProposals.size + newEntryProposals.size,
+                        correctionProposals = correctionProposals,
                         deletionProposals = deletionProposals,
                         newEntryProposals = newEntryProposals,
                         categories = remember { database.categories() },
@@ -3751,7 +3759,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         total = total,
 
                         validatedReviewCount = reviewStore.validatedCount(),
-                        correctedReviewCount = reviewStore.correctedCount(),
+                        correctedReviewCount = correctionProposals.size,
                         onOpenDeletionProposal = { proposal ->
                             selectedEntry = database.findByIds(setOf(proposal.entryId)).firstOrNull()
                         },
@@ -3782,6 +3790,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         onExportCorrections = {
                             val exportText = buildString {
                                 appendLine(reviewStore.exportText())
+                                appendLine()
+                                appendLine(correctionStore.exportText())
                                 appendLine()
                                 appendLine(deletionProposalStore.exportText())
                                 appendLine()
@@ -3814,6 +3824,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         },
                         onClearCorrections = {
                             correctionStore.clear()
+                            correctionProposals = emptyList()
                             Toast.makeText(
                                 context,
                                 appStrings.ui(UiCopyKey.LOCAL_CORRECTIONS_CLEARED),
@@ -4099,6 +4110,7 @@ private fun CorrectionsScreen(
     testerName: String,
     strings: AppStrings,
     correctionCount: Int,
+    correctionProposals: List<CorrectionProposal>,
     deletionProposals: List<DeletionProposal>,
     newEntryProposals: List<NewEntryProposal>,
     categories: List<String>,
@@ -4251,6 +4263,39 @@ private fun CorrectionsScreen(
             }
 
             Spacer(Modifier.height(14.dp))
+
+            if (correctionProposals.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3)),
+                    border = BorderStroke(1.dp, Color(0xFFB8D5C3))
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            strings.ui(UiCopyKey.TESTER_CORRECTIONS),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0B5D3B)
+                        )
+                        correctionProposals.forEach { proposal ->
+                            Spacer(Modifier.height(12.dp))
+                            Text("#${proposal.entryId}", fontWeight = FontWeight.Bold)
+                            proposal.frenchProposed.takeIf { it.isNotBlank() }?.let {
+                                Text("${strings.proposedFrench}: $it")
+                            }
+                            proposal.saamakaProposed.takeIf { it.isNotBlank() }?.let {
+                                Text("${strings.proposedSaamaka}: $it")
+                            }
+                            proposal.categoryProposed.takeIf { it.isNotBlank() }?.let {
+                                Text("${strings.category}: ${proposal.categoryCurrent} → $it")
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+            }
 
             Button(
                 modifier = Modifier.fillMaxWidth(),

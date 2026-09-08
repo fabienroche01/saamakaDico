@@ -2,6 +2,8 @@ package com.saamaka.dico.testeurs.repository
 
 import android.content.Context
 import com.saamaka.dico.testeurs.CorrectionProposal
+import com.saamaka.dico.testeurs.correctionExportText
+import com.saamaka.dico.testeurs.hasChanges
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -12,6 +14,7 @@ class CorrectionStore(context: Context) {
     )
 
     fun save(proposal: CorrectionProposal) {
+        if (!proposal.hasChanges()) return
         val all = all().toMutableList()
         all.add(0, proposal)
         write(all)
@@ -40,7 +43,7 @@ class CorrectionStore(context: Context) {
                     )
                 )
             }
-        }
+        }.filter(CorrectionProposal::hasChanges)
     }
 
     fun latestForEntry(entryId: Int): CorrectionProposal? {
@@ -81,33 +84,7 @@ class CorrectionStore(context: Context) {
             .apply()
     }
 
-    fun exportText(): String {
-        val proposals = all()
-        if (proposals.isEmpty()) return "Aucune correction enregistrée."
-
-        return buildString {
-            appendLine("SAAMAKA DICO — CORRECTIONS TESTEURS")
-            appendLine()
-
-            proposals.forEachIndexed { index, proposal ->
-                appendLine("Correction ${index + 1}")
-                appendLine("Testeur : ${proposal.testerName.ifBlank { "Non renseigné" }}")
-                appendLine("ID du mot : ${proposal.entryId}")
-                appendLine("Français actuel : ${proposal.frenchCurrent}")
-                appendLine("Saamaka actuel : ${proposal.saamakaCurrent}")
-                appendLine("Français proposé : ${proposal.frenchProposed}")
-                appendLine("Saamaka proposé : ${proposal.saamakaProposed}")
-                if (proposal.categoryCurrent.isNotBlank()) {
-                    appendLine("Catégorie actuelle : ${proposal.categoryCurrent}")
-                }
-                if (proposal.categoryProposed.isNotBlank()) {
-                    appendLine("Catégorie proposée : ${proposal.categoryProposed}")
-                }
-                appendLine("Commentaire : ${proposal.comment}")
-                appendLine("---")
-            }
-        }
-    }
+    fun exportText(): String = correctionExportText(all())
 
     private fun write(proposals: List<CorrectionProposal>) {
         val array = JSONArray()
