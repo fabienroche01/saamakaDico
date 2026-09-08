@@ -1,0 +1,50 @@
+name: ChatGPT run tester patch
+
+on:
+  push:
+    branches:
+      - chatgpt/tester-workflow-priorities-1-3
+    paths:
+      - .github/workflows/chatgpt-run-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  run-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/tester-workflow-priorities-1-3
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Reuse targeted patch script
+        shell: bash
+        run: |
+          awk '
+            /- name: Apply targeted tester UX patch/ {capture=1; next}
+            capture && /- name: Run unit tests and compile Android tests/ {exit}
+            capture && /        run: \|/ {started=1; next}
+            capture && started {sub(/^          /, ""); print}
+          ' .github/workflows/chatgpt-tester-workflow.yml > /tmp/apply_patch.sh
+          bash /tmp/apply_patch.sh
+      - name: Run tests
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin
+      - name: Verify protected files unchanged
+        shell: bash
+        run: |
+          git diff --exit-code HEAD -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name 'ChatGPT'
+          git config user.email 'chatgpt@users.noreply.github.com'
+          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt app/src/main/java/com/saamaka/dico/testeurs/TesterWorkflowState.kt app/src/test/java/com/saamaka/dico/testeurs/TesterWorkflowStateTest.kt
+          git commit -m 'feat(tester): improve review workflow and progress'
+          git push origin HEAD:chatgpt/tester-workflow-priorities-1-3
