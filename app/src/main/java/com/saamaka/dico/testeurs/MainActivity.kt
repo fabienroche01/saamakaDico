@@ -2981,7 +2981,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 "WORD_OF_DAY" -> {
                                     val dailyEntry = learningWordOfDay
                                     Card(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(enabled = dailyEntry != null) {
+                                                dailyEntry?.let { openEntry(it) }
+                                            },
                                         shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),
                                         border = BorderStroke(1.dp, Color(0xFFE2CC8B))
