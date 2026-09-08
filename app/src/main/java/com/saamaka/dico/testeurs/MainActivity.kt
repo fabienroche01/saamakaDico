@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
+import androidx.compose.runtime.CompositionLocalProvider
 import android.util.Log
 import java.util.zip.ZipFile
 import android.widget.Toast
@@ -364,6 +365,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
+    var openCategory by remember { mutableStateOf<String?>(null) }
     var preferredConsultationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
@@ -1363,6 +1365,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         CategoriesScreen(
                             strings = appStrings,
                             database = database,
+                            selectedCategory = openCategory,
+                            onSelectedCategoryChange = { openCategory = it },
                             onBack = {
                                 activeTab = MainTab.SEARCH
                             },
@@ -6096,14 +6100,11 @@ private fun MoreAccessCard(
 private fun CategoriesScreen(
     strings: AppStrings,
     database: DictionaryDatabase,
+    selectedCategory: String?,
+    onSelectedCategoryChange: (String?) -> Unit,
     onBack: () -> Unit,
     onOpen: (DictionaryEntry) -> Unit
 ) {
-
-    var selectedCategory by remember {
-        mutableStateOf<String?>(null)
-    }
-
     val categories = remember {
         database.categories()
     }
@@ -6169,7 +6170,7 @@ private fun CategoriesScreen(
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         TextButton(
-                            onClick = { selectedCategory = null },
+                            onClick = { onSelectedCategoryChange(null) },
                             contentPadding = PaddingValues(0.dp),
                             colors = ButtonDefaults.textButtonColors(contentColor = gold)
                         ) {
@@ -6366,7 +6367,7 @@ private fun CategoriesScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        selectedCategory = category
+                        onSelectedCategoryChange(category)
                     },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
