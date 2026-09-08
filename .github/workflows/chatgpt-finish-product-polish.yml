@@ -23,7 +23,9 @@ jobs:
       - name: Apply changes
         run: python3 .github/scripts/final_polish.py
       - name: Test
-        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleRelease --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleRelease --no-daemon
       - name: Verify protected files
         run: git diff --exit-code HEAD -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
       - name: Commit
