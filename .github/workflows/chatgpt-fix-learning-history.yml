@@ -1,0 +1,98 @@
+name: ChatGPT fix learning and history bugs
+on:
+  push:
+    branches: ["master"]
+    paths: [".github/workflows/chatgpt-fix-learning-history.yml"]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Patch learning and history bugs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''    fun launchLearningActivity(section: String) {\n        if (learnSection == section) return\n        if (\n            section == "GAMES" &&\n            !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)\n        ) return\n        learnSection = section\n    }'''
+          new = '''    fun launchLearningActivity(section: String) {\n        val activity = when (section) {\n            "QUIZ" -> LearningActivity.QUIZ\n            "WORDS", "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW\n            "PHRASES" -> LearningActivity.PHRASES\n            "GAMES" -> LearningActivity.GAMES\n            else -> null\n        }\n        val limitedAccount =\n            accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT\n        if (\n            limitedAccount &&\n            activity != null &&\n            learningTrialStore.remainingTrials(accessLevel, activity) <= 0\n        ) {\n            Toast.makeText(\n                context,\n                appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),\n                Toast.LENGTH_LONG\n            ).show()\n            activeTab = MainTab.PREMIUM\n            return\n        }\n        if (learnSection == section) return\n        if (\n            section == "GAMES" &&\n            !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)\n        ) return\n        learnSection = section\n    }'''
+          if old not in s:
+              raise SystemExit('launchLearningActivity anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                        var wordReviewEntry by remember {\n                            mutableStateOf(\n                                quizEntries.randomOrNull()\n                            )\n                        }'''
+          new = '''                        var wordReviewEntry by remember(accessLevel) {\n                            mutableStateOf(\n                                if (\n                                    (accessLevel == AccessLevel.GUEST ||\n                                        accessLevel == AccessLevel.FREE_ACCOUNT) &&\n                                    learningTrialStore.remainingTrials(\n                                        accessLevel,\n                                        LearningActivity.REVIEW\n                                    ) <= 0\n                                ) {\n                                    null\n                                } else {\n                                    quizEntries.randomOrNull()\n                                }\n                            )\n                        }'''
+          if old not in s:
+              raise SystemExit('wordReviewEntry anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                        val validatedLearningWordEntries = remember(\n                            quizEntries,\n                            deletionProposalEntryIds\n                        ) {\n                            quizEntries.filter { entry ->\n                                entry.valide.trim().equals("O", ignoreCase = true) &&\n                                        entry.id !in deletionProposalEntryIds\n                            }\n                        }'''
+          new = '''                        val validatedLearningWordEntries = remember(\n                            quizEntries,\n                            deletionProposalEntryIds,\n                            correctedEntryIds\n                        ) {\n                            quizEntries.filter { entry ->\n                                entry.valide.trim().equals("O", ignoreCase = true) &&\n                                    entry.id !in deletionProposalEntryIds &&\n                                    entry.id !in correctedEntryIds\n                            }\n                        }'''
+          if old not in s:
+              raise SystemExit('validated learning entries anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                                            Surface(\n                                                modifier = Modifier.fillMaxWidth(),\n                                                shape = RoundedCornerShape(18.dp),\n                                                color = Color(0xFFDCEEE2)\n                                            ) {\n                                                Column(\n                                                    modifier =\n                                                        Modifier.padding(24.dp)'''
+          new = '''                                            Surface(\n                                                modifier = Modifier\n                                                    .fillMaxWidth()\n                                                    .clickable(enabled = wordReviewEntry != null) {\n                                                        wordReviewEntry?.let { entry ->\n                                                            openEntryInContext(entry, quizEntries)\n                                                        }\n                                                    },\n                                                shape = RoundedCornerShape(18.dp),\n                                                color = Color(0xFFDCEEE2)\n                                            ) {\n                                                Column(\n                                                    modifier =\n                                                        Modifier.padding(24.dp)'''
+          if old not in s:
+              raise SystemExit('word review surface anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                                                        val completedId = wordReviewEntry?.id\n                                                        completedId?.let { scheduleLearningWord(it, mastered = false) }\n                                                        wordReviewEntry = nextSpacedReview(completedId)'''
+          new = '''                                                        val completedId = wordReviewEntry?.id\n                                                        completedId?.let { scheduleLearningWord(it, mastered = false) }\n                                                        val reviewQuotaExhausted =\n                                                            (accessLevel == AccessLevel.GUEST ||\n                                                                accessLevel == AccessLevel.FREE_ACCOUNT) &&\n                                                                learningTrialStore.remainingTrials(\n                                                                    accessLevel,\n                                                                    LearningActivity.REVIEW\n                                                                ) <= 0\n                                                        wordReviewEntry = if (reviewQuotaExhausted) {\n                                                            null\n                                                        } else {\n                                                            nextSpacedReview(completedId)\n                                                        }'''
+          if old not in s:
+              raise SystemExit('review action advance anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                                                        val completedId = wordReviewEntry?.id\n                                                        completedId?.let { scheduleLearningWord(it, mastered = true) }\n                                                        wordReviewEntry = nextSpacedReview(completedId)'''
+          new = '''                                                        val completedId = wordReviewEntry?.id\n                                                        completedId?.let { scheduleLearningWord(it, mastered = true) }\n                                                        val reviewQuotaExhausted =\n                                                            (accessLevel == AccessLevel.GUEST ||\n                                                                accessLevel == AccessLevel.FREE_ACCOUNT) &&\n                                                                learningTrialStore.remainingTrials(\n                                                                    accessLevel,\n                                                                    LearningActivity.REVIEW\n                                                                ) <= 0\n                                                        wordReviewEntry = if (reviewQuotaExhausted) {\n                                                            null\n                                                        } else {\n                                                            nextSpacedReview(completedId)\n                                                        }'''
+          if old not in s:
+              raise SystemExit('known action advance anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                                            .clickable(enabled = dailyEntry != null) {\n                                                dailyEntry?.let { openEntry(it) }\n                                            },'''
+          new = '''                                            .clickable(enabled = dailyEntry != null) {\n                                                dailyEntry?.let {\n                                                    openEntryInContext(it, validatedLearningWordEntries)\n                                                }\n                                            },'''
+          if old not in s:
+              raise SystemExit('word of day navigation anchor not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('app/src/main/java/com/saamaka/dico/testeurs/LibraryLearningEnhancements.kt')
+          s = p.read_text(encoding='utf-8')
+          old = '''    val filtered = remember(entries, query) { entries.filter { libraryMatches(it, query) } }'''
+          count = s.count(old)
+          if count != 2:
+              raise SystemExit(f'expected 2 library filtered anchors, got {count}')
+          s = s.replace(old, '''    val filtered = entries.filter { libraryMatches(it, query) }''')
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Run tests
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin --no-daemon
+      - name: Verify release data unchanged
+        shell: bash
+        run: |
+          git diff --exit-code HEAD -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "chatgpt@users.noreply.github.com"
+          git rm .github/workflows/chatgpt-fix-learning-history.yml
+          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt app/src/main/java/com/saamaka/dico/testeurs/LibraryLearningEnhancements.kt
+          git commit -m "fix(learn): close trial bypass and navigation bugs"
+          git push origin master
