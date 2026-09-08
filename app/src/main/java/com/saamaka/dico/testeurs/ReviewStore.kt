@@ -70,7 +70,10 @@ class ReviewStore(context: Context) {
                         reviewer =
                             item.optString("reviewer"),
                         createdAt =
-                            item.optLong("createdAt")
+                            item.optLong("createdAt"),
+                        categoryCurrent = item.optString("categoryCurrent"),
+                        categoryProposed = item.optString("categoryProposed")
+                            .takeIf { it.isNotBlank() }
                     )
                 )
             }
@@ -111,6 +114,11 @@ class ReviewStore(context: Context) {
                     appendLine("Saamaka proposé : ${action.saamakaProposed}")
                 }
 
+                if (!action.categoryProposed.isNullOrBlank()) {
+                    appendLine("Catégorie actuelle : ${action.categoryCurrent}")
+                    appendLine("Catégorie proposée : ${action.categoryProposed}")
+                }
+
                 if (action.comment.isNotBlank()) {
                     appendLine("Commentaire : ${action.comment}")
                 }
@@ -141,6 +149,8 @@ class ReviewStore(context: Context) {
                         "saamakaProposed",
                         action.saamakaProposed.orEmpty()
                     )
+                    put("categoryCurrent", action.categoryCurrent)
+                    put("categoryProposed", action.categoryProposed.orEmpty())
                     put("comment", action.comment)
                     put("reviewer", action.reviewer)
                     put("createdAt", action.createdAt)

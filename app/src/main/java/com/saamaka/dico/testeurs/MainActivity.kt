@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
@@ -548,7 +549,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
         return entry.copy(
             french = correction.frenchProposed.ifBlank { entry.french },
-            saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
+            saamaka = correction.saamakaProposed.ifBlank { entry.saamaka },
+            categorie = correction.categoryProposed.ifBlank { entry.categorie }
         )
     }
 
@@ -566,7 +568,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 corrections[entry.id]?.let { correction ->
                     entry.copy(
                         french = correction.frenchProposed.ifBlank { entry.french },
-                        saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
+                        saamaka = correction.saamakaProposed.ifBlank { entry.saamaka },
+                        categorie = correction.categoryProposed.ifBlank { entry.categorie }
                     )
                 } ?: entry
             }
@@ -1078,13 +1081,15 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     CorrectionForm(
                         entry = entry,
                         defaultTesterName = correctionStore.testerName(),
+                        categories = remember { database.categories() },
                         strings = appStrings,
                         onSave = { proposal ->
                             correctionStore.setTesterName(proposal.testerName)
                             correctionStore.save(proposal)
                             selectedEntry = selectedEntry?.copy(
                                 french = proposal.frenchProposed.ifBlank { proposal.frenchCurrent },
-                                saamaka = proposal.saamakaProposed.ifBlank { proposal.saamakaCurrent }
+                                saamaka = proposal.saamakaProposed.ifBlank { proposal.saamakaCurrent },
+                                categorie = proposal.categoryProposed.ifBlank { proposal.categoryCurrent }
                             )
                             reviewStore.save(
                                 ReviewAction(
@@ -1099,7 +1104,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     saamakaProposed = proposal.saamakaProposed,
                                     comment = proposal.comment,
                                     reviewer = proposal.testerName,
-                                    createdAt = proposal.createdAt
+                                    createdAt = proposal.createdAt,
+                                    categoryCurrent = proposal.categoryCurrent,
+                                    categoryProposed = proposal.categoryProposed.takeIf { it.isNotBlank() }
                                 )
                             )
                             Toast.makeText(context, appStrings.correctionSaved, Toast.LENGTH_SHORT).show()
@@ -1266,7 +1273,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             ?: return entry
                                         return entry.copy(
                                             french = correction.frenchProposed.ifBlank { entry.french },
-                                            saamaka = correction.saamakaProposed.ifBlank { entry.saamaka }
+                                            saamaka = correction.saamakaProposed.ifBlank { entry.saamaka },
+                                            categorie = correction.categoryProposed.ifBlank { entry.categorie }
                                         )
                                     }
 
@@ -6441,6 +6449,7 @@ private fun CorrectionForm(
 
     entry: DictionaryEntry,
     defaultTesterName: String,
+    categories: List<String>,
     strings: AppStrings,
     onSave: (CorrectionProposal) -> Unit,
     onCancel: () -> Unit
@@ -6448,6 +6457,8 @@ private fun CorrectionForm(
     var testerName by remember { mutableStateOf(defaultTesterName) }
     var frenchProposed by remember(entry.id, entry.french) { mutableStateOf(entry.french) }
     var saamakaProposed by remember(entry.id, entry.saamaka) { mutableStateOf(entry.saamaka) }
+    var categoryProposed by remember(entry.id, entry.categorie) { mutableStateOf(entry.categorie) }
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
     var comment by remember { mutableStateOf("") }
 
     LazyColumn(
@@ -6555,6 +6566,46 @@ private fun CorrectionForm(
 
             Spacer(Modifier.height(10.dp))
 
+            Text(
+                text = strings.category,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = entry.categorie.ifBlank { strings.notSpecified },
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    onClick = { categoryMenuExpanded = true }
+                ) {
+                    Text(categoryProposed.ifBlank { strings.notSpecified })
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                }
+                DropdownMenu(
+                    expanded = categoryMenuExpanded,
+                    onDismissRequest = { categoryMenuExpanded = false }
+                ) {
+                    categories.distinct().sortedBy { it.lowercase() }.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                categoryProposed = category
+                                categoryMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
             OutlinedTextField(
                 value = comment,
                 onValueChange = {
@@ -6584,11 +6635,13 @@ private fun CorrectionForm(
                             entryId = entry.id,
                             frenchCurrent = entry.french,
                             saamakaCurrent = entry.saamaka,
-                            frenchProposed = frenchProposed.trim(),
-                            saamakaProposed = saamakaProposed.trim(),
+                            frenchProposed = proposedCorrectionValue(entry.french, frenchProposed),
+                            saamakaProposed = proposedCorrectionValue(entry.saamaka, saamakaProposed),
                             comment = comment.trim(),
                             testerName = testerName.trim(),
-                            createdAt = System.currentTimeMillis()
+                            createdAt = System.currentTimeMillis(),
+                            categoryCurrent = entry.categorie,
+                            categoryProposed = proposedCorrectionValue(entry.categorie, categoryProposed)
                         )
                     )
                 }

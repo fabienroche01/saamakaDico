@@ -34,7 +34,9 @@ class CorrectionStore(context: Context) {
                         saamakaProposed = item.optString("saamakaProposed"),
                         comment = item.optString("comment"),
                         testerName = item.optString("testerName"),
-                        createdAt = item.optLong("createdAt")
+                        createdAt = item.optLong("createdAt"),
+                        categoryCurrent = item.optString("categoryCurrent"),
+                        categoryProposed = item.optString("categoryProposed")
                     )
                 )
             }
@@ -95,6 +97,12 @@ class CorrectionStore(context: Context) {
                 appendLine("Saamaka actuel : ${proposal.saamakaCurrent}")
                 appendLine("Français proposé : ${proposal.frenchProposed}")
                 appendLine("Saamaka proposé : ${proposal.saamakaProposed}")
+                if (proposal.categoryCurrent.isNotBlank()) {
+                    appendLine("Catégorie actuelle : ${proposal.categoryCurrent}")
+                }
+                if (proposal.categoryProposed.isNotBlank()) {
+                    appendLine("Catégorie proposée : ${proposal.categoryProposed}")
+                }
                 appendLine("Commentaire : ${proposal.comment}")
                 appendLine("---")
             }
@@ -113,6 +121,8 @@ class CorrectionStore(context: Context) {
                     put("saamakaCurrent", proposal.saamakaCurrent)
                     put("frenchProposed", proposal.frenchProposed)
                     put("saamakaProposed", proposal.saamakaProposed)
+                    put("categoryCurrent", proposal.categoryCurrent)
+                    put("categoryProposed", proposal.categoryProposed)
                     put("comment", proposal.comment)
                     put("testerName", proposal.testerName)
                     put("createdAt", proposal.createdAt)

@@ -214,7 +214,8 @@ class TesterExportConsolidator {
             when {
                 values["Type"] == "VALIDATED" && entryId != null -> validations += ParsedValidation(entryId, source)
                 values["Type"] == "CORRECTED" && entryId != null -> addCorrections(entryId, values, source, corrections)
-                entryId != null && (values.containsKey("Français proposé") || values.containsKey("Saamaka proposé")) ->
+                entryId != null && (values.containsKey("Français proposé") ||
+                    values.containsKey("Saamaka proposé") || values.containsKey("Catégorie proposée")) ->
                     addCorrections(entryId, values, source, corrections)
                 values.containsKey("Identifiant local") -> {
                     newEntries += ParsedNewEntry(
@@ -243,6 +244,9 @@ class TesterExportConsolidator {
         }
         values["Saamaka proposé"]?.takeIf { it.isNotBlank() }?.let {
             output += ParsedCorrection(entryId, "saamaka", it, source)
+        }
+        values["Catégorie proposée"]?.takeIf { it.isNotBlank() }?.let {
+            output += ParsedCorrection(entryId, "category", it, source)
         }
     }
 

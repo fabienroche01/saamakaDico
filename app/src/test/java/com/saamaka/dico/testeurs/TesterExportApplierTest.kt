@@ -45,4 +45,16 @@ class TesterExportApplierTest {
 
         assertEquals(listOf("Multiple approved new entries use localId=local-1"), errors)
     }
+
+    @Test
+    fun `treats category aliases as the same correction field`() {
+        val approval = TesterChangeApproval(
+            corrections = listOf(
+                ApprovedTesterCorrection(42, "category", "Animal"),
+                ApprovedTesterCorrection(42, "categorie", "Alimentation")
+            )
+        )
+
+        assertEquals(1, TesterExportApplier.validateApproval(approval).size)
+    }
 }

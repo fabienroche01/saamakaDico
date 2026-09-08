@@ -88,10 +88,15 @@ class TesterExportApplier {
                 }
 
                 approval.corrections.distinct().forEach { correction ->
+                    if (canonicalField(correction.field) == COLUMN_CATEGORY && correction.approvedValue.isBlank()) {
+                        ignored += "CORRECTION entryId=${correction.entryId} field=$COLUMN_CATEGORY: no proposed value"
+                        return@forEach
+                    }
                     requireEntry(writableDatabase, correction.entryId)
                     val column = when (correction.field.lowercase()) {
                         "french", "francais" -> COLUMN_FRENCH
                         "saamaka" -> COLUMN_SAAMAKA
+                        "category", "categorie" -> COLUMN_CATEGORY
                         else -> error("Unsupported correction field: ${correction.field}")
                     }
                     val values = ContentValues().apply { put(column, correction.approvedValue) }
@@ -234,6 +239,7 @@ class TesterExportApplier {
 
         private fun canonicalField(field: String): String = when (field.lowercase()) {
             "french", "francais" -> COLUMN_FRENCH
+            "category", "categorie" -> COLUMN_CATEGORY
             else -> field.lowercase()
         }
 

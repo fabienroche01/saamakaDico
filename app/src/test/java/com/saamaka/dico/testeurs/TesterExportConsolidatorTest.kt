@@ -73,11 +73,29 @@ class TesterExportConsolidatorTest {
         assertEquals(1, report.audios.count { it.status == ConsolidatedAudioStatus.ORPHAN })
     }
 
+    @Test
+    fun `preserves category corrections and reports category conflicts`() {
+        val first = zip(
+            "SaamakaDico_Ana_2026-01-01_1200.zip",
+            review(42, "CORRECTED", "Ana", category = "Animal")
+        )
+        val second = zip(
+            "SaamakaDico_Bob_2026-01-01_1201.zip",
+            review(42, "CORRECTED", "Bob", category = "Alimentation")
+        )
+
+        val report = TesterExportConsolidator().consolidate(listOf(first, second))
+
+        assertEquals(2, report.corrections.count { it.field == "category" })
+        assertEquals("category", report.conflicts.single().field)
+    }
+
     private fun review(
         id: Int,
         type: String,
         tester: String,
-        saamaka: String? = null
+        saamaka: String? = null,
+        category: String? = null
     ) = """
         SAAMAKA DICO — REVUES LINGUISTIQUES
         Action 1
@@ -87,6 +105,7 @@ class TesterExportConsolidatorTest {
         Type : $type
         Correcteur : $tester
         ${saamaka?.let { "Saamaka proposé : $it" }.orEmpty()}
+        ${category?.let { "Catégorie proposée : $it" }.orEmpty()}
         ------------------------------
     """.trimIndent()
 

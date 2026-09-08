@@ -9,5 +9,10 @@ data class CorrectionProposal(
     val saamakaProposed: String,
     val comment: String,
     val testerName: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val categoryCurrent: String = "",
+    val categoryProposed: String = ""
 )
+
+internal fun proposedCorrectionValue(current: String, edited: String): String =
+    edited.trim().takeUnless { it == current }.orEmpty()

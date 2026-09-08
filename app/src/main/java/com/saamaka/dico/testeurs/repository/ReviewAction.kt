@@ -25,5 +25,7 @@ data class ReviewAction(
 
     val reviewer: String,
 
-    val createdAt: Long
+    val createdAt: Long,
+    val categoryCurrent: String = "",
+    val categoryProposed: String? = null
 )
