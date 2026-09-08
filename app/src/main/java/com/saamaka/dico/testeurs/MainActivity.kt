@@ -2129,10 +2129,56 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             }
                         }
 
+                        var reviewDueAt by remember {
+                            mutableStateOf(
+                                parseLearningDueSchedule(
+                                    learningPrefs.getStringSet("review_due_at", emptySet()).orEmpty()
+                                )
+                            )
+                        }
+
+                        fun scheduleLearningWord(id: Int, mastered: Boolean) {
+                            reviewDueAt = reviewDueAt +
+                                (id to nextLearningReviewAt(System.currentTimeMillis(), mastered))
+                            learningPrefs.edit()
+                                .putStringSet("review_due_at", serializeLearningDueSchedule(reviewDueAt))
+                                .apply()
+                        }
+
+                        fun nextSpacedReview(currentId: Int?): DictionaryEntry? =
+                            selectNextLearningReviewEntry(
+                                entries = quizEntries,
+                                reviewIds = reviewWordIds.toSet(),
+                                knownIds = knownWordIds.toSet(),
+                                dueAtById = reviewDueAt,
+                                currentId = currentId,
+                                now = System.currentTimeMillis()
+                            )
+
                         var wordReviewEntry by remember {
                             mutableStateOf(
                                 quizEntries.randomOrNull()
                             )
+                        }
+
+                        val favoriteLearningEntries = remember(learnSection, favoriteResults.size) {
+                            favoritesStore.favoriteIds()
+                                .mapNotNull { entriesById[it] }
+                                .filter { it in quizEntries }
+                        }
+
+                        var favoriteReviewEntry by remember(favoriteLearningEntries) {
+                            mutableStateOf(favoriteLearningEntries.firstOrNull())
+                        }
+
+                        val learningWordOfDay = remember(quizEntries) {
+                            if (quizEntries.isEmpty()) null
+                            else {
+                                val calendar = java.util.Calendar.getInstance()
+                                val seed = calendar.get(java.util.Calendar.YEAR) * 366L +
+                                    calendar.get(java.util.Calendar.DAY_OF_YEAR)
+                                quizEntries[(seed % quizEntries.size).toInt()]
+                            }
                         }
 
                         val phraseEntries = remember(allEntries) {
@@ -2253,6 +2299,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 "WORDS" -> LearningActivity.REVIEW
                                 "PHRASES" -> LearningActivity.PHRASES
                                 "GAMES" -> LearningActivity.GAMES
+                                "FAVORITES", "WORD_OF_DAY" -> LearningActivity.REVIEW
                                 else -> null
                             }
                             if (
@@ -2404,6 +2451,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     LearnAccessCard(appStrings.ui(UiCopyKey.PHRASES), appStrings.ui(UiCopyKey.USEFUL_EXPRESSIONS), "PHRASES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                     LearnAccessCard(appStrings.ui(UiCopyKey.GAMES), appStrings.ui(UiCopyKey.MATCH_WORDS), "GAMES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    LearnAccessCard(appStrings.reviewFavorites, "${favoriteLearningEntries.size} ${appStrings.favorites.lowercase()}", "FAVORITES", learnSection, Modifier.weight(1f), ::launchLearningActivity)
+                                    LearnAccessCard(appStrings.learningWordOfDay, appStrings.ui(UiCopyKey.REVIEW_VOCABULARY), "WORD_OF_DAY", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                 }
                             }
 
@@ -2811,46 +2862,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                                 .apply()
                                                         }
 
-                                                        val reviewCandidates = quizEntries.filter {
-                                                            it.id in reviewWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        val unknownCandidates = quizEntries.filter {
-                                                            it.id !in knownWordIds &&
-                                                                    it.id !in reviewWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        val knownCandidates = quizEntries.filter {
-                                                            it.id in knownWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        wordReviewEntry = when {
-                                                            reviewCandidates.isNotEmpty() &&
-                                                                    (0..99).random() < 60 -> {
-                                                                reviewCandidates.random()
-                                                            }
-
-                                                            unknownCandidates.isNotEmpty() -> {
-                                                                unknownCandidates.random()
-                                                            }
-
-                                                            reviewCandidates.isNotEmpty() -> {
-                                                                reviewCandidates.random()
-                                                            }
-
-                                                            knownCandidates.isNotEmpty() -> {
-                                                                knownCandidates.random()
-                                                            }
-
-                                                            else -> {
-                                                                quizEntries
-                                                                    .filter { it.id != wordReviewEntry?.id }
-                                                                    .randomOrNull()
-                                                            }
-                                                        }
+                                                        val completedId = wordReviewEntry?.id
+                                                        completedId?.let { scheduleLearningWord(it, mastered = false) }
+                                                        wordReviewEntry = nextSpacedReview(completedId)
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -2887,46 +2901,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                                 .apply()
                                                         }
 
-                                                        val reviewCandidates = quizEntries.filter {
-                                                            it.id in reviewWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        val unknownCandidates = quizEntries.filter {
-                                                            it.id !in knownWordIds &&
-                                                                    it.id !in reviewWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        val knownCandidates = quizEntries.filter {
-                                                            it.id in knownWordIds &&
-                                                                    it.id != wordReviewEntry?.id
-                                                        }
-
-                                                        wordReviewEntry = when {
-                                                            reviewCandidates.isNotEmpty() &&
-                                                                    (0..99).random() < 60 -> {
-                                                                reviewCandidates.random()
-                                                            }
-
-                                                            unknownCandidates.isNotEmpty() -> {
-                                                                unknownCandidates.random()
-                                                            }
-
-                                                            reviewCandidates.isNotEmpty() -> {
-                                                                reviewCandidates.random()
-                                                            }
-
-                                                            knownCandidates.isNotEmpty() -> {
-                                                                knownCandidates.random()
-                                                            }
-
-                                                            else -> {
-                                                                quizEntries
-                                                                    .filter { it.id != wordReviewEntry?.id }
-                                                                    .randomOrNull()
-                                                            }
-                                                        }
+                                                        val completedId = wordReviewEntry?.id
+                                                        completedId?.let { scheduleLearningWord(it, mastered = true) }
+                                                        wordReviewEntry = nextSpacedReview(completedId)
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -2942,6 +2919,110 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                         text = appStrings.ui(UiCopyKey.I_KNOW),
                                                         color = Color.White
                                                     )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                "FAVORITES" -> {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBF3)),
+                                        border = BorderStroke(1.dp, Color(0xFFE0D8C9))
+                                    ) {
+                                        Column(Modifier.padding(18.dp)) {
+                                            Text(appStrings.reviewFavorites, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                                            Spacer(Modifier.height(6.dp))
+                                            if (favoriteReviewEntry == null) {
+                                                Text(appStrings.ui(UiCopyKey.NO_FAVORITE), color = Color(0xFF68736C))
+                                            } else {
+                                                val favoriteEntry = favoriteReviewEntry!!
+                                                Text(favoriteEntry.saamaka, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
+                                                Spacer(Modifier.height(6.dp))
+                                                Text(favoriteEntry.french, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                                                if (audioStore.hasOfficialAudio(favoriteEntry.id)) {
+                                                    Spacer(Modifier.height(10.dp))
+                                                    OutlinedButton(onClick = { audioStore.playOfficialAudio(favoriteEntry.id) }) {
+                                                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(appStrings.ui(UiCopyKey.LISTEN))
+                                                    }
+                                                }
+                                                Spacer(Modifier.height(16.dp))
+                                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                    OutlinedButton(
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = {
+                                                            if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) return@OutlinedButton
+                                                            if (favoriteEntry.id !in reviewWordIds) reviewWordIds.add(favoriteEntry.id)
+                                                            knownWordIds.remove(favoriteEntry.id)
+                                                            scheduleLearningWord(favoriteEntry.id, mastered = false)
+                                                            favoriteReviewEntry = favoriteLearningEntries.firstOrNull { it.id != favoriteEntry.id } ?: favoriteEntry
+                                                        }
+                                                    ) { Text(appStrings.ui(UiCopyKey.REVIEW)) }
+                                                    Button(
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = {
+                                                            if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) return@Button
+                                                            if (favoriteEntry.id !in knownWordIds) knownWordIds.add(favoriteEntry.id)
+                                                            reviewWordIds.remove(favoriteEntry.id)
+                                                            scheduleLearningWord(favoriteEntry.id, mastered = true)
+                                                            favoriteReviewEntry = favoriteLearningEntries.firstOrNull { it.id != favoriteEntry.id } ?: favoriteEntry
+                                                        }
+                                                    ) { Text(appStrings.ui(UiCopyKey.I_KNOW)) }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                "WORD_OF_DAY" -> {
+                                    val dailyEntry = learningWordOfDay
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(22.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),
+                                        border = BorderStroke(1.dp, Color(0xFFE2CC8B))
+                                    ) {
+                                        Column(Modifier.padding(18.dp)) {
+                                            Text(appStrings.learningWordOfDay, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                                            Spacer(Modifier.height(10.dp))
+                                            if (dailyEntry == null) {
+                                                Text("—")
+                                            } else {
+                                                Text(dailyEntry.saamaka, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0B5D3B))
+                                                Spacer(Modifier.height(6.dp))
+                                                Text(dailyEntry.french, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                                                if (audioStore.hasOfficialAudio(dailyEntry.id)) {
+                                                    Spacer(Modifier.height(10.dp))
+                                                    OutlinedButton(onClick = { audioStore.playOfficialAudio(dailyEntry.id) }) {
+                                                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                                        Spacer(Modifier.width(6.dp))
+                                                        Text(appStrings.ui(UiCopyKey.LISTEN))
+                                                    }
+                                                }
+                                                Spacer(Modifier.height(16.dp))
+                                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                    OutlinedButton(
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = {
+                                                            if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) return@OutlinedButton
+                                                            if (dailyEntry.id !in reviewWordIds) reviewWordIds.add(dailyEntry.id)
+                                                            knownWordIds.remove(dailyEntry.id)
+                                                            scheduleLearningWord(dailyEntry.id, mastered = false)
+                                                        }
+                                                    ) { Text(appStrings.ui(UiCopyKey.REVIEW)) }
+                                                    Button(
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = {
+                                                            if (!consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW)) return@Button
+                                                            if (dailyEntry.id !in knownWordIds) knownWordIds.add(dailyEntry.id)
+                                                            reviewWordIds.remove(dailyEntry.id)
+                                                            scheduleLearningWord(dailyEntry.id, mastered = true)
+                                                        }
+                                                    ) { Text(appStrings.ui(UiCopyKey.I_KNOW)) }
                                                 }
                                             }
                                         }
