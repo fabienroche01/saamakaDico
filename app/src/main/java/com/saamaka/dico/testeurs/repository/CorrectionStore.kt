@@ -84,7 +84,8 @@ class CorrectionStore(context: Context) {
             .apply()
     }
 
-    fun exportText(): String = correctionExportText(all())
+    fun exportText(sinceMillis: Long = 0L): String =
+        correctionExportText(all().filter { it.createdAt > sinceMillis })
 
     private fun write(proposals: List<CorrectionProposal>) {
         val array = JSONArray()

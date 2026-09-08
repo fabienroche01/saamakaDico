@@ -50,8 +50,8 @@ class DeletionProposalStore(context: Context) {
         }
     }
 
-    fun exportText(): String {
-        val proposals = all()
+    fun exportText(sinceMillis: Long = 0L): String {
+        val proposals = all().filter { it.createdAt > sinceMillis }
         if (proposals.isEmpty()) return "Aucune proposition de suppression enregistrée."
         val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
         return buildString {

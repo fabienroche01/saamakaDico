@@ -86,9 +86,9 @@ class ReviewStore(context: Context) {
     fun correctedCount(): Int =
         all().count { it.action == ReviewActionType.CORRECTED }
 
-    fun exportText(): String {
+    fun exportText(sinceMillis: Long = 0L): String {
         // Corrections are exported from CorrectionStore, which applies the shared hasChanges rule.
-        val actions = all().filter { it.action != ReviewActionType.CORRECTED }
+        val actions = all().filter { it.action != ReviewActionType.CORRECTED && it.createdAt > sinceMillis }
 
         if (actions.isEmpty()) {
             return "Aucune validation ou correction enregistrée."

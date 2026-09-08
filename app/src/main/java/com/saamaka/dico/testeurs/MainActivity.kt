@@ -3946,14 +3946,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             }
                         },
                         onExportCorrections = {
+                            val exportHistoryStore = ExportHistoryStore(context)
+                            val lastSharedAt = exportHistoryStore.lastSharedAtMillis()
+
                             val exportText = buildString {
-                                appendLine(reviewStore.exportText())
+                                appendLine(reviewStore.exportText(lastSharedAt))
                                 appendLine()
-                                appendLine(correctionStore.exportText())
+                                appendLine(correctionStore.exportText(lastSharedAt))
                                 appendLine()
-                                appendLine(deletionProposalStore.exportText())
+                                appendLine(deletionProposalStore.exportText(lastSharedAt))
                                 appendLine()
-                                appendLine(newEntryProposalStore.exportText())
+                                appendLine(newEntryProposalStore.exportText(lastSharedAt))
                                 appendLine()
                                 appendLine(audioStore.exportAudioSummary())
                             }
@@ -3962,8 +3965,6 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 testerName = testerName,
                                 exportText = exportText
                             )
-
-                            val exportHistoryStore = ExportHistoryStore(context)
 
                             exportHistoryStore.markCreated(
                                 testerName = testerName,

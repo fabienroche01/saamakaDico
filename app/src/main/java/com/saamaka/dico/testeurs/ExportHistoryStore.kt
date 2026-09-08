@@ -74,6 +74,30 @@ class ExportHistoryStore(
 
         return false
     }
+    fun lastSharedAtMillis(): Long {
+        val history = readHistory()
+        val formatter = SimpleDateFormat(
+            "yyyy-MM-dd'T'HH:mm:ss",
+            Locale.ROOT
+        )
+
+        var latest = 0L
+
+        for (i in 0 until history.length()) {
+            val item = history.optJSONObject(i) ?: continue
+            if (item.optString("status") != "SHARE_LAUNCHED") continue
+
+            val timestamp = item.optString("timestamp")
+            val parsed = runCatching {
+                formatter.parse(timestamp)?.time ?: 0L
+            }.getOrDefault(0L)
+
+            if (parsed > latest) latest = parsed
+        }
+
+        return latest
+    }
+
     fun markShareLaunched(
         testerName: String,
         file: File
