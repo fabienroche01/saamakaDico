@@ -19,4 +19,9 @@ class LearningAccessPolicyTest {
     @Test fun remainingTrialKeepsSectionOpen() {
         assertTrue(hasLearningSectionAccess(AccessLevel.FREE_ACCOUNT, "WORDS", mapOf(LearningActivity.REVIEW to 1)))
     }
+
+    @Test fun coursesRouteDoesNotReplaceOrConsumeAnExistingLearningActivity() {
+        assertTrue(learningActivityForSection("COURSES") == null)
+        assertTrue(hasLearningSectionAccess(AccessLevel.GUEST, "COURSES", emptyMap()))
+    }
 }

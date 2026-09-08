@@ -341,6 +341,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val learningTrialStore = remember {
         LearningTrialStore(context)
     }
+    val courseProgressStore = remember { SaamakaCourseProgressStore(context) }
     var remainingLearningTrials by remember(accessLevel) {
         mutableStateOf(
             LearningActivity.entries.associateWith { activity ->
@@ -416,6 +417,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var learnSection by remember {
         mutableStateOf("")
     }
+    var selectedCourseLessonId by remember { mutableStateOf<String?>(null) }
 
     fun consumeLearningTrialOrOpenPremium(activity: LearningActivity): Boolean {
         val canLaunch = learningTrialStore.useTrial(accessLevel, activity)
@@ -2359,6 +2361,31 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 color = Color(0xFF68736C)
                             )
 
+                            if (learnSection == "COURSES") {
+                                Spacer(Modifier.height(12.dp))
+                                SaamakaCoursesScreen(
+                                    strings = appStrings,
+                                    entries = allEntries,
+                                    progressStore = courseProgressStore,
+                                    selectedLessonId = selectedCourseLessonId,
+                                    onSelectedLessonChange = { selectedCourseLessonId = it },
+                                    onBackToLearn = { learnSection = "" },
+                                    onOpenEntry = ::openEntry,
+                                    hasAudio = { entry ->
+                                        audioStore.hasOfficialAudio(entry.id) ||
+                                            (testerName.isNotBlank() && audioStore.hasAudio(entry.id, testerName))
+                                    },
+                                    onPlayAudio = { entry ->
+                                        if (audioStore.hasOfficialAudio(entry.id)) {
+                                            audioStore.playOfficialAudio(entry.id)
+                                        } else if (testerName.isNotBlank()) {
+                                            audioStore.playAudio(entry.id, testerName)
+                                        }
+                                    }
+                                )
+                                return@Column
+                            }
+
                             val selectedLearningActivity = learningActivityForSection(learnSection)
                             if (
                                 (accessLevel == AccessLevel.GUEST ||
@@ -2373,6 +2400,31 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     style = MaterialTheme.typography.labelMedium,
                                     color = Color(0xFF68736C)
                                 )
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedCourseLessonId = null
+                                        launchLearningActivity("COURSES")
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),
+                                border = BorderStroke(1.dp, Color(0xFFF0C96A))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(appStrings.ui(UiCopyKey.SAAMAKA_COURSES), fontWeight = FontWeight.Bold)
+                                        Text(appStrings.ui(UiCopyKey.COURSES_SUBTITLE), style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF0B5D3B))
+                                }
                             }
 
                             Spacer(Modifier.height(12.dp))

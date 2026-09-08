@@ -78,7 +78,14 @@ enum class UiCopyKey {
     APPROXIMATE_REVIEW, ACTIVATE_TESTER_MODE, DEACTIVATE_TESTER_MODE,
     TESTER_CODE_TITLE, TESTER_CODE_PROMPT, TESTER_CODE_INVALID,
     TESTER_WORDS, TESTER_VALIDATIONS, TESTER_CORRECTIONS, TESTER_ACTIONS,
-    LEARNED_WORDS, LEARNING_TRIALS_EXHAUSTED, REMAINING_LEARNING_TRIALS
+    LEARNED_WORDS, LEARNING_TRIALS_EXHAUSTED, REMAINING_LEARNING_TRIALS,
+    SAAMAKA_COURSES, COURSES_SUBTITLE, COURSE_PROGRESS, LESSONS_COMPLETED,
+    CONTINUE_COURSE, LEVEL_1_BASES, LEVEL_2_DAILY_LIFE, LEVEL_3_SPEAK,
+    LEVEL_4_FURTHER, FIRST_WORDS, GREETINGS, PRONOUNS, NUMBERS, FAMILY,
+    HOUSE, FOOD, BODY_HEALTH, ESSENTIAL_VERBS, BUILD_SENTENCE,
+    QUESTIONS_ANSWERS, COMMON_EXPRESSIONS, COMPLETE_SENTENCES,
+    COMPREHENSION, COURSE_REVIEW, CULTURE_LANGUAGE, COMING_SOON,
+    MARK_LESSON_COMPLETE, LESSON_COMPLETED, PREVIOUS
 }
 
 private data class UiCopyValue(
@@ -371,6 +378,35 @@ private val uiCopy = mapOf(
     ,UiCopyKey.LEARNED_WORDS to UiCopyValue("Mots appris", "Words learned", "Geleerde woorden")
     ,UiCopyKey.LEARNING_TRIALS_EXHAUSTED to UiCopyValue("Vous avez utilisé vos essais gratuits d’apprentissage.", "You have used your free learning trials.", "U hebt uw gratis leerpogingen gebruikt.")
     ,UiCopyKey.REMAINING_LEARNING_TRIALS to UiCopyValue("%d essais gratuits restants", "%d free trials remaining", "%d gratis pogingen resterend")
+    ,UiCopyKey.SAAMAKA_COURSES to UiCopyValue("📚 Cours de Saamaka", "📚 Saamaka courses", "📚 Saamaka-lessen")
+    ,UiCopyKey.COURSES_SUBTITLE to UiCopyValue("Apprendre progressivement, du vocabulaire aux phrases.", "Learn progressively, from vocabulary to sentences.", "Leer stap voor stap, van woordenschat tot zinnen.")
+    ,UiCopyKey.COURSE_PROGRESS to UiCopyValue("Progression globale des cours", "Overall course progress", "Totale cursusvoortgang")
+    ,UiCopyKey.LESSONS_COMPLETED to UiCopyValue("%d leçon(s) terminée(s)", "%d lesson(s) completed", "%d les(sen) voltooid")
+    ,UiCopyKey.CONTINUE_COURSE to UiCopyValue("Continuer", "Continue", "Doorgaan")
+    ,UiCopyKey.LEVEL_1_BASES to UiCopyValue("NIVEAU 1 — Les bases", "LEVEL 1 — The basics", "NIVEAU 1 — De basis")
+    ,UiCopyKey.LEVEL_2_DAILY_LIFE to UiCopyValue("NIVEAU 2 — Vie quotidienne", "LEVEL 2 — Daily life", "NIVEAU 2 — Dagelijks leven")
+    ,UiCopyKey.LEVEL_3_SPEAK to UiCopyValue("NIVEAU 3 — Parler Saamaka", "LEVEL 3 — Speak Saamaka", "NIVEAU 3 — Saamaka spreken")
+    ,UiCopyKey.LEVEL_4_FURTHER to UiCopyValue("NIVEAU 4 — Aller plus loin", "LEVEL 4 — Go further", "NIVEAU 4 — Verder gaan")
+    ,UiCopyKey.FIRST_WORDS to UiCopyValue("Premiers mots", "First words", "Eerste woorden")
+    ,UiCopyKey.GREETINGS to UiCopyValue("Salutations", "Greetings", "Begroetingen")
+    ,UiCopyKey.PRONOUNS to UiCopyValue("Pronoms", "Pronouns", "Voornaamwoorden")
+    ,UiCopyKey.NUMBERS to UiCopyValue("Nombres", "Numbers", "Getallen")
+    ,UiCopyKey.FAMILY to UiCopyValue("Famille", "Family", "Familie")
+    ,UiCopyKey.HOUSE to UiCopyValue("Maison", "Home", "Huis")
+    ,UiCopyKey.FOOD to UiCopyValue("Alimentation", "Food", "Voeding")
+    ,UiCopyKey.BODY_HEALTH to UiCopyValue("Corps et santé", "Body and health", "Lichaam en gezondheid")
+    ,UiCopyKey.ESSENTIAL_VERBS to UiCopyValue("Verbes essentiels", "Essential verbs", "Essentiële werkwoorden")
+    ,UiCopyKey.BUILD_SENTENCE to UiCopyValue("Construire une phrase", "Build a sentence", "Een zin bouwen")
+    ,UiCopyKey.QUESTIONS_ANSWERS to UiCopyValue("Questions et réponses", "Questions and answers", "Vragen en antwoorden")
+    ,UiCopyKey.COMMON_EXPRESSIONS to UiCopyValue("Expressions courantes", "Common expressions", "Veelgebruikte uitdrukkingen")
+    ,UiCopyKey.COMPLETE_SENTENCES to UiCopyValue("Phrases complètes", "Complete sentences", "Volledige zinnen")
+    ,UiCopyKey.COMPREHENSION to UiCopyValue("Compréhension", "Comprehension", "Begrip")
+    ,UiCopyKey.COURSE_REVIEW to UiCopyValue("Révision", "Review", "Herhaling")
+    ,UiCopyKey.CULTURE_LANGUAGE to UiCopyValue("Culture et langue", "Culture and language", "Cultuur en taal")
+    ,UiCopyKey.COMING_SOON to UiCopyValue("Bientôt disponible", "Coming soon", "Binnenkort beschikbaar")
+    ,UiCopyKey.MARK_LESSON_COMPLETE to UiCopyValue("Terminer la leçon", "Complete lesson", "Les voltooien")
+    ,UiCopyKey.LESSON_COMPLETED to UiCopyValue("Leçon terminée", "Lesson completed", "Les voltooid")
+    ,UiCopyKey.PREVIOUS to UiCopyValue("Précédent", "Previous", "Vorige")
 )
 
 val saamakaCopyAwaitingValidation: Set<UiCopyKey> = uiCopy
