@@ -367,6 +367,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
+    var detailNavigationIds by remember { mutableStateOf<List<Int>>(emptyList()) }
     var openCategory by remember { mutableStateOf<String?>(null) }
     var preferredConsultationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
@@ -712,12 +713,21 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     fun openEntry(entry: DictionaryEntry) {
+        if (entry.id !in detailNavigationIds) {
+            detailNavigationIds = listOf(entry.id)
+        }
         selectedEntry = applyCorrection(entry)
         historyStore.add(entry.id)
         refreshHistory()
     }
 
+    fun openEntryInContext(entry: DictionaryEntry, entries: List<DictionaryEntry>) {
+        detailNavigationIds = entries.map { it.id }.distinct()
+        openEntry(entry)
+    }
+
     fun openSearchEntry(entry: DictionaryEntry, matchedLanguage: AppLanguage) {
+        detailNavigationIds = searchResults.map { it.id }.distinct()
         preferredConsultationLanguage = if (searchLanguageFilter == SearchLanguageFilter.SAAMAKA) {
             preferredDetailLanguage(entry)
         } else {
@@ -726,6 +736,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         selectedEntry = applyCorrection(entry)
         historyStore.add(entry.id)
         refreshHistory()
+    }
+
+    fun openAdjacentDetail(offset: Int) {
+        val currentId = selectedEntry?.id ?: return
+        val targetId = adjacentEntryId(detailNavigationIds, currentId, offset) ?: return
+        val target = allEntries.firstOrNull { it.id == targetId } ?: return
+        openEntry(target)
     }
     fun openNextUnvalidated() {
         val validatedIds = validationStore.ids()
@@ -1127,6 +1144,19 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                 selectedEntry != null -> {
                     val entry = selectedEntry!!
+                    val detailIndex = detailNavigationIds.indexOf(entry.id)
+                    val testerStatus = testerEntryStatus(
+                        databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),
+                        locallyValidated = validationStore.isValidated(entry.id),
+                        corrected = correctionProposals.any { it.entryId == entry.id && it.hasChanges() },
+                        deletionProposed = deletionProposals.any { it.entryId == entry.id },
+                        toReview = classificationNeedsReview(
+                            classifyMissionEntry(
+                                entry = entry,
+                                hasLocalValidation = validationStore.isValidated(entry.id)
+                            )
+                        )
+                    )
                     DetailScreen(
                         entry = entry,
                         accessLevel = accessLevel,
@@ -1141,6 +1171,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             entry = entry,
                             hasLocalValidation = validationStore.isValidated(entry.id)
                         ),
+                        testerStatus = testerStatus,
+                        canGoPrevious = detailIndex > 0,
+                        canGoNext = detailIndex >= 0 && detailIndex < detailNavigationIds.lastIndex,
                         initialDeletionProposal = deletionProposalStore.proposalFor(entry.id),
                         onDeletionProposal = { reason, comment ->
                             deletionProposalStore.save(
@@ -1201,10 +1234,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 appStrings.ui(UiCopyKey.VALIDATED_BY, reviewerName),
                                 Toast.LENGTH_SHORT
                             ).show()
-
-                            openNextUnvalidated()
                         },
-                        onNext = { openNextUnvalidated() },
+                        onPrevious = { openAdjacentDetail(-1) },
+                        onNext = { openAdjacentDetail(1) },
                         onFavoriteChange = { favorite ->
                             updateFavorite(entry.id, favorite)
                         },
@@ -1384,7 +1416,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             onBack = {
                                 activeTab = MainTab.SEARCH
                             },
-                            onOpen = ::openEntry
+                            onOpen = ::openEntryInContext
                         )
                     }
 
@@ -1883,7 +1915,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             .fillMaxWidth()
                                             .padding(vertical = 5.dp)
                                             .clickable {
-                                                openEntry(entry)
+                                                openEntryInContext(entry, filteredMissionEntries)
                                             },
                                         shape = RoundedCornerShape(18.dp),
                                         colors = CardDefaults.cardColors(
@@ -1963,7 +1995,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             appStrings.ui(UiCopyKey.FAVORITES_COUNT, favoriteResults.size)
                         },
                         entries = favoriteResults,
-                        onOpen = ::openEntry,
+                        onOpen = { entry -> openEntryInContext(entry, favoriteResults) },
                         onRemove = { entry ->
                             updateFavorite(entry.id, false)
 
@@ -1992,7 +2024,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             historyStore.clear()
                             refreshHistory()
                         },
-                        onOpen = ::openEntry,
+                        onOpen = { entry -> openEntryInContext(entry, historyResults) },
                         onRemove = { entry ->
                             val previousIndex = historyStore.remove(entry.id)
 
@@ -3744,7 +3776,20 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             )
                         }
                     }
-                    MainTab.CORRECTIONS -> CorrectionsScreen(
+                    MainTab.CORRECTIONS -> {
+                        val progress = testerProgressStats(
+                            validatedIds = reviewStore.all()
+                                .filter { it.action == ReviewActionType.VALIDATED }
+                                .map { it.entryId }
+                                .toSet() + validationStore.ids(),
+                            correctedIds = correctionProposals
+                                .filter { it.hasChanges() }
+                                .map { it.entryId }
+                                .toSet(),
+                            deletionIds = deletionProposals.map { it.entryId }.toSet(),
+                            newEntryCount = newEntryProposals.size
+                        )
+                        CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),
                         correctionCount = reviewStore.validatedCount() + correctionProposals.size +
@@ -3760,6 +3805,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                         validatedReviewCount = reviewStore.validatedCount(),
                         correctedReviewCount = correctionProposals.size,
+                        treatedWordCount = progress.treatedWordCount,
+                        deletionCount = progress.deletionCount,
+                        newEntryCount = progress.newEntryCount,
                         onOpenDeletionProposal = { proposal ->
                             selectedEntry = database.findByIds(setOf(proposal.entryId)).firstOrNull()
                         },
@@ -3841,6 +3889,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             ).show()
                         }
                     )
+                    }
                 }
             }
         }
@@ -4124,6 +4173,9 @@ private fun CorrectionsScreen(
     onClearValidations: () -> Unit,
     validatedReviewCount: Int,
     correctedReviewCount: Int,
+    treatedWordCount: Int,
+    deletionCount: Int,
+    newEntryCount: Int,
     onOpenDeletionProposal: (DeletionProposal) -> Unit,
     onCancelDeletionProposal: (DeletionProposal) -> Unit,
     onSaveNewEntryProposal: (NewEntryProposal) -> Unit,
@@ -4221,7 +4273,7 @@ private fun CorrectionsScreen(
 
                         StatCard(
                             modifier = Modifier.weight(1f),
-                            value = "$total",
+                            value = "$treatedWordCount / $total",
                             label = strings.ui(UiCopyKey.TESTER_WORDS)
                         )
 
@@ -4249,6 +4301,24 @@ private fun CorrectionsScreen(
                             modifier = Modifier.weight(1f),
                             value = "$correctionCount",
                             label = strings.ui(UiCopyKey.TESTER_ACTIONS)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$deletionCount",
+                            label = strings.proposedDeletionsSection
+                        )
+                        StatCard(
+                            modifier = Modifier.weight(1f),
+                            value = "$newEntryCount",
+                            label = strings.proposedNewEntries
                         )
                     }
 
@@ -5239,10 +5309,14 @@ private fun DetailScreen(
     testerName: String,
     initiallyFavorite: Boolean,
     classification: MissionEntryClassification,
+    testerStatus: TesterEntryStatus,
+    canGoPrevious: Boolean,
+    canGoNext: Boolean,
     initialDeletionProposal: DeletionProposal?,
     onDeletionProposal: (String, String) -> Unit,
     onCancelDeletionProposal: () -> Unit,
     onValidate: () -> Unit,
+    onPrevious: () -> Unit,
     onNext: () -> Unit,
     onFavoriteChange: (Boolean) -> Unit,
     onCopy: () -> Unit,
@@ -5342,24 +5416,36 @@ private fun DetailScreen(
                 Text(strings.back)
             }
 
+            val effectiveTesterStatus = if (deletionProposal != null) {
+                TesterEntryStatus.DELETION_PROPOSED
+            } else {
+                testerStatus
+            }
             Surface(
                 shape = RoundedCornerShape(50),
-                color = if (deletionProposal != null) Color(0xFFFFE1E1) else when (classification.visualStatus) {
-                    MissionVisualStatus.DOUBTFUL -> Color(0xFFFFEFC4)
-                    MissionVisualStatus.TO_COMPLETE -> Color(0xFFFFE1E1)
-                    MissionVisualStatus.ALREADY_VALIDATED -> Color(0xFFDCEEE2)
-                    MissionVisualStatus.NEW -> MaterialTheme.colorScheme.surfaceVariant
+                color = when (effectiveTesterStatus) {
+                    TesterEntryStatus.DELETION_PROPOSED -> Color(0xFFFFE1E1)
+                    TesterEntryStatus.CORRECTED -> Color(0xFFE8E1F7)
+                    TesterEntryStatus.VALIDATED -> Color(0xFFDCEEE2)
+                    TesterEntryStatus.TO_REVIEW -> Color(0xFFFFEFC4)
+                    TesterEntryStatus.UNTOUCHED -> MaterialTheme.colorScheme.surfaceVariant
                 }
             ) {
                 Text(
-                    text = deletionProposal?.let { strings.deletionProposed }
-                        ?: strings.missionStatusLabel(classification.visualStatus),
+                    text = when (effectiveTesterStatus) {
+                        TesterEntryStatus.DELETION_PROPOSED -> strings.deletionProposed
+                        TesterEntryStatus.CORRECTED -> "✎ ${strings.corrections}"
+                        TesterEntryStatus.VALIDATED -> "✓ ${strings.validatedO}"
+                        TesterEntryStatus.TO_REVIEW -> strings.missionStatusLabel(classification.visualStatus)
+                        TesterEntryStatus.UNTOUCHED -> strings.missionStatusLabel(MissionVisualStatus.NEW)
+                    },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (deletionProposal != null) Color(0xFF8B2F2F) else when (classification.visualStatus) {
-                        MissionVisualStatus.DOUBTFUL -> Color(0xFF8A6712)
-                        MissionVisualStatus.TO_COMPLETE -> Color(0xFF8B2F2F)
+                    color = when (effectiveTesterStatus) {
+                        TesterEntryStatus.DELETION_PROPOSED -> Color(0xFF8B2F2F)
+                        TesterEntryStatus.CORRECTED -> Color(0xFF5D3B7A)
+                        TesterEntryStatus.TO_REVIEW -> Color(0xFF8A6712)
                         else -> Color(0xFF0B5D3B)
                     }
                 )
@@ -5758,20 +5844,39 @@ private fun DetailScreen(
 
                     Spacer(Modifier.height(20.dp))
 
-                    OutlinedButton(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        onClick = onNext
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Default.SkipNext,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            enabled = canGoPrevious,
+                            onClick = onPrevious
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(strings.back.removePrefix("← "))
+                        }
 
-                        Spacer(Modifier.width(8.dp))
-
-                        Text(strings.nextWord)
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            enabled = canGoNext,
+                            onClick = onNext
+                        ) {
+                            Icon(
+                                Icons.Default.SkipNext,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(strings.nextWord)
+                        }
                     }
 
                     Spacer(Modifier.height(10.dp))
@@ -6156,7 +6261,7 @@ private fun CategoriesScreen(
     selectedCategory: String?,
     onSelectedCategoryChange: (String?) -> Unit,
     onBack: () -> Unit,
-    onOpen: (DictionaryEntry) -> Unit
+    onOpen: (DictionaryEntry, List<DictionaryEntry>) -> Unit
 ) {
     val categories = remember {
         database.categories()
@@ -6264,7 +6369,7 @@ private fun CategoriesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            onOpen(entry)
+                            onOpen(entry, categoryEntries)
                         },
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(
