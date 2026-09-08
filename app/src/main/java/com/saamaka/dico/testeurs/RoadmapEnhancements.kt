@@ -73,6 +73,13 @@ fun DictionaryQualitySummaryCard(audit: DictionaryQualityAudit) {
                 Text("Expressions longues : ${audit.longExpressions}")
                 Text("Variantes catégories : ${audit.categoryVariantGroups}")
             }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Entrées à contrôler : ${audit.affectedEntryCount}",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
