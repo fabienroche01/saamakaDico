@@ -19,7 +19,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,10 +62,22 @@ fun EnhancedSavedScreen(
     entries: List<DictionaryEntry>,
     onOpen: (DictionaryEntry) -> Unit,
     onRemove: (DictionaryEntry) -> Unit,
-    onSearch: () -> Unit
+    onSearch: () -> Unit,
+    onClearAll: (() -> Unit)? = null
 ) {
+    var showClearConfirmation by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     val filtered = entries.filter { libraryMatches(it, query) }
+
+    if (showClearConfirmation && onClearAll != null) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            title = { Text("Effacer tous les favoris ?") },
+            text = { Text("Cette action retire tous les mots de vos favoris.") },
+            confirmButton = { Button(onClick = { showClearConfirmation = false; onClearAll() }) { Text("Tout effacer") } },
+            dismissButton = { TextButton(onClick = { showClearConfirmation = false }) { Text("Annuler") } }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -71,7 +85,12 @@ fun EnhancedSavedScreen(
     ) {
         item {
             Spacer(Modifier.height(12.dp))
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                if (entries.isNotEmpty() && onClearAll != null) {
+                    OutlinedButton(onClick = { showClearConfirmation = true }) { Text("Tout effacer") }
+                }
+            }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = query,
@@ -82,7 +101,7 @@ fun EnhancedSavedScreen(
                 label = { Text(strings.search) }
             )
             Spacer(Modifier.height(4.dp))
-            Text("${filtered.size} / ${entries.size}", fontSize = 12.sp, color = Color(0xFF68736C))
+            Text("${filtered.size} / ${entries.size}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         if (filtered.isEmpty()) {
@@ -90,7 +109,7 @@ fun EnhancedSavedScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFF4EFE5)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(Modifier.padding(18.dp)) {
                         Text(if (query.isBlank()) title else "Aucun résultat", fontWeight = FontWeight.Bold)
@@ -108,19 +127,19 @@ fun EnhancedSavedScreen(
                         .fillMaxWidth()
                         .clickable { onOpen(entry) },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBF3)),
-                    border = BorderStroke(1.dp, Color(0xFFE0D8C9))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(entry.saamaka, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
-                            Text(entry.french, fontSize = 13.sp, color = Color(0xFF68736C))
+                            Text(entry.saamaka, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text(entry.french, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(onClick = { onRemove(entry) }) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFF8B2F2F))
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -160,7 +179,7 @@ fun EnhancedHistoryScreen(
                 Button(
                     onClick = { onOpen(entry) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B5D3B)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Icon(Icons.Default.History, contentDescription = null)
@@ -178,7 +197,7 @@ fun EnhancedHistoryScreen(
                 label = { Text(strings.search) }
             )
             Spacer(Modifier.height(4.dp))
-            Text("${filtered.size} / ${entries.size}", fontSize = 12.sp, color = Color(0xFF68736C))
+            Text("${filtered.size} / ${entries.size}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         if (filtered.isEmpty()) {
@@ -186,7 +205,7 @@ fun EnhancedHistoryScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFF4EFE5)
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(Modifier.padding(18.dp)) {
                         Text(if (query.isBlank()) strings.history else "Aucun résultat", fontWeight = FontWeight.Bold)
@@ -204,19 +223,19 @@ fun EnhancedHistoryScreen(
                         .fillMaxWidth()
                         .clickable { onOpen(entry) },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBF3)),
-                    border = BorderStroke(1.dp, Color(0xFFE0D8C9))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(entry.saamaka, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
-                            Text(entry.french, fontSize = 13.sp, color = Color(0xFF68736C))
+                            Text(entry.saamaka, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text(entry.french, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(onClick = { onRemove(entry) }) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFF8B2F2F))
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -231,7 +250,8 @@ fun AudioLearningSection(
     strings: AppStrings,
     entries: List<DictionaryEntry>,
     audioStore: AudioStore,
-    onConsumeTrial: () -> Boolean
+    onConsumeTrial: () -> Boolean,
+    onOpenEntry: (DictionaryEntry) -> Unit = {}
 ) {
     val audioEntries = remember(entries) {
         entries.shuffled().take(300).filter { audioStore.hasOfficialAudio(it.id) }.take(40)
@@ -257,12 +277,12 @@ fun AudioLearningSection(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBF3)),
-        border = BorderStroke(1.dp, Color(0xFFE0D8C9))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text("Quiz audio", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
-            Text("$score / $answered", fontSize = 13.sp, color = Color(0xFF68736C))
+            Text("Quiz audio", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text("$score / $answered", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(14.dp))
 
             val entry = current
@@ -273,7 +293,7 @@ fun AudioLearningSection(
                     onClick = { audioStore.playOfficialAudio(entry.id) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B5D3B))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -294,8 +314,8 @@ fun AudioLearningSection(
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = when {
                                 selected == null -> Color.Transparent
-                                answer == entry.french.trim() -> Color(0xFFDCEEE2)
-                                selected == answer -> Color(0xFFF8DDDD)
+                                answer == entry.french.trim() -> MaterialTheme.colorScheme.primaryContainer
+                                selected == answer -> MaterialTheme.colorScheme.errorContainer
                                 else -> Color.Transparent
                             }
                         )
@@ -305,6 +325,10 @@ fun AudioLearningSection(
                     Spacer(Modifier.height(6.dp))
                 }
                 if (selected != null) {
+                    OutlinedButton(onClick = { onOpenEntry(entry) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                        Text("Voir la fiche")
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = {
                             current = audioEntries.filter { it.id != entry.id }.randomOrNull() ?: entry

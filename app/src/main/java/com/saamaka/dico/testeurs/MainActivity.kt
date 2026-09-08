@@ -436,33 +436,14 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     fun launchLearningActivity(section: String) {
-        val activity = when (section) {
-            "QUIZ" -> LearningActivity.QUIZ
-            "WORDS", "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW
-            "PHRASES" -> LearningActivity.PHRASES
-            "GAMES" -> LearningActivity.GAMES
-            else -> null
-        }
-        val limitedAccount =
-            accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT
-        if (
-            limitedAccount &&
-            activity != null &&
-            learningTrialStore.remainingTrials(accessLevel, activity) <= 0
-        ) {
-            Toast.makeText(
-                context,
-                appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),
-                Toast.LENGTH_LONG
-            ).show()
-            activeTab = MainTab.PREMIUM
+        val activity = learningActivityForSection(section)
+        val limitedAccount = accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT
+        if (limitedAccount && activity != null && learningTrialStore.remainingTrials(accessLevel, activity) <= 0) {
+            learnSection = section
             return
         }
         if (learnSection == section) return
-        if (
-            section == "GAMES" &&
-            !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)
-        ) return
+        if (section == "GAMES" && !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)) return
         learnSection = section
     }
     val quizEntries = remember(allEntries) {
@@ -2073,6 +2054,23 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         },
                         onSearch = {
                             activeTab = MainTab.SEARCH
+                        },
+                        onClearAll = {
+                            val previousFavoriteIds = favoritesStore.favoriteIds()
+                            favoritesStore.clear()
+                            refreshFavorites()
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Favoris effacés",
+                                    actionLabel = appStrings.cancel,
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    previousFavoriteIds.forEach { favoritesStore.setFavorite(it, true) }
+                                    refreshFavorites()
+                                }
+                            }
                         }
                     )
 
@@ -2361,14 +2359,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 color = Color(0xFF68736C)
                             )
 
-                            val selectedLearningActivity = when (learnSection) {
-                                "QUIZ" -> LearningActivity.QUIZ
-                                "WORDS" -> LearningActivity.REVIEW
-                                "PHRASES" -> LearningActivity.PHRASES
-                                "GAMES" -> LearningActivity.GAMES
-                                "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW
-                                else -> null
-                            }
+                            val selectedLearningActivity = learningActivityForSection(learnSection)
                             if (
                                 (accessLevel == AccessLevel.GUEST ||
                                     accessLevel == AccessLevel.FREE_ACCOUNT) &&
@@ -2531,7 +2522,25 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                             Spacer(Modifier.height(18.dp))
 
-                            when (learnSection) {
+                            val sectionLocked = !hasLearningSectionAccess(accessLevel, learnSection, remainingLearningTrials)
+                            if (sectionLocked && learnSection.isNotBlank()) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(22.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                                ) {
+                                    Column(Modifier.padding(18.dp)) {
+                                        Text("Activité Premium", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(Modifier.height(6.dp))
+                                        Text(appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED))
+                                        Spacer(Modifier.height(14.dp))
+                                        Button(onClick = { activeTab = MainTab.PREMIUM }, modifier = Modifier.fillMaxWidth()) {
+                                            Text(appStrings.ui(UiCopyKey.PREMIUM_TITLE))
+                                        }
+                                    }
+                                }
+                            } else when (learnSection) {
 
                                 "QUIZ" -> {
 
@@ -3029,7 +3038,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         strings = appStrings,
                                         entries = quizEntries,
                                         audioStore = audioStore,
-                                        onConsumeTrial = { consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW) }
+                                        onConsumeTrial = { consumeLearningTrialOrOpenPremium(LearningActivity.REVIEW) },
+                                        onOpenEntry = { entry -> openEntryInContext(entry, quizEntries) }
                                     )
                                 }
 
@@ -3047,7 +3057,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 Text(appStrings.ui(UiCopyKey.NO_FAVORITE), color = Color(0xFF68736C))
                                             } else {
                                                 val favoriteEntry = favoriteReviewEntry!!
-                                                Text(favoriteEntry.saamaka, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
+                                                Column(modifier = Modifier.fillMaxWidth().clickable { openEntryInContext(favoriteEntry, favoriteLearningEntries) }) {
+                                                    Text(favoriteEntry.saamaka, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0B5D3B))
+                                                    Text("Voir la fiche", fontSize = 12.sp, color = Color(0xFF68736C))
+                                                }
                                                 Spacer(Modifier.height(6.dp))
                                                 Text(favoriteEntry.french, fontSize = 17.sp, fontWeight = FontWeight.Medium)
                                                 if (audioStore.hasOfficialAudio(favoriteEntry.id)) {
@@ -3185,7 +3198,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(22.dp))
 
                                             Surface(
-                                                modifier = Modifier.fillMaxWidth(),
+                                                modifier = Modifier.fillMaxWidth().clickable(enabled = wordReviewEntry != null) {
+                                                    wordReviewEntry?.let { openEntryInContext(it, quizEntries) }
+                                                },
                                                 shape = RoundedCornerShape(18.dp),
                                                 color = Color(0xFFDCEEE2)
                                             ) {

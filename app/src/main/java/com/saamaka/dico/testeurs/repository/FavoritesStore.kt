@@ -17,6 +17,12 @@ class FavoritesStore(context: Context) {
             .apply()
     }
 
+    fun clear() {
+        val editor = preferences.edit()
+        preferences.all.keys.filter { it.startsWith("favorite_") }.forEach(editor::remove)
+        editor.apply()
+    }
+
     fun favoriteIds(): Set<Int> =
         preferences.all
             .filter { (key, value) ->
