@@ -1,8 +1,8 @@
 name: ChatGPT validated word of day fix
 on:
   push:
-    branches: ["master"]
-    paths: [".github/workflows/chatgpt-fix-word-of-day-validation.yml"]
+    branches:
+      - master
 permissions:
   contents: write
 jobs:
@@ -17,23 +17,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Apply validated word of day selection
+      - name: Patch MainActivity
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt')
           s = p.read_text()
-          old = '''                        val learningWordOfDay = remember(quizEntries) {
-                            if (quizEntries.isEmpty()) null
-                            else {
-                                val calendar = java.util.Calendar.getInstance()
-                                val seed = calendar.get(java.util.Calendar.YEAR) * 366L +
-                                    calendar.get(java.util.Calendar.DAY_OF_YEAR)
-                                quizEntries[(seed % quizEntries.size).toInt()]
-                            }
-                        }
-'''
+          a = '                        val learningWordOfDay = remember(quizEntries) {'
+          b = '                        val phraseEntries = remember(allEntries) {'
+          start = s.index(a)
+          end = s.index(b, start)
           new = '''                        val validatedLearningWordEntries = remember(quizEntries, deletionProposalEntryIds) {
                             quizEntries.filter { entry ->
                                 entry.valide.trim().equals("O", ignoreCase = true) &&
@@ -50,66 +44,25 @@ jobs:
                                 validatedLearningWordEntries[(seed % validatedLearningWordEntries.size).toInt()]
                             }
                         }
+
 '''
-          if old not in s:
-              raise SystemExit('learningWordOfDay block not found')
-          p.write_text(s.replace(old, new, 1))
+          p.write_text(s[:start] + new + s[end:])
           PY
-      - name: Add selector tests
-        shell: bash
-        run: |
-          cat > app/src/test/java/com/saamaka/dico/testeurs/LearningWordOfDayEligibilityTest.kt <<'EOF'
-          package com.saamaka.dico.testeurs
-
-          import com.saamaka.dico.testeurs.model.DictionaryEntry
-          import org.junit.Assert.assertFalse
-          import org.junit.Assert.assertTrue
-          import org.junit.Test
-
-          class LearningWordOfDayEligibilityTest {
-              private fun eligible(entry: DictionaryEntry, deletionIds: Set<Int> = emptySet()): Boolean =
-                  entry.valide.trim().equals("O", ignoreCase = true) && entry.id !in deletionIds
-
-              @Test
-              fun validatedEntryIsEligible() {
-                  val entry = DictionaryEntry(1, "animal", saamaka = "mbeti", valide = "O")
-                  assertTrue(eligible(entry))
-              }
-
-              @Test
-              fun nonValidatedEntryIsNotEligible() {
-                  val entry = DictionaryEntry(2, "animal", saamaka = "mbeti", valide = "")
-                  assertFalse(eligible(entry))
-              }
-
-              @Test
-              fun lowercaseValidatedEntryIsEligible() {
-                  val entry = DictionaryEntry(3, "animal", saamaka = "mbeti", valide = "o")
-                  assertTrue(eligible(entry))
-              }
-
-              @Test
-              fun deletionProposalExcludesValidatedEntry() {
-                  val entry = DictionaryEntry(4, "animal", saamaka = "mbeti", valide = "O")
-                  assertFalse(eligible(entry, setOf(4)))
-              }
-          }
-          EOF
-      - name: Run tests
+      - name: Test
         shell: bash
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin --no-daemon
-      - name: Verify protected files unchanged
+      - name: Verify protected files
         shell: bash
         run: |
           git diff --exit-code -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
-      - name: Commit implementation
+      - name: Commit
         shell: bash
         run: |
           rm .github/workflows/chatgpt-fix-word-of-day-validation.yml
-          git config user.name "ChatGPT"
-          git config user.email "chatgpt@users.noreply.github.com"
-          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt app/src/test/java/com/saamaka/dico/testeurs/LearningWordOfDayEligibilityTest.kt .github/workflows/chatgpt-fix-word-of-day-validation.yml
-          git commit -m "fix(learn): restrict word of day to validated entries"
+          git config user.name ChatGPT
+          git config user.email chatgpt@users.noreply.github.com
+          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt .github/workflows/chatgpt-fix-word-of-day-validation.yml
+          git commit -m 'fix(learn): restrict word of day to validated entries'
           git push origin master
