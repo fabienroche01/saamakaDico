@@ -102,6 +102,28 @@ library.write_text(l, encoding='utf-8')
 
 m = main.read_text(encoding='utf-8')
 old_launch = '''    fun launchLearningActivity(section: String) {
+        val activity = when (section) {
+            "QUIZ" -> LearningActivity.QUIZ
+            "WORDS", "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW
+            "PHRASES" -> LearningActivity.PHRASES
+            "GAMES" -> LearningActivity.GAMES
+            else -> null
+        }
+        val limitedAccount =
+            accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT
+        if (
+            limitedAccount &&
+            activity != null &&
+            learningTrialStore.remainingTrials(accessLevel, activity) <= 0
+        ) {
+            Toast.makeText(
+                context,
+                appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),
+                Toast.LENGTH_LONG
+            ).show()
+            activeTab = MainTab.PREMIUM
+            return
+        }
         if (learnSection == section) return
         if (
             section == "GAMES" &&
@@ -110,12 +132,13 @@ old_launch = '''    fun launchLearningActivity(section: String) {
         learnSection = section
     }'''
 new_launch = '''    fun launchLearningActivity(section: String) {
-        if (learnSection == section) return
         val activity = learningActivityForSection(section)
-        if (activity != null && (accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT) && learningTrialStore.remainingTrials(accessLevel, activity) <= 0) {
+        val limitedAccount = accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT
+        if (limitedAccount && activity != null && learningTrialStore.remainingTrials(accessLevel, activity) <= 0) {
             learnSection = section
             return
         }
+        if (learnSection == section) return
         if (section == "GAMES" && !consumeLearningTrialOrOpenPremium(LearningActivity.GAMES)) return
         learnSection = section
     }'''
