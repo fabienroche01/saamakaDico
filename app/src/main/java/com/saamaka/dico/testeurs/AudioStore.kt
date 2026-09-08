@@ -4,6 +4,8 @@ import android.content.Context
 import java.io.File
 import android.media.MediaRecorder
 import android.media.MediaPlayer
+import android.media.MediaMetadataRetriever
+import android.os.SystemClock
 import java.io.FileOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -19,6 +21,7 @@ class AudioStore(
     private var recorder: MediaRecorder? = null
     private var currentFile: File? = null
     private var player: MediaPlayer? = null
+    private var recordingStartedAtElapsed: Long = 0L
 
     fun updateStrings(value: AppStrings) {
         strings = value
@@ -124,7 +127,10 @@ class AudioStore(
 
     private fun startRecordingTo(file: File) {
 
+        if (recorder != null) stopRecording()
+        if (file.exists()) file.delete()
         currentFile = file
+        recordingStartedAtElapsed = SystemClock.elapsedRealtime()
 
         recorder = MediaRecorder(context).apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -137,21 +143,67 @@ class AudioStore(
         }
     }
 
-    fun stopRecording() {
-        recorder?.apply {
-            stop()
-            release()
-        }
-
+    fun stopRecording(): Boolean {
+        val file = currentFile
+        val activeRecorder = recorder
         recorder = null
         currentFile = null
+        recordingStartedAtElapsed = 0L
+        if (activeRecorder == null) return file?.let { it.exists() && it.length() > 0L } ?: false
+        val stopped = try {
+            activeRecorder.stop()
+            true
+        } catch (_: RuntimeException) {
+            false
+        } finally {
+            runCatching { activeRecorder.release() }
+        }
+        if (!stopped || file == null || !file.exists() || file.length() <= 0L) {
+            file?.delete()
+            return false
+        }
+        return true
+    }
+
+    fun recordingDurationMs(): Long =
+        if (recordingStartedAtElapsed > 0L) SystemClock.elapsedRealtime() - recordingStartedAtElapsed else 0L
+
+    fun audioDurationMs(entryId: Int, testerName: String): Long =
+        mediaDurationMs(audioFile(entryId, testerName))
+
+    fun proposedEntryAudioDurationMs(localId: String, testerName: String): Long =
+        mediaDurationMs(proposedEntryAudioFile(localId, testerName))
+
+    private fun mediaDurationMs(file: File): Long {
+        if (!file.exists() || file.length() <= 0L) return 0L
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.absolutePath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+        } catch (_: Exception) {
+            0L
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }
+
+    fun countTesterAudioFilesAfter(testerName: String, afterMillis: Long): Int {
+        val safeName = testerName.trim()
+            .replace("[^A-Za-z0-9_-]".toRegex(), "_")
+            .ifBlank { "testeur" }
+        val suffix = "_${safeName}.m4a"
+        return listAudioFiles().count { file ->
+            file.length() > 0L &&
+                file.name.endsWith(suffix, ignoreCase = true) &&
+                file.lastModified() > afterMillis
+        }
     }
 
     fun hasAudio(
         entryId: Int,
         testerName: String
     ): Boolean {
-        return audioFile(entryId, testerName).exists()
+        return audioFile(entryId, testerName).let { it.exists() && it.length() > 0L }
     }
 
     fun deleteAudio(
@@ -213,6 +265,7 @@ class AudioStore(
                 appendLine("Locuteur : $tester")
                 appendLine("Fichier : ${file.name}")
                 appendLine("Taille : ${file.length()} octets")
+                appendLine("Durée : ${formatAudioDuration(mediaDurationMs(file))}")
                 appendLine("------------------------------")
             }
         }
@@ -344,8 +397,11 @@ class AudioStore(
 
     fun createTesterExportZip(
         testerName: String,
-        exportText: String
+        exportText: String,
+        audioAfterMillis: Long? = null
     ): File {
+        val effectiveAudioAfterMillis = audioAfterMillis
+            ?: ExportHistoryStore(context).lastSharedAtMillis()
 
         val safeName = testerName
             .trim()
@@ -427,7 +483,8 @@ class AudioStore(
                                 file.name.endsWith(
                                     testerSuffix,
                                     ignoreCase = true
-                                )
+                                ) &&
+                                file.lastModified() > effectiveAudioAfterMillis
                     }
                     .forEach { audioFile ->
 

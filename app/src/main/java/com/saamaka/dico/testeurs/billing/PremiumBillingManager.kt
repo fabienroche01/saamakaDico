@@ -100,8 +100,16 @@ class PremiumBillingManager(context: Context) : AutoCloseable {
                         verification = PremiumVerification.UNAVAILABLE,
                         isBillingConnected = false,
                         isLoadingPlans = false,
-                        plansMessage = "Connexion à Google Play interrompue.",
-                        message = "Connexion à Google Play interrompue"
+                        plansMessage = if (state.wasPremiumLastKnown) {
+                            "Connexion à Google Play interrompue. Reconnectez-vous pour vérifier votre abonnement Premium."
+                        } else {
+                            "Connexion à Google Play interrompue."
+                        },
+                        message = if (state.wasPremiumLastKnown) {
+                            "Impossible de vérifier Premium hors ligne. Reconnectez-vous à Google Play."
+                        } else {
+                            "Connexion à Google Play interrompue"
+                        }
                     )
                 )
                 // Billing 9 reconnecte automatiquement lors du prochain appel API.

@@ -137,13 +137,21 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFD1BCFF),
-    onPrimary = Color(0xFF3B246B),
-    primaryContainer = Color(0xFF52368A),
-    onPrimaryContainer = Color(0xFFE9DFFF),
-    background = Color(0xFF171217),
-    surface = Color(0xFF171217),
-    surfaceVariant = Color(0xFF4B454D)
+    primary = Color(0xFF9BD8B5),
+    onPrimary = Color(0xFF083522),
+    primaryContainer = Color(0xFF174D35),
+    onPrimaryContainer = Color(0xFFDCEEE2),
+    secondary = Color(0xFFF0C96A),
+    onSecondary = Color(0xFF3B2F08),
+    secondaryContainer = Color(0xFF5A4815),
+    onSecondaryContainer = Color(0xFFFFEFC4),
+    background = Color(0xFF101713),
+    onBackground = Color(0xFFE5ECE7),
+    surface = Color(0xFF151D18),
+    onSurface = Color(0xFFE5ECE7),
+    surfaceVariant = Color(0xFF26332B),
+    onSurfaceVariant = Color(0xFFC4CEC7),
+    outline = Color(0xFF89968E)
 )
 
 class MainActivity : ComponentActivity() {
@@ -4333,6 +4341,29 @@ private fun CorrectionsScreen(
     var editedNewEntry by remember { mutableStateOf<NewEntryProposal?>(null) }
     var showNewEntryForm by remember { mutableStateOf(false) }
     var pendingNewEntryCancellation by remember { mutableStateOf<NewEntryProposal?>(null) }
+    val correctionsContext = LocalContext.current
+    val exportHistoryStore = remember(correctionsContext) { ExportHistoryStore(correctionsContext) }
+    var lastExportAtMillis by remember { mutableStateOf(exportHistoryStore.lastSharedAtMillis()) }
+    val pendingValidations = remember(lastExportAtMillis, validatedReviewCount) {
+        ReviewStore(correctionsContext).all().count { action ->
+            action.createdAt > lastExportAtMillis && action.action == ReviewActionType.VALIDATED
+        }
+    }
+    val pendingCorrections = remember(lastExportAtMillis, correctionProposals) {
+        correctionProposals.count { it.createdAt > lastExportAtMillis && it.hasChanges() }
+    }
+    val pendingDeletions = remember(lastExportAtMillis, deletionProposals) {
+        deletionProposals.count { it.createdAt > lastExportAtMillis }
+    }
+    val pendingNewEntries = remember(lastExportAtMillis, newEntryProposals) {
+        newEntryProposals.count { it.createdAt > lastExportAtMillis }
+    }
+    val pendingAudioFiles = remember(lastExportAtMillis, testerName) {
+        audioStore.countTesterAudioFilesAfter(testerName, lastExportAtMillis)
+    }
+    val pendingExportActions = pendingValidations + pendingCorrections + pendingDeletions + pendingNewEntries
+    val qualityAudit = remember(existingEntries) { auditDictionaryEntries(existingEntries) }
+    var showExportPreview by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -4482,6 +4513,22 @@ private fun CorrectionsScreen(
 
             Spacer(Modifier.height(14.dp))
 
+            DictionaryQualitySummaryCard(qualityAudit)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = formatExportTimestamp(lastExportAtMillis),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "À exporter : $pendingExportActions action(s), $pendingAudioFiles audio(s)",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(Modifier.height(14.dp))
+
             if (correctionProposals.isNotEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -4610,9 +4657,9 @@ private fun CorrectionsScreen(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                enabled = correctionCount > 0,
+                enabled = pendingExportActions > 0 || pendingAudioFiles > 0,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B5D3B)),
-                onClick = onExportCorrections
+                onClick = { showExportPreview = true }
             ) {
                 Icon(
                     Icons.Default.Share,
@@ -4681,6 +4728,23 @@ private fun CorrectionsScreen(
 
             Spacer(Modifier.height(20.dp))
         }
+    }
+
+    if (showExportPreview) {
+        TesterExportPreviewDialog(
+            lastExportAtMillis = lastExportAtMillis,
+            validations = pendingValidations,
+            corrections = pendingCorrections,
+            deletions = pendingDeletions,
+            newEntries = pendingNewEntries,
+            audioFiles = pendingAudioFiles,
+            onDismiss = { showExportPreview = false },
+            onConfirm = {
+                showExportPreview = false
+                onExportCorrections()
+                lastExportAtMillis = exportHistoryStore.lastSharedAtMillis()
+            }
+        )
     }
 
     pendingCancellation?.let { proposal ->
@@ -5876,6 +5940,15 @@ private fun DetailScreen(
                         Spacer(Modifier.height(8.dp))
                     }
                     if (accessLevel == AccessLevel.TESTER) {
+                        if (isRecording) {
+                            Text(
+                                text = "● ${strings.recordPronunciation}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(6.dp))
+                        }
                         if (!isRecording) {
                             Button(
                                 modifier = Modifier.fillMaxWidth(),
@@ -5942,6 +6015,15 @@ private fun DetailScreen(
                             accessLevel != AccessLevel.GUEST
                         ) {
                             Spacer(Modifier.height(8.dp))
+                            val savedAudioDuration = audioStore.audioDurationMs(entry.id, testerName)
+                            if (savedAudioDuration > 0L) {
+                                Text(
+                                    text = "⏱ ${formatAudioDuration(savedAudioDuration)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(6.dp))
+                            }
 
                             OutlinedButton(
                                 modifier = Modifier.fillMaxWidth(),
