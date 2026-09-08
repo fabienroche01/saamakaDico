@@ -379,6 +379,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     var selectedEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var detailNavigationIds by remember { mutableStateOf<List<Int>>(emptyList()) }
     var openCategory by remember { mutableStateOf<String?>(null) }
+    var categorySearchQuery by remember { mutableStateOf("") }
+    var testerMissionCategory by remember {
+        mutableStateOf(assignmentStore.assignedCategory())
+    }
+    var testerMissionFilter by remember { mutableStateOf(TesterListFilter.ALL) }
+    var testerMissionQuery by remember { mutableStateOf("") }
     var preferredConsultationLanguage by remember { mutableStateOf(AppLanguage.FRENCH) }
     var correctionEntry by remember { mutableStateOf<DictionaryEntry?>(null) }
     var query by remember { mutableStateOf("") }
@@ -1428,15 +1434,20 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                     }
 
                     MainTab.CATEGORIES -> {
-                        CategoriesScreen(
+                        EnhancedCategoriesScreen(
                             strings = appStrings,
-                            database = database,
+                            entries = allEntries,
                             selectedCategory = openCategory,
+                            searchQuery = categorySearchQuery,
+                            onSearchQueryChange = { categorySearchQuery = it },
                             onSelectedCategoryChange = { openCategory = it },
-                            onBack = {
-                                activeTab = MainTab.SEARCH
-                            },
-                            onOpen = ::openEntryInContext
+                            onBack = { activeTab = MainTab.SEARCH },
+                            onOpen = { entry ->
+                                val categoryContext = allEntries.filter { candidate ->
+                                    candidate.categorie.trim().equals(entry.categorie.trim(), ignoreCase = true)
+                                }
+                                openEntryInContext(entry, categoryContext)
+                            }
                         )
                     }
 
@@ -1652,32 +1663,21 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 database.categories()
                             }
 
-                            var selectedMissionCategory by remember {
-                                mutableStateOf(
-                                    assignmentStore.assignedCategory()
-                                        .ifBlank { categories.firstOrNull().orEmpty() }
-                                )
+                            if (testerMissionCategory.isBlank() && categories.isNotEmpty()) {
+                                testerMissionCategory = categories.first()
                             }
 
                             var expandedCategory by remember {
                                 mutableStateOf(false)
                             }
 
-                            var missionFilter by remember {
-                                mutableStateOf(MissionFilter.ALL)
-                            }
-
-                            var missionQuery by remember {
-                                mutableStateOf("")
-                            }
-
-                            val missionEntries = remember(selectedMissionCategory) {
-                                if (selectedMissionCategory.isBlank()) {
+                            val missionEntries = remember(testerMissionCategory) {
+                                if (testerMissionCategory.isBlank()) {
                                     emptyList()
                                 } else {
                                     database.missionByCategory(
-                                        category = selectedMissionCategory,
-                                        limit = 50
+                                        category = testerMissionCategory,
+                                        limit = 5000
                                     ).sortedBy {
                                         it.french.trim().contains(" ")
                                     }
@@ -1702,19 +1702,46 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             val completedMissionCount = missionClassifications.values
                                 .count { it.isCompleted }
 
+                            val localValidationIds = validationStore.ids()
                             val filteredMissionEntries = remember(
                                 missionEntries,
-                                missionFilter,
-                                missionQuery,
+                                testerMissionFilter,
+                                testerMissionQuery,
                                 missionClassifications,
-                                localCorrections
+                                localCorrections,
+                                localValidationIds,
+                                correctedEntryIds,
+                                deletionProposalEntryIds
                             ) {
-                                filterMissionEntries(
-                                    entries = missionEntries,
-                                    filter = missionFilter,
-                                    query = missionQuery,
-                                    classifications = missionClassifications,
-                                    localCorrections = localCorrections
+                                val normalizedQuery = testerMissionQuery.trim().lowercase(Locale.ROOT)
+                                missionEntries.filter { entry ->
+                                    val classification = missionClassifications.getValue(entry.id)
+                                    val matchesFilter = testerListFilterMatches(
+                                        filter = testerMissionFilter,
+                                        databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),
+                                        locallyValidated = entry.id in localValidationIds,
+                                        corrected = entry.id in correctedEntryIds,
+                                        deletionProposed = entry.id in deletionProposalEntryIds,
+                                        needsReview = classificationNeedsReview(classification)
+                                    )
+                                    val corrected = localCorrections[entry.id]
+                                    val searchable = listOf(
+                                        entry.french, entry.saamaka, entry.english, entry.dutch,
+                                        corrected?.frenchProposed.orEmpty(),
+                                        corrected?.saamakaProposed.orEmpty()
+                                    ).joinToString(" ").lowercase(Locale.ROOT)
+                                    matchesFilter && (normalizedQuery.isBlank() || searchable.contains(normalizedQuery))
+                                }
+                            }
+
+                            val currentCategoryTreatedCount = remember(
+                                missionEntries, localValidationIds, correctedEntryIds, deletionProposalEntryIds
+                            ) {
+                                testerTreatedCount(
+                                    missionEntries,
+                                    localValidationIds,
+                                    correctedEntryIds,
+                                    deletionProposalEntryIds
                                 )
                             }
 
@@ -1784,6 +1811,15 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                 color = Color.White
                                             )
 
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Text(
+                                                text = "Traités : $currentCategoryTreatedCount / ${missionEntries.size}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+
                                             Spacer(modifier = Modifier.height(14.dp))
 
                                             Box(
@@ -1802,10 +1838,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                     }
                                                 ) {
                                                     Text(
-                                                        if (selectedMissionCategory.isBlank()) {
+                                                        if (testerMissionCategory.isBlank()) {
                                                             appStrings.ui(UiCopyKey.CHOOSE_CATEGORY)
                                                         } else {
-                                                            appStrings.ui(UiCopyKey.CATEGORY_VALUE, selectedMissionCategory)
+                                                            appStrings.ui(UiCopyKey.CATEGORY_VALUE, testerMissionCategory)
                                                         }
                                                     )
                                                 }
@@ -1824,7 +1860,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                                                 Text(category)
                                                             },
                                                             onClick = {
-                                                                selectedMissionCategory = category
+                                                                testerMissionCategory = category
                                                                 assignmentStore.selectCategory(category)
                                                                 expandedCategory = false
                                                             }
@@ -1840,67 +1876,40 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         modifier = Modifier.height(8.dp)
                                     )
 
-                                    val doubtfulCount = missionClassifications.values
-                                        .count { it.visualStatus.isDoubtful }
-
-                                    val toCompleteCount = missionClassifications.values
-                                        .count { it.visualStatus.isToComplete }
-
-                                    val filters = listOf(
-                                        MissionFilter.ALL to missionEntries.size,
-                                        MissionFilter.DOUBTFUL to doubtfulCount,
-                                        MissionFilter.TO_COMPLETE to toCompleteCount,
-                                        MissionFilter.COMPLETED to completedMissionCount
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    val testerFilterCounts = remember(
+                                        missionEntries, missionClassifications, localValidationIds,
+                                        correctedEntryIds, deletionProposalEntryIds
                                     ) {
-                                        filters.forEach { (filter, count) ->
-                                            val selected = missionFilter == filter
-                                            Card(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .clickable { missionFilter = filter },
-                                                shape = RoundedCornerShape(16.dp),
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = if (selected) {
-                                                        Color(0xFF0B5D3B)
-                                                    } else {
-                                                        Color(0xFFF4EFE5)
-                                                    }
-                                                ),
-                                                border = BorderStroke(
-                                                    if (selected) 2.dp else 1.dp,
-                                                    if (selected) Color(0xFFF0C96A) else Color(0xFFE0D8C9)
+                                        TesterListFilter.entries.associateWith { filter ->
+                                            missionEntries.count { entry ->
+                                                testerListFilterMatches(
+                                                    filter = filter,
+                                                    databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),
+                                                    locallyValidated = entry.id in localValidationIds,
+                                                    corrected = entry.id in correctedEntryIds,
+                                                    deletionProposed = entry.id in deletionProposalEntryIds,
+                                                    needsReview = classificationNeedsReview(
+                                                        missionClassifications.getValue(entry.id)
+                                                    )
                                                 )
-                                            ) {
-                                                Column(modifier = Modifier.padding(10.dp)) {
-                                                    Text(
-                                                        text = "$count",
-                                                        style = MaterialTheme.typography.titleLarge,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = if (selected) Color.White else Color(0xFF16372A)
-                                                    )
-                                                    Text(
-                                                        text = appStrings.missionFilterLabel(filter),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        maxLines = 1,
-                                                        color = if (selected) Color.White else Color(0xFF4C554F)
-                                                    )
-                                                }
                                             }
                                         }
                                     }
+
+                                    TesterFilterBar(
+                                        strings = appStrings,
+                                        selected = testerMissionFilter,
+                                        counts = testerFilterCounts,
+                                        onSelected = { testerMissionFilter = it }
+                                    )
 
                                     Spacer(
                                         modifier = Modifier.height(14.dp)
                                     )
 
                                     OutlinedTextField(
-                                        value = missionQuery,
-                                        onValueChange = { missionQuery = it },
+                                        value = testerMissionQuery,
+                                        onValueChange = { testerMissionQuery = it },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
                                         label = { Text(appStrings.ui(UiCopyKey.MISSION_SEARCH)) },
