@@ -436,6 +436,28 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     fun launchLearningActivity(section: String) {
+        val activity = when (section) {
+            "QUIZ" -> LearningActivity.QUIZ
+            "WORDS", "FAVORITES", "WORD_OF_DAY", "AUDIO" -> LearningActivity.REVIEW
+            "PHRASES" -> LearningActivity.PHRASES
+            "GAMES" -> LearningActivity.GAMES
+            else -> null
+        }
+        val limitedAccount =
+            accessLevel == AccessLevel.GUEST || accessLevel == AccessLevel.FREE_ACCOUNT
+        if (
+            limitedAccount &&
+            activity != null &&
+            learningTrialStore.remainingTrials(accessLevel, activity) <= 0
+        ) {
+            Toast.makeText(
+                context,
+                appStrings.ui(UiCopyKey.LEARNING_TRIALS_EXHAUSTED),
+                Toast.LENGTH_LONG
+            ).show()
+            activeTab = MainTab.PREMIUM
+            return
+        }
         if (learnSection == section) return
         if (
             section == "GAMES" &&
@@ -2172,9 +2194,20 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 now = System.currentTimeMillis()
                             )
 
-                        var wordReviewEntry by remember {
+                        var wordReviewEntry by remember(accessLevel) {
                             mutableStateOf(
-                                quizEntries.randomOrNull()
+                                if (
+                                    (accessLevel == AccessLevel.GUEST ||
+                                        accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                    learningTrialStore.remainingTrials(
+                                        accessLevel,
+                                        LearningActivity.REVIEW
+                                    ) <= 0
+                                ) {
+                                    null
+                                } else {
+                                    quizEntries.randomOrNull()
+                                }
                             )
                         }
 
@@ -2190,11 +2223,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                         val validatedLearningWordEntries = remember(
                             quizEntries,
-                            deletionProposalEntryIds
+                            deletionProposalEntryIds,
+                            correctedEntryIds
                         ) {
                             quizEntries.filter { entry ->
                                 entry.valide.trim().equals("O", ignoreCase = true) &&
-                                        entry.id !in deletionProposalEntryIds
+                                    entry.id !in deletionProposalEntryIds &&
+                                    entry.id !in correctedEntryIds
                             }
                         }
 
@@ -2809,7 +2844,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             Spacer(Modifier.height(22.dp))
 
                                             Surface(
-                                                modifier = Modifier.fillMaxWidth(),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable(enabled = wordReviewEntry != null) {
+                                                        wordReviewEntry?.let { entry ->
+                                                            openEntryInContext(entry, quizEntries)
+                                                        }
+                                                    },
                                                 shape = RoundedCornerShape(18.dp),
                                                 color = Color(0xFFDCEEE2)
                                             ) {
@@ -2900,7 +2941,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                         val completedId = wordReviewEntry?.id
                                                         completedId?.let { scheduleLearningWord(it, mastered = false) }
-                                                        wordReviewEntry = nextSpacedReview(completedId)
+                                                        val reviewQuotaExhausted =
+                                                            (accessLevel == AccessLevel.GUEST ||
+                                                                accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                                                learningTrialStore.remainingTrials(
+                                                                    accessLevel,
+                                                                    LearningActivity.REVIEW
+                                                                ) <= 0
+                                                        wordReviewEntry = if (reviewQuotaExhausted) {
+                                                            null
+                                                        } else {
+                                                            nextSpacedReview(completedId)
+                                                        }
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -2939,7 +2991,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
 
                                                         val completedId = wordReviewEntry?.id
                                                         completedId?.let { scheduleLearningWord(it, mastered = true) }
-                                                        wordReviewEntry = nextSpacedReview(completedId)
+                                                        val reviewQuotaExhausted =
+                                                            (accessLevel == AccessLevel.GUEST ||
+                                                                accessLevel == AccessLevel.FREE_ACCOUNT) &&
+                                                                learningTrialStore.remainingTrials(
+                                                                    accessLevel,
+                                                                    LearningActivity.REVIEW
+                                                                ) <= 0
+                                                        wordReviewEntry = if (reviewQuotaExhausted) {
+                                                            null
+                                                        } else {
+                                                            nextSpacedReview(completedId)
+                                                        }
                                                     },
                                                     modifier =
                                                         Modifier.weight(1f),
@@ -3029,7 +3092,9 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable(enabled = dailyEntry != null) {
-                                                dailyEntry?.let { openEntry(it) }
+                                                dailyEntry?.let {
+                                                    openEntryInContext(it, validatedLearningWordEntries)
+                                                }
                                             },
                                         shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),

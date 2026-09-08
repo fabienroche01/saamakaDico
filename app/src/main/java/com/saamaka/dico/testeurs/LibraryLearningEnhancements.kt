@@ -63,7 +63,7 @@ fun EnhancedSavedScreen(
     onSearch: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(entries, query) { entries.filter { libraryMatches(it, query) } }
+    val filtered = entries.filter { libraryMatches(it, query) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -140,7 +140,7 @@ fun EnhancedHistoryScreen(
     onSearch: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(entries, query) { entries.filter { libraryMatches(it, query) } }
+    val filtered = entries.filter { libraryMatches(it, query) }
     val latest = entries.firstOrNull()
 
     LazyColumn(
