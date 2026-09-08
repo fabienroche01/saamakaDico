@@ -21,7 +21,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Apply changes
-        run: python3 .github/scripts/final_polish.py
+        run: |
+          python3 .github/scripts/final_polish.py
+          sed -i 's/DictionaryEntry(id, "w$id", "mot$id", "", "", category, valide)/DictionaryEntry(id = id, french = "mot$id", english = "", dutch = "", saamaka = "w$id", categorie = category, valide = valide)/' app/src/test/java/com/saamaka/dico/testeurs/LearningContentPolicyTest.kt
       - name: Test
         run: |
           chmod +x gradlew
