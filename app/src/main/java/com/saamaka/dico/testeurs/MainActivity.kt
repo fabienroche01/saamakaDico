@@ -2516,7 +2516,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     LearnAccessCard("Quiz audio", appStrings.listen.replace("▶", "").trim(), "AUDIO", learnSection, Modifier.weight(1f), ::launchLearningActivity)
-                                    Spacer(Modifier.weight(1f))
+                                    LearnAccessCard("Cours en visio", "Demander un devis", "COURSE_QUOTE", learnSection, Modifier.weight(1f), ::launchLearningActivity)
                                 }
                             }
 
@@ -2541,6 +2541,10 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     }
                                 }
                             } else when (learnSection) {
+
+                                "COURSE_QUOTE" -> {
+                                    CourseQuoteScreen()
+                                }
 
                                 "QUIZ" -> {
 
