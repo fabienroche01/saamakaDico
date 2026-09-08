@@ -277,8 +277,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val historyStore = remember { HistoryStore(context) }
     val correctionStore = remember { CorrectionStore(context) }
     var correctionProposals by remember { mutableStateOf(correctionStore.all()) }
+    val correctedEntryIds = remember(correctionProposals) {
+        correctionProposals
+            .asSequence()
+            .filter { it.hasChanges() }
+            .map { it.entryId }
+            .toSet()
+    }
     val deletionProposalStore = remember { DeletionProposalStore(context) }
     var deletionProposals by remember { mutableStateOf(deletionProposalStore.all()) }
+    val deletionProposalEntryIds = remember(deletionProposals) {
+        deletionProposals.asSequence().map { it.entryId }.toSet()
+    }
     val newEntryProposalStore = remember { NewEntryProposalStore(context) }
     var newEntryProposals by remember { mutableStateOf(newEntryProposalStore.all()) }
     val translationTrialStore = remember {
@@ -386,6 +396,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     val historyResults = remember { mutableStateListOf<DictionaryEntry>() }
     val total = remember { database.countEntries() }
     val allEntries: List<DictionaryEntry> = remember { database.allEntries() }
+    val entriesById = remember(allEntries) { allEntries.associateBy { it.id } }
     var quizScore by remember { mutableStateOf(0) }
     var quizQuestionNumber by remember { mutableStateOf(1) }
     var learnSection by remember {
@@ -546,7 +557,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
 
     fun applyCorrection(entry: DictionaryEntry): DictionaryEntry {
-        val correction = correctionStore.latestForEntry(entry.id)
+        val correction = correctionProposals.firstOrNull { it.entryId == entry.id }
             ?: return entry
 
         return entry.copy(
@@ -741,7 +752,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     fun openAdjacentDetail(offset: Int) {
         val currentId = selectedEntry?.id ?: return
         val targetId = adjacentEntryId(detailNavigationIds, currentId, offset) ?: return
-        val target = allEntries.firstOrNull { it.id == targetId } ?: return
+        val target = entriesById[targetId] ?: return
         openEntry(target)
     }
     fun openNextUnvalidated() {
@@ -1145,18 +1156,27 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 selectedEntry != null -> {
                     val entry = selectedEntry!!
                     val detailIndex = detailNavigationIds.indexOf(entry.id)
-                    val testerStatus = testerEntryStatus(
-                        databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),
-                        locallyValidated = validationStore.isValidated(entry.id),
-                        corrected = correctionProposals.any { it.entryId == entry.id && it.hasChanges() },
-                        deletionProposed = deletionProposals.any { it.entryId == entry.id },
-                        toReview = classificationNeedsReview(
-                            classifyMissionEntry(
-                                entry = entry,
-                                hasLocalValidation = validationStore.isValidated(entry.id)
+                    val locallyValidated = validationStore.isValidated(entry.id)
+                    val testerStatus = remember(
+                        entry.id,
+                        entry.valide,
+                        locallyValidated,
+                        correctedEntryIds,
+                        deletionProposalEntryIds
+                    ) {
+                        testerEntryStatus(
+                            databaseValidated = entry.valide.trim().equals("O", ignoreCase = true),
+                            locallyValidated = locallyValidated,
+                            corrected = entry.id in correctedEntryIds,
+                            deletionProposed = entry.id in deletionProposalEntryIds,
+                            toReview = classificationNeedsReview(
+                                classifyMissionEntry(
+                                    entry = entry,
+                                    hasLocalValidation = locallyValidated
+                                )
                             )
                         )
-                    )
+                    }
                     DetailScreen(
                         entry = entry,
                         accessLevel = accessLevel,
@@ -3777,18 +3797,23 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         }
                     }
                     MainTab.CORRECTIONS -> {
-                        val progress = testerProgressStats(
-                            validatedIds = reviewStore.all()
-                                .filter { it.action == ReviewActionType.VALIDATED }
-                                .map { it.entryId }
-                                .toSet() + validationStore.ids(),
-                            correctedIds = correctionProposals
-                                .filter { it.hasChanges() }
-                                .map { it.entryId }
-                                .toSet(),
-                            deletionIds = deletionProposals.map { it.entryId }.toSet(),
-                            newEntryCount = newEntryProposals.size
-                        )
+                        val progress = remember(
+                            validatedCount,
+                            correctedEntryIds,
+                            deletionProposalEntryIds,
+                            newEntryProposals
+                        ) {
+                            testerProgressStats(
+                                validatedIds = reviewStore.all()
+                                    .asSequence()
+                                    .filter { it.action == ReviewActionType.VALIDATED }
+                                    .map { it.entryId }
+                                    .toSet() + validationStore.ids(),
+                                correctedIds = correctedEntryIds,
+                                deletionIds = deletionProposalEntryIds,
+                                newEntryCount = newEntryProposals.size
+                            )
+                        }
                         CorrectionsScreen(
                         strings = appStrings,
                         testerName = correctionStore.testerName(),
