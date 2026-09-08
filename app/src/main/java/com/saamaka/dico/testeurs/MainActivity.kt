@@ -2171,13 +2171,28 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             mutableStateOf(favoriteLearningEntries.firstOrNull())
                         }
 
-                        val learningWordOfDay = remember(quizEntries) {
-                            if (quizEntries.isEmpty()) null
-                            else {
+                        val validatedLearningWordEntries = remember(
+                            quizEntries,
+                            deletionProposalEntryIds
+                        ) {
+                            quizEntries.filter { entry ->
+                                entry.valide.trim().equals("O", ignoreCase = true) &&
+                                        entry.id !in deletionProposalEntryIds
+                            }
+                        }
+
+                        val learningWordOfDay = remember(validatedLearningWordEntries) {
+                            if (validatedLearningWordEntries.isEmpty()) {
+                                null
+                            } else {
                                 val calendar = java.util.Calendar.getInstance()
-                                val seed = calendar.get(java.util.Calendar.YEAR) * 366L +
-                                    calendar.get(java.util.Calendar.DAY_OF_YEAR)
-                                quizEntries[(seed % quizEntries.size).toInt()]
+                                val seed =
+                                    calendar.get(java.util.Calendar.YEAR) * 366L +
+                                            calendar.get(java.util.Calendar.DAY_OF_YEAR)
+
+                                validatedLearningWordEntries[
+                                    (seed % validatedLearningWordEntries.size).toInt()
+                                ]
                             }
                         }
 
