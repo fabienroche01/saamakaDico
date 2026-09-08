@@ -1,0 +1,64 @@
+name: ChatGPT UX detail labels
+on:
+  push:
+    branches: ["chatgpt/ux-detail-labels"]
+permissions:
+  contents: write
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/ux-detail-labels
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Apply UX label fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          main = Path('app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt')
+          s = main.read_text()
+          old = 'TesterEntryStatus.VALIDATED -> "✓ ${strings.validatedO}"'
+          new = 'TesterEntryStatus.VALIDATED -> "✓ " + strings.validatedO.replace("✓", "").removeSuffix("O").trim()'
+          assert old in s, 'validated status label pattern not found'
+          s = s.replace(old, new, 1)
+          old2 = 'Text(strings.back.removePrefix("← "))'
+          new2 = 'Text(strings.previousWord)'
+          assert old2 in s, 'previous button label pattern not found'
+          s = s.replace(old2, new2, 1)
+          main.write_text(s)
+
+          app = Path('app/src/main/java/com/saamaka/dico/testeurs/repository/AppStrings.kt')
+          a = app.read_text()
+          a = a.replace('    val nextWord: String,\n', '    val nextWord: String,\n    val previousWord: String,\n', 1)
+          replacements = [
+              ('            nextWord = "Go na a tra wootu",\n', '            nextWord = "Go na a tra wootu",\n            previousWord = "Fosi wootu",\n'),
+              ('            nextWord = "Passer au mot suivant",\n', '            nextWord = "Passer au mot suivant",\n            previousWord = "Précédent",\n'),
+              ('            nextWord = "Go to next word",\n', '            nextWord = "Go to next word",\n            previousWord = "Previous",\n'),
+              ('            nextWord = "Ga naar het volgende woord",\n', '            nextWord = "Ga naar het volgende woord",\n            previousWord = "Vorige",\n'),
+          ]
+          for old, new in replacements:
+              assert old in a, f'missing localization pattern: {old!r}'
+              a = a.replace(old, new, 1)
+          app.write_text(a)
+          PY
+      - name: Run tests
+        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin --no-daemon
+      - name: Verify protected files unchanged
+        shell: bash
+        run: |
+          git diff --exit-code HEAD -- app/build.gradle.kts app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
+      - name: Commit implementation
+        shell: bash
+        run: |
+          rm .github/workflows/chatgpt-ux-detail-labels.yml
+          git config user.name "ChatGPT"
+          git config user.email "chatgpt@users.noreply.github.com"
+          git add app/src/main/java/com/saamaka/dico/testeurs/MainActivity.kt app/src/main/java/com/saamaka/dico/testeurs/repository/AppStrings.kt .github/workflows/chatgpt-ux-detail-labels.yml
+          git commit -m "fix(ux): clarify tester detail navigation labels"
+          git push origin HEAD:chatgpt/ux-detail-labels
