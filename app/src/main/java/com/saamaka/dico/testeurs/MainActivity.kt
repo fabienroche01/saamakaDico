@@ -257,6 +257,17 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         mutableStateOf(false)
     }
     val appStrings = stringsFor(uiLanguage)
+    val emailAccount = remember { EmailAccountController() }
+    var showEmailAccount by remember { mutableStateOf(false) }
+    var showEmailInvitation by remember { mutableStateOf(false) }
+    val accountPreferences = remember(context) {
+        context.getSharedPreferences("saamaka_account_ui", Context.MODE_PRIVATE)
+    }
+    DisposableEffect(emailAccount) {
+        emailAccount.start()
+        onDispose { emailAccount.stop() }
+    }
+    LaunchedEffect(uiLanguage) { emailAccount.setLanguage(uiLanguage) }
     var accessLevel by remember {
         mutableStateOf(
             if (
@@ -265,7 +276,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
             ) {
                 AccessLevel.TESTER
             } else {
-                AccessLevel.GUEST
+                emailAccountAccess(false, false, emailAccount.session.verified)
             }
         )
     }
@@ -699,20 +710,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         )
     }
 
-    LaunchedEffect(premiumState.verification, accessLevel) {
-        if (accessLevel != AccessLevel.TESTER) {
-            accessLevel = when (premiumState.verification) {
-                PremiumVerification.VERIFIED_ACTIVE -> AccessLevel.PREMIUM
-                PremiumVerification.CHECKING,
-                PremiumVerification.PENDING,
-                PremiumVerification.VERIFIED_INACTIVE,
-                PremiumVerification.UNAVAILABLE -> if (accessLevel == AccessLevel.PREMIUM) {
-                    AccessLevel.FREE_ACCOUNT
-                } else {
-                    accessLevel
-                }
-            }
-        }
+    LaunchedEffect(premiumState.verification, accessLevel, emailAccount.session) {
+        accessLevel = emailAccountAccess(
+            testerMode = accessLevel == AccessLevel.TESTER,
+            premiumVerified = premiumState.verification == PremiumVerification.VERIFIED_ACTIVE,
+            emailVerified = emailAccount.session.verified
+        )
     }
 
     fun updateFavorite(id: Int, favorite: Boolean) {
@@ -866,6 +869,41 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
         )
     }
 
+    LaunchedEffect(accessLevel, emailAccount.session.uid, showEmailAccount) {
+        if (accessLevel == AccessLevel.GUEST && emailAccount.session.uid == null &&
+            !showEmailAccount && !accountPreferences.getBoolean("invitation_seen", false)
+        ) {
+            accountPreferences.edit().putBoolean("invitation_seen", true).apply()
+            showEmailInvitation = true
+        }
+    }
+    if (showEmailInvitation && !showEmailAccount) {
+        AlertDialog(
+            onDismissRequest = { showEmailInvitation = false },
+            title = { Text(AccountText.CREATE.text(uiLanguage)) },
+            text = { Text(AccountText.BENEFIT.text(uiLanguage)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showEmailInvitation = false
+                    showEmailAccount = true
+                }) { Text(AccountText.CREATE.text(uiLanguage)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmailInvitation = false }) {
+                    Text(AccountText.LATER.text(uiLanguage))
+                }
+            }
+        )
+    }
+    if (showEmailAccount) {
+        EmailAccountDialog(
+            account = emailAccount,
+            language = uiLanguage,
+            onDismiss = { showEmailAccount = false },
+            onManageSubscription = { openPremiumSubscriptionManagement(context, appStrings) }
+        )
+    }
+
     Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -1003,20 +1041,40 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("👤 ${appStrings.guest}") },
+                                text = {
+                                    Text(if (emailAccount.session.uid != null) {
+                                        AccountText.SIGN_OUT_GUEST.text(uiLanguage)
+                                    } else "👤 ${appStrings.guest}")
+                                },
+                                enabled = !emailAccount.busy,
                                 onClick = {
+                                    emailAccount.signOut()
                                     settingsStore.setTesterModeEnabled(false)
-                                    accessLevel = AccessLevel.GUEST
+                                    accessLevel = emailAccountAccess(
+                                        false,
+                                        premiumState.verification == PremiumVerification.VERIFIED_ACTIVE,
+                                        false
+                                    )
                                     accessMenuExpanded = false
                                 }
                             )
 
                             DropdownMenuItem(
-                                text = { Text("🔐 ${appStrings.freeAccount}") },
+                                text = {
+                                    Text((if (emailAccount.session.uid == null) AccountText.CREATE else AccountText.ACCOUNT).text(uiLanguage))
+                                },
+                                enabled = !emailAccount.busy,
                                 onClick = {
                                     settingsStore.setTesterModeEnabled(false)
-                                    accessLevel = AccessLevel.FREE_ACCOUNT
+                                    accessLevel = emailAccountAccess(
+                                        false,
+                                        premiumState.verification == PremiumVerification.VERIFIED_ACTIVE,
+                                        emailAccount.session.verified
+                                    )
                                     accessMenuExpanded = false
+                                    showEmailInvitation = false
+                                    showEmailAccount = true
+                                    emailAccount.refresh()
                                 }
                             )
 
@@ -4050,11 +4108,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                             containerColor = Color(0xFFFFFBF3),
                                             onClick = {
                                                 settingsStore.setTesterModeEnabled(false)
-                                                accessLevel = if (premiumState.isPremium) {
-                                                    AccessLevel.PREMIUM
-                                                } else {
-                                                    AccessLevel.GUEST
-                                                }
+                                                accessLevel = emailAccountAccess(
+                                                    false,
+                                                    premiumState.verification == PremiumVerification.VERIFIED_ACTIVE,
+                                                    emailAccount.session.verified
+                                                )
                                             }
                                         )
                                     }
