@@ -1,8 +1,9 @@
 package com.saamaka.dico.testeurs
 
+import android.app.Activity
 import android.content.Context
 
-class ValidationStore(context: Context) {
+class ValidationStore(private val context: Context) {
     private val preferences = context.getSharedPreferences(
         "saamaka_validations",
         Context.MODE_PRIVATE
@@ -46,5 +47,7 @@ class ValidationStore(context: Context) {
 
     fun clear() {
         preferences.edit().clear().apply()
+        ReviewStore(context).clearValidations()
+        (context as? Activity)?.recreate()
     }
 }
