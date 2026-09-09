@@ -1175,6 +1175,18 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                 selectedEntry != null -> {
                     val entry = selectedEntry!!
                     val detailIndex = detailNavigationIds.indexOf(entry.id)
+                    val testerNextEntry = if (accessLevel == AccessLevel.TESTER) {
+                        nextTesterEntry(
+                            allEntries = allEntries,
+                            currentId = entry.id,
+                            validatedIds = validationStore.ids(),
+                            deletionProposalIds = deletionProposalStore.all()
+                                .map { it.entryId }
+                                .toSet()
+                        )
+                    } else {
+                        null
+                    }
                     val locallyValidated = validationStore.isValidated(entry.id)
                     val testerStatus = remember(
                         entry.id,
@@ -1212,7 +1224,11 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         ),
                         testerStatus = testerStatus,
                         canGoPrevious = detailIndex > 0,
-                        canGoNext = detailIndex >= 0 && detailIndex < detailNavigationIds.lastIndex,
+                        canGoNext = if (accessLevel == AccessLevel.TESTER) {
+                            testerNextEntry != null
+                        } else {
+                            detailIndex >= 0 && detailIndex < detailNavigationIds.lastIndex
+                        },
                         initialDeletionProposal = deletionProposalStore.proposalFor(entry.id),
                         onDeletionProposal = { reason, comment ->
                             deletionProposalStore.save(
@@ -1275,7 +1291,13 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             ).show()
                         },
                         onPrevious = { openAdjacentDetail(-1) },
-                        onNext = { openAdjacentDetail(1) },
+                        onNext = {
+                            if (accessLevel == AccessLevel.TESTER) {
+                                openNextUnvalidated()
+                            } else {
+                                openAdjacentDetail(1)
+                            }
+                        },
                         onFavoriteChange = { favorite ->
                             updateFavorite(entry.id, favorite)
                         },
