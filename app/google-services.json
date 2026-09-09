@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "682670414677",
+    "project_id": "saamaka-dico-d9311",
+    "storage_bucket": "saamaka-dico-d9311.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682670414677:android:628d719a8265ea391beddc",
+        "android_client_info": {
+          "package_name": "com.saramakadicto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvehzHoK3urZE1R7igMKAnhUiMz8bk3Ts"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
