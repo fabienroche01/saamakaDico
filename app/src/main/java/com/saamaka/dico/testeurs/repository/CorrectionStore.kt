@@ -1,13 +1,15 @@
 package com.saamaka.dico.testeurs.repository
 
+import android.app.Activity
 import android.content.Context
 import com.saamaka.dico.testeurs.CorrectionProposal
+import com.saamaka.dico.testeurs.ReviewStore
 import com.saamaka.dico.testeurs.correctionExportText
 import com.saamaka.dico.testeurs.hasChanges
 import org.json.JSONArray
 import org.json.JSONObject
 
-class CorrectionStore(context: Context) {
+class CorrectionStore(private val context: Context) {
     private val preferences = context.getSharedPreferences(
         "saamaka_corrections",
         Context.MODE_PRIVATE
@@ -56,6 +58,12 @@ class CorrectionStore(context: Context) {
 
     fun clear() {
         preferences.edit().remove(KEY_CORRECTIONS).apply()
+        context.getSharedPreferences("saamaka_deletion_proposals", Context.MODE_PRIVATE)
+            .edit().remove("proposals").apply()
+        context.getSharedPreferences("saamaka_new_entry_proposals", Context.MODE_PRIVATE)
+            .edit().remove("proposals").apply()
+        ReviewStore(context).clearCorrections()
+        (context as? Activity)?.recreate()
     }
 
     fun testerName(): String =
