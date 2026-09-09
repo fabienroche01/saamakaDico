@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    id("com.google.gms.google-services")
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -43,6 +44,8 @@ android {
 
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
+    implementation("com.google.firebase:firebase-auth")
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.compose.material3:material3")
