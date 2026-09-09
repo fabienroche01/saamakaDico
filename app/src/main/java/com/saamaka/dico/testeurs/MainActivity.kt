@@ -2442,8 +2442,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(appStrings.ui(UiCopyKey.SAAMAKA_COURSES), fontWeight = FontWeight.Bold)
-                                        Text(appStrings.ui(UiCopyKey.COURSES_SUBTITLE), style = MaterialTheme.typography.bodySmall)
+                                        Text(appStrings.ui(UiCopyKey.SAAMAKA_COURSES), fontWeight = FontWeight.Bold, color = Color(0xFF16372A))
+                                        Text(appStrings.ui(UiCopyKey.COURSES_SUBTITLE), style = MaterialTheme.typography.bodySmall, color = Color(0xFF68736C))
                                     }
                                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF0B5D3B))
                                 }
@@ -4150,23 +4150,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         },
                         onExportCorrections = {
                             val exportHistoryStore = ExportHistoryStore(context)
-                            val lastSharedAt = exportHistoryStore.lastSharedAtMillis()
-
-                            val exportText = buildString {
-                                appendLine(reviewStore.exportText(lastSharedAt))
-                                appendLine()
-                                appendLine(correctionStore.exportText(lastSharedAt))
-                                appendLine()
-                                appendLine(deletionProposalStore.exportText(lastSharedAt))
-                                appendLine()
-                                appendLine(newEntryProposalStore.exportText(lastSharedAt))
-                                appendLine()
-                                appendLine(audioStore.exportAudioSummary())
-                            }
+                            val exportText = exportHistoryStore.pendingExportText() + audioStore.exportAudioSummary()
 
                             val zipFile = audioStore.createTesterExportZip(
                                 testerName = testerName,
-                                exportText = exportText
+                                exportText = exportText,
+                                audioAfterMillis = 0L
                             )
 
                             exportHistoryStore.markCreated(
