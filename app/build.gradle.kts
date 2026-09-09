@@ -14,7 +14,7 @@ android {
         applicationId = "com.saramakadicto"
         minSdk = 24
         targetSdk = 36
-        versionCode = 357
+        versionCode = 359
         versionName = "3.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
