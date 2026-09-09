@@ -1,5 +1,6 @@
 package com.saamaka.dico.testeurs
 
+import android.app.Activity
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
@@ -107,6 +108,30 @@ class ExportHistoryStore(
             file = file,
             status = "SHARE_LAUNCHED"
         )
+        clearExportedTesterWork(testerName)
+        (context as? Activity)?.recreate()
+    }
+
+    private fun clearExportedTesterWork(testerName: String) {
+        context.getSharedPreferences("saamaka_validations", Context.MODE_PRIVATE)
+            .edit().clear().apply()
+        context.getSharedPreferences("saamaka_reviews", Context.MODE_PRIVATE)
+            .edit().remove("reviews").apply()
+        context.getSharedPreferences("saamaka_corrections", Context.MODE_PRIVATE)
+            .edit().remove("corrections").apply()
+        context.getSharedPreferences("saamaka_deletion_proposals", Context.MODE_PRIVATE)
+            .edit().remove("proposals").apply()
+        context.getSharedPreferences("saamaka_new_entry_proposals", Context.MODE_PRIVATE)
+            .edit().remove("proposals").apply()
+
+        val safeTester = testerName.trim()
+            .replace("[^A-Za-z0-9_-]".toRegex(), "_")
+            .ifBlank { "inconnu" }
+        val audioDir = File(context.filesDir, "audio")
+        audioDir.listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.name.endsWith("_${safeTester}.m4a", ignoreCase = true) }
+            .forEach { runCatching { it.delete() } }
     }
 
     private fun addEvent(
