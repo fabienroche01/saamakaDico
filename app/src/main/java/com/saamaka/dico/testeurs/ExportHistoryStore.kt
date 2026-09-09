@@ -9,6 +9,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.security.MessageDigest
+import java.util.zip.ZipFile
+import com.saamaka.dico.testeurs.repository.CorrectionStore
+import com.saamaka.dico.testeurs.repository.DeletionProposalStore
+import com.saamaka.dico.testeurs.repository.NewEntryProposalStore
 
 class ExportHistoryStore(
     private val context: Context
@@ -47,6 +51,15 @@ class ExportHistoryStore(
         testerName: String,
         file: File
     ) {
+        // Keep a durable copy before any local work can be removed.
+        val archive = archiveFile(file)
+        archive.parentFile?.let { directory ->
+            check(directory.isDirectory || directory.mkdirs()) {
+                "Impossible de conserver le ZIP."
+            }
+        }
+        file.copyTo(archive, overwrite = true)
+        check(sha256(archive) == sha256(file)) { "Copie du ZIP incomplète." }
         addEvent(
             testerName = testerName,
             file = file,
@@ -108,15 +121,59 @@ class ExportHistoryStore(
             file = file,
             status = "SHARE_LAUNCHED"
         )
-        clearExportedTesterWork(testerName)
-        (context as? Activity)?.recreate()
+        if (clearExportedTesterWork(file)) {
+            (context as? Activity)?.recreate()
+        }
     }
 
-    private fun clearExportedTesterWork(testerName: String) {
+    fun pendingExportText(): String = buildString {
+        appendLine(ValidationStore(context).exportText())
+        appendLine()
+        appendLine(ReviewStore(context).exportText())
+        appendLine()
+        appendLine(CorrectionStore(context).exportText())
+        appendLine()
+        appendLine(DeletionProposalStore(context).exportText())
+        appendLine()
+        appendLine(NewEntryProposalStore(context).exportText())
+        appendLine()
+    }
+
+    private fun archiveFile(file: File): File =
+        File(File(context.filesDir, "tester_exports"), "${sha256(file)}_${file.name}")
+
+    private fun clearExportedTesterWork(file: File): Boolean {
+        val archive = archiveFile(file)
+        if (!archive.isFile || sha256(archive) != sha256(file)) return false
+
+        // Re-sharing an old ZIP must not clear work added since its creation.
+        val exportedAudio = ZipFile(archive).use { zip ->
+            val textEntry = zip.getEntry("export.txt") ?: return false
+            val exportedText = zip.getInputStream(textEntry)
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            if (!exportedText.startsWith(pendingExportText() + "SAAMAKA DICO — AUDIOS TESTEURS")) return false
+
+            File(context.filesDir, "audio").listFiles().orEmpty().filter { audio ->
+                val entry = zip.getEntry("audio/${audio.name}")
+                audio.isFile && audio.extension.equals("m4a", ignoreCase = true) &&
+                    entry != null && !entry.isDirectory &&
+                    zip.getInputStream(entry).use { input ->
+                        val digest = MessageDigest.getInstance("SHA-256")
+                        val buffer = ByteArray(8192)
+                        var count = input.read(buffer)
+                        while (count != -1) {
+                            digest.update(buffer, 0, count)
+                            count = input.read(buffer)
+                        }
+                        digest.digest().joinToString("") { "%02x".format(it) } == sha256(audio)
+                    }
+            }
+        }
+
         context.getSharedPreferences("saamaka_validations", Context.MODE_PRIVATE)
             .edit().clear().apply()
-        context.getSharedPreferences("saamaka_reviews", Context.MODE_PRIVATE)
-            .edit().remove("reviews").apply()
+        ReviewStore(context).clearAll()
+        // Remove only contribution keys; preserve the tester identity.
         context.getSharedPreferences("saamaka_corrections", Context.MODE_PRIVATE)
             .edit().remove("corrections").apply()
         context.getSharedPreferences("saamaka_deletion_proposals", Context.MODE_PRIVATE)
@@ -124,14 +181,8 @@ class ExportHistoryStore(
         context.getSharedPreferences("saamaka_new_entry_proposals", Context.MODE_PRIVATE)
             .edit().remove("proposals").apply()
 
-        val safeTester = testerName.trim()
-            .replace("[^A-Za-z0-9_-]".toRegex(), "_")
-            .ifBlank { "inconnu" }
-        val audioDir = File(context.filesDir, "audio")
-        audioDir.listFiles()
-            .orEmpty()
-            .filter { it.isFile && it.name.endsWith("_${safeTester}.m4a", ignoreCase = true) }
-            .forEach { runCatching { it.delete() } }
+        exportedAudio.forEach { audio -> runCatching { audio.delete() } }
+        return true
     }
 
     private fun addEvent(
