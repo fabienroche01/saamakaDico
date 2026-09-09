@@ -216,25 +216,25 @@ private fun RowScope.CompactBottomNavigationItem(
             .weight(1f)
             .fillMaxHeight()
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-            .padding(vertical = 5.dp),
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Surface(
-            modifier = Modifier.size(width = 42.dp, height = 28.dp),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.size(width = 38.dp, height = 24.dp),
+            shape = RoundedCornerShape(14.dp),
             color = if (selected) Color(0xFFDCEEE2) else Color.Transparent
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = iconDescription,
-                    modifier = Modifier.size(23.dp),
+                    modifier = Modifier.size(21.dp),
                     tint = itemColor
                 )
             }
         }
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(1.dp))
         CompositionLocalProvider(LocalContentColor provides itemColor) {
             BottomNavigationLabel(label)
         }
@@ -1045,7 +1045,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         modifier = Modifier
                             .navigationBarsPadding()
                             .fillMaxWidth()
-                            .height(68.dp)
+                            .height(56.dp)
                             .selectableGroup(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
