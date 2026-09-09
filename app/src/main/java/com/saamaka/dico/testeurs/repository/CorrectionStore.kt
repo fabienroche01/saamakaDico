@@ -58,10 +58,6 @@ class CorrectionStore(private val context: Context) {
 
     fun clear() {
         preferences.edit().remove(KEY_CORRECTIONS).apply()
-        context.getSharedPreferences("saamaka_deletion_proposals", Context.MODE_PRIVATE)
-            .edit().remove("proposals").apply()
-        context.getSharedPreferences("saamaka_new_entry_proposals", Context.MODE_PRIVATE)
-            .edit().remove("proposals").apply()
         ReviewStore(context).clearCorrections()
         (context as? Activity)?.recreate()
     }
