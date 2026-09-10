@@ -84,14 +84,19 @@ internal class SaamakaGrammarEngine(
     }
 
     private fun translateCopularState(words: List<String>, subject: String): PhraseTranslationResult? {
-        if (words.size != 3 || FrenchVerbInflections.lemma(words[1]) != "être") return null
-        val state = resolveExact(words[2]) ?: return null
+        if (words.size < 3 || FrenchVerbInflections.lemma(words[1]) != "être") return null
+        val predicate = resolveComplements(words.drop(2)) ?: return null
+        if (predicate.isEmpty()) return null
         val marker = when (FrenchVerbInflections.tense(words[1])) {
             FrenchVerbTense.PRESENT -> emptyList()
             FrenchVerbTense.PAST -> listOf("bi")
             else -> return null
         }
-        return grammatical(words, listOf(subject) + marker + state.saamaka, listOf(words[2] to state))
+        return grammatical(
+            words,
+            listOf(subject) + marker + predicate.map { it.second.saamaka },
+            predicate
+        )
     }
 
     private fun translateNegation(words: List<String>, subject: String): PhraseTranslationResult? {
@@ -121,14 +126,15 @@ internal class SaamakaGrammarEngine(
             )
         }
 
-        // French copular state: "je ne suis pas malade" -> subject + an + attested state.
+        // French copular state or nominal predicate: the whole predicate is resolved
+        // through the grammar-line complement rules, including possessive noun phrases.
         if (beforePas.size == 1 && FrenchVerbInflections.lemma(beforePas[0]) == "être") {
-            if (afterPas.size != 1) return null
-            val state = resolveExact(afterPas[0]) ?: return null
+            val predicate = resolveComplements(afterPas) ?: return null
+            if (predicate.isEmpty()) return null
             return grammatical(
                 words,
-                listOf(subject, "an", state.saamaka),
-                listOf(afterPas[0] to state)
+                listOf(subject, "an") + predicate.map { it.second.saamaka },
+                predicate
             )
         }
 
