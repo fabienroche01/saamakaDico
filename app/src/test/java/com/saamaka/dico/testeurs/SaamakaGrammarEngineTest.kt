@@ -46,6 +46,7 @@ class SaamakaGrammarEngineTest {
             candidate("blanc", "wéti"),
             candidate("grand", "gãã"),
             candidate("nouveau", "njunjún"),
+            candidate("ici", "akí"),
             candidate("vert", "guúun")
         )
     )

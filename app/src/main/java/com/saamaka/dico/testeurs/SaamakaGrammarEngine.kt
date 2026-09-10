@@ -700,6 +700,14 @@ internal class SaamakaGrammarEngine(
             }
         }
 
+        if (remaining.isNotEmpty() &&
+            normalizeAttestedPhraseKey(remaining.last()) == "ici"
+        ) {
+            val source = remaining.last()
+            location += source to syntheticResolution(source, "akí")
+            remaining.removeAt(remaining.lastIndex)
+        }
+
         val snapshot = remaining.toList()
         val withIndex = snapshot.indexOfFirst { normalizeAttestedPhraseKey(it) == "avec" }
         val locativeIndex = snapshot.indexOfFirst { normalizeAttestedPhraseKey(it) in LOCATIVE_FRENCH_PREPOSITIONS }
@@ -1017,6 +1025,7 @@ internal class SaamakaGrammarEngine(
         .replace(Regex("\\bm'(?=\\p{L})"), "me ")
         .replace(Regex("\\bt'(?=\\p{L})"), "te ")
         .replace(Regex("\\bs'(?=\\p{L})"), "se ")
+        .replace(Regex("\\bd'(?=\\p{L})"), "de ")
         .replace(Regex("\\bl'(?=\\p{L})"), "le ")
         .replace(Regex("-ci\\b"), " ci")
         .replace(Regex("-là\\b"), " là")
