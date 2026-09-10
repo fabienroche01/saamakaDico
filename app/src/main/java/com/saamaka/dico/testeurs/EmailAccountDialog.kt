@@ -23,6 +23,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,13 @@ internal fun EmailAccountDialog(
     var confirmation by remember { mutableStateOf("") }
     var registration by remember { mutableStateOf(true) }
     var deleting by remember { mutableStateOf(false) }
+    val formScroll = rememberScrollState()
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    fun prepareSubmission() {
+        keyboard?.hide()
+        focusManager.clearFocus()
+    }
     val signedIn = account.session.uid != null
     val validEmail = Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
 
@@ -51,23 +60,42 @@ internal fun EmailAccountDialog(
         if (signedIn) email = account.session.email
     }
 
+    LaunchedEffect(account.session.uid, account.message) {
+        if (account.message != null || signedIn) formScroll.scrollTo(0)
+    }
+
     AlertDialog(
         onDismissRequest = { if (!account.busy) onDismiss() },
         title = {
-            Text(copy(if (signedIn) AccountText.ACCOUNT else if (registration) AccountText.CREATE else AccountText.SIGN_IN))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(copy(if (signedIn) AccountText.ACCOUNT else if (registration) AccountText.CREATE else AccountText.SIGN_IN))
+                if (account.busy) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(copy(AccountText.PROCESSING), style = MaterialTheme.typography.bodyMedium)
+                }
+                account.message?.let {
+                    Text(
+                        copy(it),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (account.messageIsError) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.heightIn(max = 520.dp).verticalScroll(formScroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (account.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                account.message?.let { Text(copy(it), color = MaterialTheme.colorScheme.primary) }
                 if (signedIn) {
                     Text(account.session.email)
                     Text(copy(if (account.session.verified) AccountText.VERIFIED else AccountText.VERIFY_REQUIRED))
                     Text(copy(AccountText.LOCAL_DATA), style = MaterialTheme.typography.bodySmall)
                     if (!account.session.verified) {
+                        if (account.verificationEmailFailed) {
+                            Text(copy(AccountText.VERIFICATION_SEND_FAILED), color = MaterialTheme.colorScheme.error)
+                        }
                         Button(
                             onClick = { account.refresh() },
                             enabled = !account.busy,
@@ -100,7 +128,7 @@ internal fun EmailAccountDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Button(
-                            onClick = { account.deleteAccount(password) },
+                            onClick = { prepareSubmission(); account.deleteAccount(password) },
                             enabled = !account.busy && password.isNotEmpty()
                         ) { Text(copy(AccountText.CONFIRM_DELETE)) }
                         TextButton(
@@ -150,10 +178,10 @@ internal fun EmailAccountDialog(
                     Text(copy(AccountText.DATA_USE), style = MaterialTheme.typography.bodySmall)
                     Button(
                         onClick = {
+                            prepareSubmission()
                             if (registration) account.register(email, password)
                             else account.signIn(email, password)
-                            password = ""
-                            confirmation = ""
+                            // Keep the input on failure; the session effect clears passwords on success.
                         },
                         enabled = !account.busy && validEmail &&
                             (if (registration) password.length >= 6 && password == confirmation else password.isNotEmpty()),
@@ -164,7 +192,7 @@ internal fun EmailAccountDialog(
                         enabled = !account.busy
                     ) { Text(copy(if (registration) AccountText.HAVE_ACCOUNT else AccountText.CREATE)) }
                     TextButton(
-                        onClick = { account.resetPassword(email) },
+                        onClick = { prepareSubmission(); account.resetPassword(email) },
                         enabled = !account.busy && validEmail
                     ) { Text(copy(AccountText.FORGOT)) }
                 }
