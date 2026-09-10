@@ -46,7 +46,8 @@ fun DictionaryQualitySummaryCard(audit: DictionaryQualityAudit) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
     ) {
@@ -58,18 +59,12 @@ fun DictionaryQualitySummaryCard(audit: DictionaryQualityAudit) {
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.height(8.dp))
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text("Doublons : ${audit.exactDuplicateGroups}")
                 Text("Champs vides : ${audit.missingFields}")
-            }
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
                 Text("Expressions longues : ${audit.longExpressions}")
                 Text("Variantes catégories : ${audit.categoryVariantGroups}")
             }
@@ -79,6 +74,16 @@ fun DictionaryQualitySummaryCard(audit: DictionaryQualityAudit) {
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Expression longue : plus de 100 caractères ou plus de 14 mots en français ou en Saamaka.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Entrées à contrôler : fiches distinctes signalées par au moins un contrôle, comptées une seule fois. Ce sont des points à vérifier, pas forcément des erreurs.",
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }
