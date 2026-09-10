@@ -135,6 +135,7 @@ class SaamakaGrammarEngineTest {
     @Test
     fun prepositionsKeepObjectSeriesAndPurposeCanUseStrongSeries() {
         assertEquals("mi ta wóoko ku mi tatá", engine.translate("je travaille avec mon père")?.translation)
+        assertEquals("mi ta wóoko ku de", engine.translate("je travaille avec eux")?.translation)
         assertEquals("mi ta njã fu mií", engine.translate("je mange pour moi")?.translation)
         assertEquals("mi ta njã fu hɛ̃́", engine.translate("je mange pour elle")?.translation)
     }
@@ -154,6 +155,7 @@ class SaamakaGrammarEngineTest {
     @Test
     fun peripheralComplementsEndWithLocationThenTime() {
         assertEquals("mi o gó a dí kónde amánu", engine.translate("je vais au village demain")?.translation)
+        assertEquals("mi o gó a dí kónde amánu", engine.translate("demain je vais au village")?.translation)
         assertEquals("mi ta wóoko ku mi tatá", engine.translate("je travaille avec mon père")?.translation)
     }
 
@@ -165,20 +167,21 @@ class SaamakaGrammarEngineTest {
         assertEquals("Ún kamía i ta gó ?", engine.translate("où vas-tu ?")?.translation)
         assertEquals("Fa andí i ta bëë ?", engine.translate("pourquoi pleures-tu ?")?.translation)
         assertEquals("Unfá i dɛ ?", engine.translate("comment vas-tu ?")?.translation)
+        assertEquals("Unte a o gó ?", engine.translate("quand ira-t-il ?")?.translation)
         assertEquals("Ambé dɛ aálá ?", engine.translate("qui est là ?")?.translation)
         assertEquals("Andí da dí sã akí ?", engine.translate("qu'est-ce que c'est ?")?.translation)
     }
 
     @Test
     fun factualAndVolitiveComplementsUseDifferentComplementizers() {
-        assertEquals("mi sá táa a ta kumísu", engine.translate("je sais que il vient")?.translation)
+        assertEquals("mi sá táa a ta kumísu", engine.translate("je sais qu'il vient")?.translation)
         assertEquals("mi kɛ́ fu i kumísu", engine.translate("je veux que tu viennes")?.translation)
     }
 
     @Test
     fun temporalCausalAndConditionalSubordinatesKeepTheirOwnClauseOrder() {
         assertEquals("Te mi ta njã, mi á ta táki", engine.translate("quand je mange, je ne parle pas")?.translation)
-        assertEquals("mi á ta wáka bika a siki", engine.translate("je ne marche pas parce que il est malade")?.translation)
+        assertEquals("mi á ta wáka bika a siki", engine.translate("je ne marche pas parce qu'il est malade")?.translation)
         assertEquals("Ee i ta kumísu, mi o siki", engine.translate("si tu viens, je serai malade")?.translation)
     }
 
