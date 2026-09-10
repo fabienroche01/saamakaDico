@@ -1,5 +1,6 @@
 package com.saamaka.dico.testeurs
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -98,7 +99,14 @@ class AudioAdminActivity : ComponentActivity() {
                             locallyValidatedIds = locallyValidatedIds,
                             audioStore = audioStore,
                             testerName = testerName,
-                            onBack = { finish() }
+                            onBack = {
+                                startActivity(
+                                    Intent(this@AudioAdminActivity, MainActivity::class.java).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                    }
+                                )
+                                finish()
+                            }
                         )
                     }
                 }
