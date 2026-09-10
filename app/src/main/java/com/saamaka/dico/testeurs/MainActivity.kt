@@ -1197,6 +1197,8 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                             correctionStore.setTesterName(proposal.testerName)
                             correctionStore.save(proposal)
                             correctionProposals = correctionStore.all()
+                            historyStore.add(proposal.entryId)
+                            refreshHistory()
                             selectedEntry = selectedEntry?.copy(
                                 french = proposal.frenchProposed.ifBlank { proposal.frenchCurrent },
                                 saamaka = proposal.saamakaProposed.ifBlank { proposal.saamakaCurrent },
@@ -4582,7 +4584,7 @@ private fun CorrectionsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B5D3B)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0B5D3B), contentColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -4632,7 +4634,7 @@ private fun CorrectionsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4EFE5)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF4EFE5), contentColor = Color(0xFF16372A)),
                 border = BorderStroke(1.dp, Color(0xFFE0D8C9)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -4738,7 +4740,7 @@ private fun CorrectionsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3), contentColor = Color(0xFF16372A)),
                     border = BorderStroke(1.dp, Color(0xFFB8D5C3))
                 ) {
                     Column(Modifier.padding(16.dp)) {
@@ -4783,7 +4785,7 @@ private fun CorrectionsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F7F3), contentColor = Color(0xFF16372A)),
                 border = BorderStroke(1.dp, Color(0xFFB8D5C3))
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -4820,7 +4822,7 @@ private fun CorrectionsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4F4)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4F4), contentColor = Color(0xFF16372A)),
                 border = BorderStroke(1.dp, Color(0xFFE9BDBD))
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -4833,7 +4835,7 @@ private fun CorrectionsScreen(
                     Text(
                         "${deletionProposals.size} ${strings.proposedDeletionsCount}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF4C554F)
                     )
 
                     if (deletionProposals.isEmpty()) {
@@ -4901,7 +4903,7 @@ private fun CorrectionsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEFC4), contentColor = Color(0xFF16372A)),
                 border = BorderStroke(1.dp, Color(0xFFE2CC8B))
             ) {
 
@@ -5187,6 +5189,7 @@ private fun DeletionProposalCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
+        contentColor = Color(0xFF16372A),
         border = BorderStroke(1.dp, Color(0xFFE4D6D6))
     ) {
         Column(Modifier.padding(14.dp)) {
@@ -5197,7 +5200,7 @@ private fun DeletionProposalCard(
                 color = Color(0xFF16372A)
             )
             if (proposal.french.isNotBlank()) {
-                Text(proposal.french, color = MaterialTheme.colorScheme.primary)
+                Text(proposal.french, color = Color(0xFF0B5D3B))
             }
             Spacer(Modifier.height(8.dp))
             Text("${strings.deletionReasonLabel} : ${proposal.reason}")
@@ -5208,7 +5211,7 @@ private fun DeletionProposalCard(
             Text("${strings.deletionDateLabel} : $formattedDate")
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onOpen, modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0B5D3B))) {
                     Text(strings.openEntry)
                 }
                 if (canCancel) {
@@ -5243,6 +5246,7 @@ private fun NewEntryProposalCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
+        contentColor = Color(0xFF16372A),
         border = BorderStroke(1.dp, Color(0xFFC9DED0))
     ) {
         Column(Modifier.padding(14.dp)) {
@@ -5259,7 +5263,7 @@ private fun NewEntryProposalCard(
             }
             if (canEdit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0B5D3B))) {
                         Text(strings.editProposal)
                     }
                     TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
