@@ -68,35 +68,17 @@ private fun HomePhraseResultBlocks(
     result: PhraseTranslationPipelineResult,
     strings: AppStrings
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION),
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0B5D3B)
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    result.wordByWordTranslation?.translation
-                        ?: strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                result.wordByWordTranslation?.untranslatedSegments
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let {
-                        Spacer(Modifier.height(6.dp))
-                        Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, it.joinToString(", ")))
-                    }
-            }
-        }
+    val grammatical = result.grammaticalTranslation
+    val wordByWord = result.wordByWordTranslation
+    val grammaticalFirst = grammatical?.isComplete == true
 
+    @Composable
+    fun GrammaticalCard(emphasized: Boolean) {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text(
                     strings.ui(
-                        if (result.grammaticalTranslation?.kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL) {
+                        if (grammatical?.kind == com.saamaka.dico.testeurs.model.PhraseTranslationKind.PARTIAL) {
                             UiCopyKey.GRAMMATICAL_PARTIAL_TRANSLATION
                         } else {
                             UiCopyKey.GRAMMATICAL_TRANSLATION
@@ -107,12 +89,12 @@ private fun HomePhraseResultBlocks(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    result.grammaticalTranslation?.translation
+                    grammatical?.translation
                         ?: strings.ui(UiCopyKey.GRAMMATICAL_TRANSLATION_UNAVAILABLE),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = if (emphasized) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                    fontWeight = if (emphasized) FontWeight.ExtraBold else FontWeight.Bold
                 )
-                result.grammaticalTranslation?.unresolvedHints?.takeIf { it.isNotEmpty() }?.let { hints ->
+                grammatical?.unresolvedHints?.takeIf { it.isNotEmpty() }?.let { hints ->
                     Spacer(Modifier.height(6.dp))
                     Text(
                         strings.ui(
@@ -122,6 +104,42 @@ private fun HomePhraseResultBlocks(
                     )
                 }
             }
+        }
+    }
+
+    @Composable
+    fun WordByWordCard(emphasized: Boolean) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    strings.ui(UiCopyKey.WORD_BY_WORD_TRANSLATION),
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0B5D3B)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    wordByWord?.translation
+                        ?: strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE),
+                    style = if (emphasized) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                    fontWeight = if (emphasized) FontWeight.ExtraBold else FontWeight.SemiBold
+                )
+                wordByWord?.untranslatedSegments
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(strings.ui(UiCopyKey.ITEMS_TO_REVIEW, it.joinToString(", ")))
+                    }
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (grammaticalFirst) {
+            GrammaticalCard(emphasized = true)
+            WordByWordCard(emphasized = false)
+        } else {
+            WordByWordCard(emphasized = true)
+            GrammaticalCard(emphasized = false)
         }
     }
 }
@@ -1166,5 +1184,4 @@ fun SearchScreen(
             }
         }
     }
-
 
