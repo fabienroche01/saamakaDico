@@ -1891,7 +1891,10 @@ val frenchObject =
     }
 
 
-    fun findByIds(ids: Set<Int>): List<DictionaryEntry> {
+    fun findByIds(ids: Set<Int>): List<DictionaryEntry> =
+        findByIds(ids, includeIncomplete = false)
+
+    private fun findByIds(ids: Set<Int>, includeIncomplete: Boolean): List<DictionaryEntry> {
         if (ids.isEmpty()) {
             return emptyList()
         }
@@ -1906,10 +1909,10 @@ val frenchObject =
                 SELECT id, francais, english, nederlands, saamaka, categorie, valide
                 FROM dictionnaire
                 WHERE id IN ($placeholders)
-                  AND TRIM(COALESCE(saamaka, '')) <> ''
-                  AND TRIM(COALESCE(francais, '')) <> ''
-                  AND UPPER(TRIM(saamaka)) NOT IN ('#NAME?', '#N/A', 'N/A')
-                  AND UPPER(TRIM(francais)) NOT IN ('#NAME?', '#N/A', 'N/A')
+                  AND (${if (includeIncomplete) 1 else 0} = 1 OR TRIM(COALESCE(saamaka, '')) <> '')
+                  AND (${if (includeIncomplete) 1 else 0} = 1 OR TRIM(COALESCE(francais, '')) <> '')
+                  AND UPPER(TRIM(COALESCE(saamaka, ''))) NOT IN ('#NAME?', '#N/A', 'N/A')
+                  AND UPPER(TRIM(COALESCE(francais, ''))) NOT IN ('#NAME?', '#N/A', 'N/A')
                 ORDER BY francais COLLATE NOCASE
                 """.trimIndent(),
                 ids.map { it.toString() }.toTypedArray()
@@ -1955,7 +1958,7 @@ val frenchObject =
             return emptyList()
         }
 
-        val entriesById = findByIds(ids.toSet()).associateBy { it.id }
+        val entriesById = findByIds(ids.toSet(), includeIncomplete = true).associateBy { it.id }
 
         return ids.mapNotNull {
             entriesById[it]
