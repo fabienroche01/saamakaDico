@@ -69,10 +69,10 @@ internal class SaamakaGrammarEngine(
 
     private fun translateQuestion(text: String): PhraseTranslationResult? {
         val trimmed = text.trim()
+        if (!trimmed.endsWith("?")) return null
+
         val withoutQuestionMark = trimmed.removeSuffix("?").trim()
         val lower = normalizeAttestedPhraseKey(withoutQuestionMark)
-        val looksInterrogative = trimmed.endsWith("?") || questionPrefix(lower) != null
-        if (!looksInterrogative) return null
 
         if (lower == "qui est la" || lower == "qui est là") {
             return syntheticGrammar(trimmed, "Ambé dɛ aálá ?")
@@ -84,7 +84,7 @@ internal class SaamakaGrammarEngine(
             return syntheticGrammar(trimmed, "Unfá i dɛ ?")
         }
 
-        val estCeQue = Regex("^(?i)est[- ]ce que\\s+")
+        val estCeQue = Regex("^est[- ]ce que\\s+", RegexOption.IGNORE_CASE)
         if (estCeQue.containsMatchIn(withoutQuestionMark)) {
             val declarative = withoutQuestionMark.replace(estCeQue, "").trim()
             val translated = translateClauseWithoutQuestion(declarative) ?: return null
@@ -270,9 +270,17 @@ internal class SaamakaGrammarEngine(
 
         // French may front a time adverb; Saamaka canonical order puts it last.
         resolveTimeAdverb(words.first())?.let { time ->
-            val rest = words.drop(1).joinToString(" ")
+            val restWords = words.drop(1)
+            val rest = restWords.joinToString(" ")
             val translated = translateSimpleClause(rest) ?: return null
-            return translated.copy(translation = "${translated.translation} ${time.saamaka}")
+            val subject = restWords.firstOrNull()?.let(::resolveAttestedFrenchSubject)
+            val futureMotion = normalizeAttestedPhraseKey(words.first()) == "demain" &&
+                restWords.size >= 2 && grammarLemma(restWords[1]) == "aller" &&
+                grammarTense(restWords[1]) == FrenchVerbTense.PRESENT && subject != null
+            val adjusted = if (futureMotion) {
+                translated.translation.replaceFirst("$subject ta ", "$subject o ")
+            } else translated.translation
+            return translated.copy(translation = "$adjusted ${time.saamaka}")
         }
 
         val subject = resolveAttestedFrenchSubject(words.first()) ?: return null
@@ -391,7 +399,6 @@ internal class SaamakaGrammarEngine(
         if (prep == "au") body.add(0, "le")
         if (prep == "aux") body.add(0, "les")
 
-        // The attested home construction is dɛ a wósu, with no definite article.
         val nominal = if (body.map(::normalizeAttestedPhraseKey) == listOf("la", "maison")) {
             resolveNominalLexeme("maison")
         } else {
@@ -693,26 +700,31 @@ internal class SaamakaGrammarEngine(
             }
         }
 
-        val withIndex = remaining.indexOfFirst { normalizeAttestedPhraseKey(it) == "avec" }
+        val snapshot = remaining.toList()
+        val withIndex = snapshot.indexOfFirst { normalizeAttestedPhraseKey(it) == "avec" }
+        val locativeIndex = snapshot.indexOfFirst { normalizeAttestedPhraseKey(it) in LOCATIVE_FRENCH_PREPOSITIONS }
+        val peripheralIndexes = listOf(withIndex, locativeIndex).filter { it >= 0 }
+        val coreEnd = peripheralIndexes.minOrNull() ?: snapshot.size
+
         if (withIndex >= 0) {
-            val body = remaining.drop(withIndex + 1)
+            val nextBoundary = listOf(locativeIndex).filter { it > withIndex }.minOrNull() ?: snapshot.size
+            val body = snapshot.subList(withIndex + 1, nextBoundary)
             if (body.isEmpty()) return null
             val value = resolveObjectOrNominal(body) ?: return null
-            val source = remaining.drop(withIndex).joinToString(" ")
+            val source = snapshot.subList(withIndex, nextBoundary).joinToString(" ")
             mannerOrMeans += source to syntheticResolution(source, "ku ${value.saamaka}")
-            while (remaining.size > withIndex) remaining.removeAt(remaining.lastIndex)
         }
 
-        val locativeIndex = remaining.indexOfFirst { normalizeAttestedPhraseKey(it) in LOCATIVE_FRENCH_PREPOSITIONS }
         if (locativeIndex >= 0) {
-            val locativeWords = remaining.drop(locativeIndex)
+            val nextBoundary = listOf(withIndex).filter { it > locativeIndex }.minOrNull() ?: snapshot.size
+            val locativeWords = snapshot.subList(locativeIndex, nextBoundary)
             val value = resolveLocativePredicate(locativeWords) ?: return null
             val source = locativeWords.joinToString(" ")
             location += source to value
-            while (remaining.size > locativeIndex) remaining.removeAt(remaining.lastIndex)
         }
 
-        val core = resolveComplements(remaining, allowFrenchPartitive) ?: return null
+        val coreWords = snapshot.take(coreEnd)
+        val core = resolveComplements(coreWords, allowFrenchPartitive) ?: return null
         return OrderedComplements(core, mannerOrMeans, location, time)
     }
 
@@ -725,7 +737,6 @@ internal class SaamakaGrammarEngine(
             var match: Pair<String, FrenchFallbackResolution>? = null
             var consumed = 0
 
-            // Purpose/preposition fu: keep the explicitly attested strong series here.
             if (normalizeAttestedPhraseKey(words[index]) == "pour" && index + 1 < words.size) {
                 resolveAttestedStrongPronoun(words[index + 1])?.let { strong ->
                     val source = words.subList(index, index + 2).joinToString(" ")
@@ -734,8 +745,6 @@ internal class SaamakaGrammarEngine(
                 }
             }
 
-            // Try a complete nominal phrase first (articles, possessives, numbers,
-            // adjectives and demonstrative particles are all handled here).
             if (match == null) {
                 for (end in words.size downTo index + 1) {
                     val slice = words.subList(index, end)
@@ -746,7 +755,6 @@ internal class SaamakaGrammarEngine(
                 }
             }
 
-            // French partitives disappear in Saamaka.
             if (match == null && allowFrenchPartitive) {
                 val normalized = normalizeAttestedPhraseKey(words[index])
                 if (normalized == "du" || normalized == "des") {
@@ -810,10 +818,10 @@ internal class SaamakaGrammarEngine(
                 "le", "la" -> { prefix += "dí"; index++ }
                 "les" -> { prefix += "dée"; index++ }
                 "un", "une" -> { prefix += "wán"; index++ }
-                "des" -> index++ // indefinite plural: bare noun
-                "du" -> index++  // partitive: bare noun
+                "des" -> index++
+                "du" -> index++
                 "ce", "cet", "cette" -> {
-                    if (suffix == null) return null // distance is unspecified: do not guess
+                    if (suffix == null) return null
                     prefix += "dí"; index++
                 }
                 "ces" -> {
@@ -821,10 +829,6 @@ internal class SaamakaGrammarEngine(
                     prefix += "dée"; index++
                 }
             }
-        }
-
-        if (index < words.size && normalizeAttestedPhraseKey(words[index]) == "de" && index + 1 < words.size && first == "beaucoup") {
-            index++
         }
 
         val quantity = mutableListOf<String>()
@@ -843,7 +847,6 @@ internal class SaamakaGrammarEngine(
         if (index >= words.size) return null
         val lexicalWords = words.drop(index)
 
-        // Plain bare nominal: require an attested lexical resolution.
         if (prefix.isEmpty() && quantity.isEmpty() && suffix == null) {
             if (lexicalWords.size == 1) return resolveNominalLexeme(lexicalWords[0])
             resolveNominalLexeme(lexicalWords.joinToString(" "))?.let { return it }
@@ -1003,6 +1006,7 @@ internal class SaamakaGrammarEngine(
 
     private fun normalizeSurface(text: String): String = text
         .replace('’', '\'')
+        .replace(Regex("\\bqu'(?=(il|elle|ils|elles|on)\\b)", RegexOption.IGNORE_CASE), "que ")
         .replace(Regex("\\s+"), " ")
         .trim()
 
@@ -1013,6 +1017,7 @@ internal class SaamakaGrammarEngine(
         .replace(Regex("\\bm'(?=\\p{L})"), "me ")
         .replace(Regex("\\bt'(?=\\p{L})"), "te ")
         .replace(Regex("\\bs'(?=\\p{L})"), "se ")
+        .replace(Regex("\\bl'(?=\\p{L})"), "le ")
         .replace(Regex("-ci\\b"), " ci")
         .replace(Regex("-là\\b"), " là")
         .replace(Regex("-la\\b"), " la")
@@ -1036,7 +1041,7 @@ internal class SaamakaGrammarEngine(
 
         val GRAMMAR_DYNAMIC_LEMMAS = setOf(
             "manger", "dormir", "aider", "marcher", "ecrire", "écrire", "aller", "venir",
-            "travailler", "boire", "courir", "parler", "dire", "donner", "regarder",
+            "partir", "travailler", "boire", "courir", "parler", "dire", "donner", "regarder",
             "acheter", "appeler", "pleurer", "laver", "blesser", "habiller", "faire"
         )
 
