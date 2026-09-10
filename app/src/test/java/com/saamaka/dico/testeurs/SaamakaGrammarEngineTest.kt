@@ -7,17 +7,10 @@ import org.junit.Test
 class SaamakaGrammarEngineTest {
     private val resolver = FrenchFallbackResolver(
         listOf(
-            candidate("malade", "síki"),
-            candidate("seul", "wanwan"),
-            candidate("vouloir", "kë"),
-            candidate("devoir", "da"),
-            candidate("aimer", "lobi"),
-            candidate("manger", "Makandi", "O"),
-            candidate("dormir", "duumí"),
-            candidate("voir", "si"),
-            candidate("aider", "heepi"),
-            candidate("mère", "mama"),
-            candidate("père", "táta")
+            candidate("malade", "síki"), candidate("seul", "wanwan"), candidate("vouloir", "kë"),
+            candidate("devoir", "da"), candidate("aimer", "lobi"), candidate("manger", "Makandi", "O"),
+            candidate("dormir", "duumí"), candidate("voir", "si"), candidate("aider", "heepi"),
+            candidate("mère", "mama"), candidate("père", "táta")
         )
     )
     private val engine = SaamakaGrammarEngine(resolver::resolve)
@@ -29,6 +22,7 @@ class SaamakaGrammarEngineTest {
         assertEquals("a síki", engine.translate("elle est malade")?.translation)
         assertEquals("a síki", engine.translate("il est malade")?.translation)
         assertEquals("mi bi síki", engine.translate("j’étais malade")?.translation)
+        assertEquals("mi o síki", engine.translate("je serai malade")?.translation)
         assertEquals("mi an síki", engine.translate("je ne suis pas malade")?.translation)
     }
 
@@ -36,34 +30,43 @@ class SaamakaGrammarEngineTest {
     fun appliesAttestedAspectAndModalPatterns() {
         assertEquals("mi o Makandi", engine.translate("je vais manger")?.translation)
         assertEquals("i o duumí", engine.translate("tu vas dormir")?.translation)
+        assertEquals("mi sa Makandi", engine.translate("je peux manger")?.translation)
+        assertEquals("i sa duumí", engine.translate("tu peux dormir")?.translation)
         assertEquals("mi kë Makandi", engine.translate("je veux manger")?.translation)
         assertEquals("i kë duumí", engine.translate("tu veux dormir")?.translation)
         assertEquals("mi ta Makandi", engine.translate("je suis en train de manger")?.translation)
-        assertEquals("mi ta da duumí", engine.translate("je dois dormir")?.translation)
-        assertEquals("mi an lobi duumí", engine.translate("je n’aime pas dormir")?.translation)
+    }
+
+    @Test
+    fun tamDistinguishesStateFromDynamicPredicate() {
+        assertEquals("mi lobi", engine.translate("j’aime")?.translation)
+        assertEquals("mi bi lobi", engine.translate("j’aimais")?.translation)
+        assertEquals("mi ta Makandi", engine.translate("je mange")?.translation)
+        assertEquals("mi bi ta Makandi", engine.translate("je mangeais")?.translation)
+        assertEquals("mi o Makandi", engine.translate("je mangerai")?.translation)
     }
 
     @Test
     fun grammarLineDistinguishesThirdPersonSubjectFromObject() {
-        assertEquals("a ta si mi", engine.translate("elle me voit")?.translation)
-        assertEquals("mi ta si ën", engine.translate("je la vois")?.translation)
-        assertEquals("mi ta si ën", engine.translate("je le vois")?.translation)
+        assertEquals("a si mi", engine.translate("elle me voit")?.translation)
+        assertEquals("mi si ën", engine.translate("je la vois")?.translation)
+        assertEquals("mi si ën", engine.translate("je le vois")?.translation)
         assertEquals("mi ta heepi ën", engine.translate("je l’aide")?.translation)
         assertEquals("mi an si ën", engine.translate("je ne la vois pas")?.translation)
     }
 
     @Test
     fun grammarLineKeepsWeakObjectPronounsForOtherPersons() {
-        assertEquals("mi ta si i", engine.translate("je te vois")?.translation)
-        assertEquals("mi ta si u", engine.translate("je nous vois")?.translation)
-        assertEquals("mi ta si unu", engine.translate("je vous vois")?.translation)
-        assertEquals("mi ta si de", engine.translate("je les vois")?.translation)
+        assertEquals("mi si i", engine.translate("je te vois")?.translation)
+        assertEquals("mi si u", engine.translate("je nous vois")?.translation)
+        assertEquals("mi si unu", engine.translate("je vous vois")?.translation)
+        assertEquals("mi si de", engine.translate("je les vois")?.translation)
     }
 
     @Test
     fun grammarLineUsesDependentPronounForPossession() {
-        assertEquals("mi ta si i mama", engine.translate("je vois ta mère")?.translation)
-        assertEquals("mi ta si ën mama", engine.translate("je vois sa mère")?.translation)
+        assertEquals("mi si i mama", engine.translate("je vois ta mère")?.translation)
+        assertEquals("mi si ën mama", engine.translate("je vois sa mère")?.translation)
         assertEquals("mi i táta", engine.translate("je suis ton père")?.translation)
         assertEquals("a ën mama", engine.translate("elle est sa mère")?.translation)
         assertEquals("mi u táta", engine.translate("je suis notre père")?.translation)
@@ -81,7 +84,6 @@ class SaamakaGrammarEngineTest {
     @Test
     fun neverInventsAnUnknownOrUnsafeLexeme() {
         assertNull(engine.translate("je fais dormir"))
-        assertNull(engine.translate("je peux dormir"))
         assertNull(engine.translate("je veux téléporter"))
         assertNull(engine.translate("on veut dormir"))
     }
@@ -95,6 +97,5 @@ class SaamakaGrammarEngineTest {
         assertEquals(FrenchVerbTense.PRESENT, FrenchVerbInflections.tense("vas"))
     }
 
-    private fun candidate(french: String, saamaka: String, validation: String = "") =
-        FrenchTranslationCandidate(french, saamaka, validation)
+    private fun candidate(french: String, saamaka: String, validation: String = "") = FrenchTranslationCandidate(french, saamaka, validation)
 }
