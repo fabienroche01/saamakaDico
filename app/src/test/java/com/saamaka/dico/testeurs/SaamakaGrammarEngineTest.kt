@@ -7,95 +7,193 @@ import org.junit.Test
 class SaamakaGrammarEngineTest {
     private val resolver = FrenchFallbackResolver(
         listOf(
-            candidate("malade", "síki"), candidate("seul", "wanwan"), candidate("vouloir", "kë"),
-            candidate("devoir", "da"), candidate("aimer", "lobi"), candidate("manger", "Makandi", "O"),
-            candidate("dormir", "duumí"), candidate("voir", "si"), candidate("aider", "heepi"),
-            candidate("mère", "mama"), candidate("père", "táta")
+            candidate("malade", "siki"),
+            candidate("seul", "wanwan"),
+            candidate("vouloir", "kɛ́"),
+            candidate("devoir", "da"),
+            candidate("aimer", "lobi"),
+            candidate("manger", "njã", "O"),
+            candidate("dormir", "duumí"),
+            candidate("voir", "lúku"),
+            candidate("aider", "heepi"),
+            candidate("marcher", "wáka"),
+            candidate("écrire", "sikífi"),
+            candidate("aller", "gó"),
+            candidate("venir", "kumísu"),
+            candidate("travailler", "wóoko"),
+            candidate("boire", "bebe"),
+            candidate("parler", "táki"),
+            candidate("savoir", "sá"),
+            candidate("dire", "táki"),
+            candidate("croire", "bili"),
+            candidate("penser", "fíki"),
+            candidate("donner", "da"),
+            candidate("regarder", "lúku"),
+            candidate("acheter", "bái"),
+            candidate("appeler", "káai"),
+            candidate("pleurer", "bëë"),
+            candidate("laver", "wási"),
+            candidate("père", "tatá"),
+            candidate("mère", "mamá"),
+            candidate("homme", "kɔni"),
+            candidate("maison", "wósu"),
+            candidate("village", "kónde"),
+            candidate("livre", "búku"),
+            candidate("téléphone", "fúnu"),
+            candidate("chien", "dágu"),
+            candidate("voiture", "otó"),
+            candidate("bicyclette", "baisígi"),
+            candidate("blanc", "wéti"),
+            candidate("grand", "gãã"),
+            candidate("nouveau", "njunjún"),
+            candidate("vert", "guúun")
         )
     )
     private val engine = SaamakaGrammarEngine(resolver::resolve)
 
     @Test
-    fun appliesAttestedCopulaMarkersWithoutTranslatingEtre() {
-        assertEquals("mi síki", engine.translate("je suis malade")?.translation)
-        assertEquals("i wanwan", engine.translate("tu es seul")?.translation)
-        assertEquals("a síki", engine.translate("elle est malade")?.translation)
-        assertEquals("a síki", engine.translate("il est malade")?.translation)
-        assertEquals("mi bi síki", engine.translate("j’étais malade")?.translation)
-        assertEquals("mi o síki", engine.translate("je serai malade")?.translation)
-        assertEquals("mi an síki", engine.translate("je ne suis pas malade")?.translation)
+    fun statePredicatesUseZeroCopulaAndTamInStrictOrder() {
+        assertEquals("mi siki", engine.translate("je suis malade")?.translation)
+        assertEquals("mi bi siki", engine.translate("j'étais malade")?.translation)
+        assertEquals("mi o siki", engine.translate("je serai malade")?.translation)
+        assertEquals("mi á siki", engine.translate("je ne suis pas malade")?.translation)
+        assertEquals("mi á bi siki", engine.translate("je n'étais pas malade")?.translation)
     }
 
     @Test
-    fun appliesAttestedAspectAndModalPatterns() {
-        assertEquals("mi o Makandi", engine.translate("je vais manger")?.translation)
-        assertEquals("i o duumí", engine.translate("tu vas dormir")?.translation)
-        assertEquals("mi sa Makandi", engine.translate("je peux manger")?.translation)
-        assertEquals("i sa duumí", engine.translate("tu peux dormir")?.translation)
-        assertEquals("mi kë Makandi", engine.translate("je veux manger")?.translation)
-        assertEquals("i kë duumí", engine.translate("tu veux dormir")?.translation)
-        assertEquals("mi ta Makandi", engine.translate("je suis en train de manger")?.translation)
+    fun locativePredicatesRequireVerbalCopulaDe() {
+        assertEquals("a dɛ a wósu", engine.translate("il est à la maison")?.translation)
+        assertEquals("a bi dɛ a wósu", engine.translate("il était à la maison")?.translation)
+        assertEquals("a o dɛ a wósu", engine.translate("il sera à la maison")?.translation)
+        assertEquals("a á dɛ a wósu", engine.translate("il n'est pas à la maison")?.translation)
     }
 
     @Test
-    fun tamDistinguishesStateFromDynamicPredicate() {
-        assertEquals("mi lobi", engine.translate("j’aime")?.translation)
-        assertEquals("mi bi lobi", engine.translate("j’aimais")?.translation)
-        assertEquals("mi ta Makandi", engine.translate("je mange")?.translation)
-        assertEquals("mi bi ta Makandi", engine.translate("je mangeais")?.translation)
-        assertEquals("mi o Makandi", engine.translate("je mangerai")?.translation)
+    fun nominalEquationUsesDaOnlyInUnmarkedPresent() {
+        assertEquals("mi da wán kɔni", engine.translate("je suis un homme")?.translation)
+        assertEquals("a da mi tatá", engine.translate("il est mon père")?.translation)
+        assertEquals("a bi dɛ mi tatá", engine.translate("il était mon père")?.translation)
+        assertEquals("a o dɛ mi tatá", engine.translate("il sera mon père")?.translation)
+        assertEquals("a á dɛ mi tatá", engine.translate("il n'est pas mon père")?.translation)
     }
 
     @Test
-    fun grammarLineDistinguishesThirdPersonSubjectFromObject() {
-        assertEquals("a si mi", engine.translate("elle me voit")?.translation)
-        assertEquals("mi si ën", engine.translate("je la vois")?.translation)
-        assertEquals("mi si ën", engine.translate("je le vois")?.translation)
-        assertEquals("mi ta heepi ën", engine.translate("je l’aide")?.translation)
-        assertEquals("mi an si ën", engine.translate("je ne la vois pas")?.translation)
+    fun presenterUsesDaButSwitchesToDeWithTamOrNegation() {
+        assertEquals("da mi tatá", engine.translate("c'est mon père")?.translation)
+        assertEquals("a bi dɛ mi tatá", engine.translate("c'était mon père")?.translation)
+        assertEquals("á dɛ mi tatá", engine.translate("ce n'est pas mon père")?.translation)
     }
 
     @Test
-    fun grammarLineKeepsWeakObjectPronounsForOtherPersons() {
-        assertEquals("mi si i", engine.translate("je te vois")?.translation)
-        assertEquals("mi si u", engine.translate("je nous vois")?.translation)
-        assertEquals("mi si unu", engine.translate("je vous vois")?.translation)
-        assertEquals("mi si de", engine.translate("je les vois")?.translation)
+    fun tamSeparatesStateDynamicFuturePotentialAndProgressive() {
+        assertEquals("mi lobi", engine.translate("j'aime")?.translation)
+        assertEquals("mi bi lobi", engine.translate("j'aimais")?.translation)
+        assertEquals("mi ta njã", engine.translate("je mange")?.translation)
+        assertEquals("mi bi ta njã", engine.translate("je mangeais")?.translation)
+        assertEquals("mi o njã", engine.translate("je mangerai")?.translation)
+        assertEquals("mi sa njã", engine.translate("je peux manger")?.translation)
+        assertEquals("mi á sa njã", engine.translate("je ne peux pas manger")?.translation)
+        assertEquals("mi ta sikífi", engine.translate("je suis en train d'écrire")?.translation)
     }
 
     @Test
-    fun grammarLineUsesDependentPronounForPossession() {
-        assertEquals("mi si i mama", engine.translate("je vois ta mère")?.translation)
-        assertEquals("mi si ën mama", engine.translate("je vois sa mère")?.translation)
-        assertEquals("mi i táta", engine.translate("je suis ton père")?.translation)
-        assertEquals("a ën mama", engine.translate("elle est sa mère")?.translation)
-        assertEquals("mi u táta", engine.translate("je suis notre père")?.translation)
-        assertEquals("mi unu táta", engine.translate("je suis votre père")?.translation)
-        assertEquals("mi de táta", engine.translate("je suis leur père")?.translation)
-        assertEquals("mi an i táta", engine.translate("je ne suis pas ton père")?.translation)
+    fun negationPrecedesAllOtherTamMarkers() {
+        assertEquals("mi á lúku ɛn", engine.translate("je ne la vois pas")?.translation)
+        assertEquals("mi á ta njã", engine.translate("je ne mange pas")?.translation)
+        assertEquals("mi á bi ta njã", engine.translate("je ne mangeais pas")?.translation)
+        assertEquals("mi á o njã", engine.translate("je ne mangerai pas")?.translation)
     }
 
     @Test
-    fun grammarLineUsesStrongPronounAfterPour() {
-        assertEquals("mi ta Makandi fu mí", engine.translate("je mange pour moi")?.translation)
-        assertEquals("mi ta Makandi fu hën", engine.translate("je mange pour elle")?.translation)
+    fun weakObjectPronounsRespectSyntacticPersonAndNoGender() {
+        assertEquals("a lúku mi", engine.translate("elle me voit")?.translation)
+        assertEquals("mi lúku ɛn", engine.translate("je la vois")?.translation)
+        assertEquals("mi lúku ɛn", engine.translate("je le vois")?.translation)
+        assertEquals("mi lúku i", engine.translate("je te vois")?.translation)
+        assertEquals("mi lúku u", engine.translate("je nous vois")?.translation)
+        assertEquals("mi lúku unu", engine.translate("je vous vois")?.translation)
+        assertEquals("mi lúku de", engine.translate("je les vois")?.translation)
     }
 
     @Test
-    fun neverInventsAnUnknownOrUnsafeLexeme() {
-        assertNull(engine.translate("je fais dormir"))
+    fun possessivesDependOnPossessorAndCanMarkPluralPossessedNoun() {
+        assertEquals("mi lúku i mamá", engine.translate("je vois ta mère")?.translation)
+        assertEquals("mi lúku ɛn mamá", engine.translate("je vois sa mère")?.translation)
+        assertEquals("mi da i tatá", engine.translate("je suis ton père")?.translation)
+        assertEquals("mi da di u tatá", engine.translate("je suis notre père")?.translation)
+        assertEquals("mi ta lúku mi dée búku", engine.translate("je regarde mes livres")?.translation)
+    }
+
+    @Test
+    fun nominalGroupHandlesArticlesPluralQuantitiesAdjectivesAndDemonstratives() {
+        assertEquals("mi ta lúku dí fúnu", engine.translate("je regarde le téléphone")?.translation)
+        assertEquals("mi ta lúku wán gãã kónde", engine.translate("je regarde un grand village")?.translation)
+        assertEquals("mi ta lúku dée tuu wéti dágu akí", engine.translate("je regarde ces deux chiens blancs-ci")?.translation)
+        assertEquals("mi ta lúku búku", engine.translate("je regarde des livres")?.translation)
+    }
+
+    @Test
+    fun prepositionsKeepObjectSeriesAndPurposeCanUseStrongSeries() {
+        assertEquals("mi ta wóoko ku mi tatá", engine.translate("je travaille avec mon père")?.translation)
+        assertEquals("mi ta njã fu mií", engine.translate("je mange pour moi")?.translation)
+        assertEquals("mi ta njã fu hɛ̃́", engine.translate("je mange pour elle")?.translation)
+    }
+
+    @Test
+    fun reflexiveAndReciprocalConstructionsUseAttestedStructures() {
+        assertEquals("mi ta wási mi sinkii", engine.translate("je me lave")?.translation)
+        assertEquals("a ta lúku ɛn seéi", engine.translate("il se regarde")?.translation)
+        assertEquals("de ta lúku di ún ku di ún", engine.translate("ils se voient")?.translation)
+    }
+
+    @Test
+    fun doubleObjectPlacesBeneficiaryBeforeThing() {
+        assertEquals("mi ta da mi mamá dí búku", engine.translate("je donne le livre à ma mère")?.translation)
+    }
+
+    @Test
+    fun peripheralComplementsEndWithLocationThenTime() {
+        assertEquals("mi o gó a dí kónde amánu", engine.translate("je vais au village demain")?.translation)
+        assertEquals("mi ta wóoko ku mi tatá", engine.translate("je travaille avec mon père")?.translation)
+    }
+
+    @Test
+    fun yesNoAndOpenQuestionsNeverInvertSaamakaSubjectVerbOrder() {
+        assertEquals("i ta njã ?", engine.translate("tu manges ?")?.translation)
+        assertEquals("i ta njã ?", engine.translate("est-ce que tu manges ?")?.translation)
+        assertEquals("Andí i ta sikífi ?", engine.translate("qu'écris-tu ?")?.translation)
+        assertEquals("Ún kamía i ta gó ?", engine.translate("où vas-tu ?")?.translation)
+        assertEquals("Fa andí i ta bëë ?", engine.translate("pourquoi pleures-tu ?")?.translation)
+        assertEquals("Unfá i dɛ ?", engine.translate("comment vas-tu ?")?.translation)
+        assertEquals("Ambé dɛ aálá ?", engine.translate("qui est là ?")?.translation)
+        assertEquals("Andí da dí sã akí ?", engine.translate("qu'est-ce que c'est ?")?.translation)
+    }
+
+    @Test
+    fun factualAndVolitiveComplementsUseDifferentComplementizers() {
+        assertEquals("mi sá táa a ta kumísu", engine.translate("je sais que il vient")?.translation)
+        assertEquals("mi kɛ́ fu i kumísu", engine.translate("je veux que tu viennes")?.translation)
+    }
+
+    @Test
+    fun temporalCausalAndConditionalSubordinatesKeepTheirOwnClauseOrder() {
+        assertEquals("Te mi ta njã, mi á ta táki", engine.translate("quand je mange, je ne parle pas")?.translation)
+        assertEquals("mi á ta wáka bika a siki", engine.translate("je ne marche pas parce que il est malade")?.translation)
+        assertEquals("Ee i ta kumísu, mi o siki", engine.translate("si tu viens, je serai malade")?.translation)
+    }
+
+    @Test
+    fun relativeConnectorIsInvariantForSubjectAndObject() {
+        assertEquals("dí kɔni di ta wóoko akí", engine.translate("l'homme qui travaille ici")?.translation)
+        assertEquals("dí búku di mi ta bái", engine.translate("le livre que j'achète")?.translation)
+    }
+
+    @Test
+    fun unknownOrUnsafeLexemeStillDoesNotInventSaamaka() {
         assertNull(engine.translate("je veux téléporter"))
         assertNull(engine.translate("on veut dormir"))
     }
 
-    @Test
-    fun frenchInflectionsOnlyExposeLemmaAndTense() {
-        assertEquals("être", FrenchVerbInflections.lemma("suis"))
-        assertEquals(FrenchVerbTense.PRESENT, FrenchVerbInflections.tense("suis"))
-        assertEquals(FrenchVerbTense.PAST, FrenchVerbInflections.tense("étais"))
-        assertEquals("aller", FrenchVerbInflections.lemma("vas"))
-        assertEquals(FrenchVerbTense.PRESENT, FrenchVerbInflections.tense("vas"))
-    }
-
-    private fun candidate(french: String, saamaka: String, validation: String = "") = FrenchTranslationCandidate(french, saamaka, validation)
+    private fun candidate(french: String, saamaka: String, validation: String = "O") =
+        FrenchTranslationCandidate(french, saamaka, validation)
 }
