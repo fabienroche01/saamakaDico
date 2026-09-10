@@ -271,13 +271,54 @@ internal class SaamakaGrammarEngine(
             var match: Pair<String, FrenchFallbackResolution>? = null
             var consumedWordCount = 0
 
+            // A personal pronoun used after the attested preposition "pour" takes
+            // the strong/autonomous Saamaka form. This is grammar-line behavior only.
+            if (
+                normalizeAttestedPhraseKey(words[index]) == "pour" &&
+                index + 1 < words.size
+            ) {
+                val strong = resolveAttestedStrongPronoun(words[index + 1])
+                if (strong != null) {
+                    val source = words.subList(index, index + 2).joinToString(" ")
+                    match = source to strong.copy(
+                        requested = source,
+                        matchedFrench = source,
+                        saamaka = "fu ${strong.saamaka}"
+                    )
+                    consumedWordCount = 2
+                }
+            }
+
+            // French possessive determiners map to the dependent Saamaka pronoun
+            // immediately before an attested noun. No masculine/feminine distinction
+            // is introduced for the possessor.
+            if (match == null && index + 1 < words.size) {
+                val possessor = resolveAttestedPossessivePronoun(words[index])
+                if (possessor != null) {
+                    for (endExclusive in words.size downTo index + 1) {
+                        val nounSource = words.subList(index + 1, endExclusive).joinToString(" ")
+                        val noun = resolveExactLexeme(nounSource) ?: continue
+                        val source = words.subList(index, endExclusive).joinToString(" ")
+                        match = source to noun.copy(
+                            requested = source,
+                            matchedFrench = source,
+                            saamaka = "$possessor ${noun.saamaka}"
+                        )
+                        consumedWordCount = endExclusive - index
+                        break
+                    }
+                }
+            }
+
             // Longest exact attested expression first.
-            for (endExclusive in words.size downTo index + 1) {
-                val candidate = words.subList(index, endExclusive).joinToString(" ")
-                val resolution = resolveExact(candidate) ?: continue
-                match = candidate to resolution
-                consumedWordCount = endExclusive - index
-                break
+            if (match == null) {
+                for (endExclusive in words.size downTo index + 1) {
+                    val candidate = words.subList(index, endExclusive).joinToString(" ")
+                    val resolution = resolveExact(candidate) ?: continue
+                    match = candidate to resolution
+                    consumedWordCount = endExclusive - index
+                    break
+                }
             }
 
             // French nominal determiners are stripped only when the lexical noun/expression
@@ -340,32 +381,62 @@ internal class SaamakaGrammarEngine(
         }
     }
 
-    private fun resolveExact(word: String): FrenchFallbackResolution? =
+    private fun resolveExactLexeme(word: String): FrenchFallbackResolution? =
         resolveFrenchWord(word)?.takeIf {
             it.kind == FrenchResolutionKind.EXACT &&
                 normalizeAttestedPhraseKey(it.matchedFrench) == normalizeAttestedPhraseKey(word)
-        } ?: resolveAttestedComplementPronoun(word)
+        }
+
+    private fun resolveExact(word: String): FrenchFallbackResolution? =
+        resolveExactLexeme(word) ?: resolveAttestedComplementPronoun(word)
 
     private fun resolveAttestedComplementPronoun(word: String): FrenchFallbackResolution? {
         val normalized = normalizeAttestedPhraseKey(word)
         val saamaka = when (normalized) {
-            "moi" -> "mi"
-            "toi" -> "i"
-            "lui", "elle" -> "a"
+            "moi", "me" -> "mi"
+            "toi", "te" -> "i"
+            "lui", "elle", "le", "la" -> "ën"
             "nous" -> "u"
             "vous" -> "unu"
-            "eux", "elles" -> "de"
+            "eux", "elles", "les" -> "de"
             else -> return null
         }
-        return FrenchFallbackResolution(
-            requested = word,
-            matchedFrench = word,
-            saamaka = saamaka,
-            kind = FrenchResolutionKind.EXACT,
-            score = 1300,
-            alternatives = emptyList()
-        )
+        return pronounResolution(word, saamaka)
     }
+
+    private fun resolveAttestedStrongPronoun(word: String): FrenchFallbackResolution? {
+        val normalized = normalizeAttestedPhraseKey(word)
+        val saamaka = when (normalized) {
+            "moi" -> "mí"
+            "toi" -> "í"
+            "lui", "elle" -> "hën"
+            "nous" -> "ú"
+            "vous" -> "únu"
+            "eux", "elles" -> "dé"
+            else -> return null
+        }
+        return pronounResolution(word, saamaka)
+    }
+
+    private fun resolveAttestedPossessivePronoun(word: String): String? =
+        when (normalizeAttestedPhraseKey(word)) {
+            "mon", "ma", "mes" -> "mi"
+            "ton", "ta", "tes" -> "i"
+            "son", "sa", "ses" -> "ën"
+            "notre", "nos" -> "u"
+            "votre", "vos" -> "unu"
+            "leur", "leurs" -> "de"
+            else -> null
+        }
+
+    private fun pronounResolution(word: String, saamaka: String) = FrenchFallbackResolution(
+        requested = word,
+        matchedFrench = word,
+        saamaka = saamaka,
+        kind = FrenchResolutionKind.EXACT,
+        score = 1300,
+        alternatives = emptyList()
+    )
 
     private fun grammatical(
         sourceWords: List<String>,
