@@ -4,7 +4,7 @@ package com.saamaka.dico.testeurs
 internal enum class AccountText(val fr: String, val en: String, val nl: String) {
     CREATE("Créer un compte gratuit", "Create a free account", "Gratis account maken"),
     ACCOUNT("Mon compte", "My account", "Mijn account"),
-    BENEFIT("Créez votre compte gratuit : 5 essais de traduction au lieu de 3 en mode invité, selon les règles de quota de l’application.", "Create a free account: 5 translation trials instead of 3 as a guest, under the app's quota rules.", "Maak een gratis account: 5 vertaalpogingen in plaats van 3 als gast, volgens de quotaregels van de app."),
+    BENEFIT("Créez votre compte gratuit pour profiter davantage de la traduction de textes et des activités d’apprentissage en Saamaka.", "Create your free account to get more from text translation and Saamaka learning activities.", "Maak je gratis account en haal meer uit tekstvertaling en leeractiviteiten in het Saamaka."),
     LOCAL_DATA("Vos favoris et votre progression restent sur ce téléphone. Leur synchronisation entre appareils n’est pas encore disponible.", "Your favourites and progress stay on this phone. Cross-device syncing is not available yet.", "Je favorieten en voortgang blijven op deze telefoon. Synchronisatie tussen apparaten is nog niet beschikbaar."),
     EMAIL("Adresse e-mail", "Email address", "E-mailadres"),
     PASSWORD("Mot de passe", "Password", "Wachtwoord"),
@@ -19,6 +19,8 @@ internal enum class AccountText(val fr: String, val en: String, val nl: String) 
     SIGN_OUT("Se déconnecter", "Sign out", "Uitloggen"),
     SIGN_OUT_GUEST("Se déconnecter / Invité", "Sign out / Guest", "Uitloggen / Gast"),
     VERIFY_REQUIRED("Confirmez votre adresse avec le lien reçu par e-mail, puis appuyez sur « J’ai confirmé mon e-mail ». Le statut gratuit sera alors activé.", "Confirm your address using the email link, then tap 'I verified my email' to activate your free account.", "Bevestig je adres via de e-maillink en tik daarna op 'Ik heb mijn e-mail bevestigd' om je gratis account te activeren."),
+    PROCESSING("Traitement en cours…", "Processing…", "Bezig…"),
+    VERIFICATION_SEND_FAILED("Votre compte existe, mais l’e-mail de vérification n’a pas pu être envoyé. Utilisez « Renvoyer l’e-mail de vérification » pour réessayer.", "Your account exists, but the verification email could not be sent. Use 'Resend verification email' to try again.", "Je account bestaat, maar de verificatie-e-mail kon niet worden verzonden. Gebruik 'Verificatie-e-mail opnieuw verzenden' om het opnieuw te proberen."),
     CHECK_EMAIL("E-mail de vérification envoyé. Pensez à vérifier les indésirables.", "Verification email sent. Please check your spam folder too.", "Verificatie-e-mail verzonden. Controleer ook je spammap."),
     CHECK_VERIFICATION("J’ai confirmé mon e-mail", "I verified my email", "Ik heb mijn e-mail bevestigd"),
     RESEND("Renvoyer l’e-mail de vérification", "Resend verification email", "Verificatie-e-mail opnieuw verzenden"),
