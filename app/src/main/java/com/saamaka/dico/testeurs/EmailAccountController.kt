@@ -26,6 +26,11 @@ internal class EmailAccountController(
     var message by mutableStateOf<AccountText?>(null)
         private set
 
+    var messageIsError by mutableStateOf(false)
+        private set
+    var verificationEmailFailed by mutableStateOf(false)
+        private set
+
     private val listener = FirebaseAuth.AuthStateListener { session = readSession() }
 
     private fun readSession(): EmailAccountSession {
@@ -49,6 +54,7 @@ internal class EmailAccountController(
     }
 
     private fun report(error: Exception?) {
+        messageIsError = true
         message = when {
             error is FirebaseNetworkException -> AccountText.NETWORK_ERROR
             error is FirebaseTooManyRequestsException -> AccountText.TOO_MANY_REQUESTS
@@ -67,19 +73,30 @@ internal class EmailAccountController(
     }
 
     // SDK tasks deliver these callbacks on Android's main thread.
-    private fun <T> perform(task: () -> Task<T>, success: () -> Unit = {}) {
+    private fun <T> perform(
+        task: () -> Task<T>,
+        failure: () -> Unit = {},
+        success: () -> Unit = {}
+    ) {
         if (busy) return
         busy = true
         message = null
+        messageIsError = false
         try {
             task().addOnCompleteListener { result ->
                 busy = false
                 session = readSession()
-                if (result.isSuccessful) success() else report(result.exception)
+                if (result.isSuccessful) {
+                    success()
+                } else {
+                    report(result.exception)
+                    failure()
+                }
             }
         } catch (error: Exception) {
             busy = false
             report(error)
+            failure()
         }
     }
 
@@ -96,8 +113,18 @@ internal class EmailAccountController(
     }
 
     fun sendVerification() {
-        val user = auth.currentUser ?: return
-        perform({ user.sendEmailVerification() }) { message = AccountText.CHECK_EMAIL }
+        if (busy) return
+        val user = auth.currentUser
+        if (user == null) {
+            messageIsError = true
+            message = AccountText.REAUTH_REQUIRED
+            return
+        }
+        verificationEmailFailed = false
+        perform(
+            task = { user.sendEmailVerification() },
+            failure = { verificationEmailFailed = true }
+        ) { message = AccountText.CHECK_EMAIL }
     }
 
     fun refresh() {
@@ -118,6 +145,8 @@ internal class EmailAccountController(
         auth.signOut()
         session = readSession()
         message = null
+        messageIsError = false
+        verificationEmailFailed = false
     }
 
     fun deleteAccount(password: String) {
