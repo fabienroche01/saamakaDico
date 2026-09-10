@@ -16,7 +16,8 @@ class SaamakaGrammarEngineTest {
             candidate("dormir", "duumí"),
             candidate("voir", "si"),
             candidate("aider", "heepi"),
-            candidate("mère", "mama")
+            candidate("mère", "mama"),
+            candidate("père", "táta")
         )
     )
     private val engine = SaamakaGrammarEngine(resolver::resolve)
@@ -63,6 +64,12 @@ class SaamakaGrammarEngineTest {
     fun grammarLineUsesDependentPronounForPossession() {
         assertEquals("mi ta si i mama", engine.translate("je vois ta mère")?.translation)
         assertEquals("mi ta si ën mama", engine.translate("je vois sa mère")?.translation)
+        assertEquals("mi i táta", engine.translate("je suis ton père")?.translation)
+        assertEquals("a ën mama", engine.translate("elle est sa mère")?.translation)
+        assertEquals("mi u táta", engine.translate("je suis notre père")?.translation)
+        assertEquals("mi unu táta", engine.translate("je suis votre père")?.translation)
+        assertEquals("mi de táta", engine.translate("je suis leur père")?.translation)
+        assertEquals("mi an i táta", engine.translate("je ne suis pas ton père")?.translation)
     }
 
     @Test
