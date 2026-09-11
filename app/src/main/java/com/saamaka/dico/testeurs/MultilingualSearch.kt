@@ -12,8 +12,39 @@ internal fun searchTextForLanguage(entry: DictionaryEntry, languageCode: String)
         else -> entry.french
     }
 
-internal fun normalizeMultilingualSearch(value: String): String =
-    Normalizer.normalize(
+private val FRENCH_DICTIONARY_INFINITIVE_ALIASES = mapOf(
+    "j'ai" to "avoir",
+    "je ai" to "avoir",
+    "tu as" to "avoir",
+    "il a" to "avoir",
+    "elle a" to "avoir",
+    "on a" to "avoir",
+    "nous avons" to "avoir",
+    "vous avez" to "avoir",
+    "ils ont" to "avoir",
+    "elles ont" to "avoir",
+    "je suis" to "etre",
+    "tu es" to "etre",
+    "il est" to "etre",
+    "elle est" to "etre",
+    "on est" to "etre",
+    "nous sommes" to "etre",
+    "vous etes" to "etre",
+    "ils sont" to "etre",
+    "elles sont" to "etre",
+    "je vais" to "aller",
+    "tu vas" to "aller",
+    "il va" to "aller",
+    "elle va" to "aller",
+    "on va" to "aller",
+    "nous allons" to "aller",
+    "vous allez" to "aller",
+    "ils vont" to "aller",
+    "elles vont" to "aller"
+)
+
+internal fun normalizeMultilingualSearch(value: String): String {
+    val normalized = Normalizer.normalize(
         value.trim()
             .replace(Regex("[‘’ʼ`]"), "'")
             .replace(Regex("[‐‑‒–—−]"), "-"),
@@ -24,6 +55,9 @@ internal fun normalizeMultilingualSearch(value: String): String =
         .replace(Regex("[.!?,;:]+$"), "")
         .trimEnd()
         .replace(Regex("\\s+"), " ")
+
+    return FRENCH_DICTIONARY_INFINITIVE_ALIASES[normalized] ?: normalized
+}
 
 internal fun accentInsensitiveGlob(value: String): String = buildString {
     normalizeMultilingualSearch(value).forEach { character ->
