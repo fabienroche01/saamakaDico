@@ -1,5 +1,6 @@
 package com.saamaka.dico.testeurs.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.FilterChip
 import com.saamaka.dico.testeurs.AppLanguage
@@ -184,6 +185,7 @@ fun SearchScreen(
     showHomeContent: Boolean = true
 ) {
     val homeScrollState = rememberScrollState()
+    val darkTheme = isSystemInDarkTheme()
     val searchPresentation = homeSearchPresentation(
         text = query,
         localResultCount = entries.size,
@@ -357,6 +359,10 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .testTag(QUICK_SEARCH_TEST_TAG),
             singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF16372A)
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = {
@@ -366,6 +372,8 @@ fun SearchScreen(
             shape = RoundedCornerShape(24.dp),
 
             colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF16372A),
+                unfocusedTextColor = Color(0xFF16372A),
                 focusedBorderColor = Color(0xFF0B5D3B),
                 unfocusedBorderColor = Color(0xFFD6D0C5),
                 focusedContainerColor = Color(0xFFFFFBF3),
@@ -608,574 +616,565 @@ fun SearchScreen(
                 }
             }
 
-                Spacer(Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                onWordOfDayClick()
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFFFEFC4)
-                        ),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = 2.dp
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp)
-                        ) {
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Default.WbSunny,
-                                    contentDescription = null,
-                                    tint = Color(0xFF9A7414),
-                                    modifier = Modifier.size(24.dp)
-                                )
-
-                                Spacer(Modifier.weight(1f))
-
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color.White.copy(alpha = 0.65f)
-                                ) {
-                                    Text(
-                                        text = strings.ui(UiCopyKey.TODAY),
-                                        modifier = Modifier.padding(
-                                            horizontal = 7.dp,
-                                            vertical = 3.dp
-                                        ),
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF705A1D)
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.height(7.dp))
-
-                            Text(
-                                text = strings.ui(UiCopyKey.WORD_OF_DAY),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF3B3014)
-                            )
-
-                            Spacer(Modifier.height(4.dp))
-
-                            Text(
-                                text = wordOfDay?.saamaka.orEmpty(),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0B5D3B),
-                                maxLines = 1
-                            )
-
-                            Spacer(Modifier.height(2.dp))
-
-                            Text(
-                                text = wordOfDay?.french.orEmpty(),
-                                fontSize = 10.sp,
-                                color = Color(0xFF7A6B46),
-                                maxLines = 1
-                            )
-                        }
-                    }
-
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                onLearnClick()
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFFF4EFE5)
-                        ),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = 2.dp
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp)
-                        ) {
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Default.School,
-                                    contentDescription = null,
-                                    tint = Color(0xFF0B5D3B),
-                                    modifier = Modifier.size(24.dp)
-                                )
-
-                                Spacer(Modifier.weight(1f))
-
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color(0xFFDCEEE2)
-                                ) {
-                                    Text(
-                                        text = strings.ui(UiCopyKey.PROGRESSION),
-                                        modifier = Modifier.padding(
-                                            horizontal = 7.dp,
-                                            vertical = 3.dp
-                                        ),
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF0B5D3B)
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.height(7.dp))
-
-                            Text(
-                                text = strings.ui(UiCopyKey.LEARN),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF16372A)
-                            )
-
-                            Spacer(Modifier.height(4.dp))
-
-                            Text(
-                                text = strings.ui(UiCopyKey.LEARNING_ACTIVITIES),
-                                fontSize = 10.sp,
-                                color = Color(0xFF68736C),
-                                maxLines = 1
-                            )
-
-                            Spacer(Modifier.height(3.dp))
-
-                            Text(
-                                text = "${strings.ui(UiCopyKey.CONTINUE_ACTION)} →",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF0B5D3B)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        tint = Color(0xFF0B5D3B),
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = strings.language,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E332F)
-                    )
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-
-                    SearchLanguageFilter.entries
-                        .chunked(2)
-                        .forEach { rowFilters ->
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-
-                                rowFilters.forEach { filter ->
-
-                                    val selected =
-                                        searchLanguageFilter == filter
-
-                                    FilterChip(
-                                        selected = selected,
-                                        onClick = {
-                                            onSearchLanguageFilterChange(filter)
-                                        },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .heightIn(min = 32.dp),
-                                        shape = RoundedCornerShape(16.dp),
-
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = Color(0xFF0B5D3B),
-                                            selectedLabelColor = Color.White,
-                                            containerColor = Color(0xFFF4EFE5),
-                                            labelColor = Color(0xFF3F4842)
-                                        ),
-
-                                        border = FilterChipDefaults.filterChipBorder(
-                                            enabled = true,
-                                            selected = selected,
-                                            borderColor = Color(0xFFD2CCC0),
-                                            selectedBorderColor = Color(0xFF0B5D3B)
-                                        ),
-
-                                        label = {
-                                            Text(
-                                                text = when (filter) {
-                                                    SearchLanguageFilter.ALL -> strings.ui(UiCopyKey.ALL)
-                                                    SearchLanguageFilter.FRENCH -> "FR · Français"
-                                                    SearchLanguageFilter.SAAMAKA -> "SM · Saamaka"
-                                                    SearchLanguageFilter.ENGLISH -> "EN · English"
-                                                    SearchLanguageFilter.DUTCH -> "NL · Nederlands"
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                textAlign = TextAlign.Center,
-                                                maxLines = 1,
-                                                fontSize = 11.sp,
-                                                fontWeight =
-                                                    if (selected) {
-                                                        FontWeight.Bold
-                                                    } else {
-                                                        FontWeight.Medium
-                                                    }
-                                            )
-                                        }
-                                    )
-                                }
-
-                                if (rowFilters.size == 1) {
-                                    Spacer(
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
-                        }
-                }
-
-            } // ferme if (showHomeContent)
-
             Spacer(Modifier.height(10.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
 
-            // -------------------------------------------------
-            // RÉSULTATS
-            // -------------------------------------------------
-
-            when {
-
-                query.isBlank() -> {
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        text = strings.startSearching,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            onWordOfDayClick()
+                        },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFEFC4)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 2.dp
                     )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            Icon(
+                                imageVector = Icons.Default.WbSunny,
+                                contentDescription = null,
+                                tint = Color(0xFF9A7414),
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            Spacer(Modifier.weight(1f))
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.65f)
+                            ) {
+                                Text(
+                                    text = strings.ui(UiCopyKey.TODAY),
+                                    modifier = Modifier.padding(
+                                        horizontal = 7.dp,
+                                        vertical = 3.dp
+                                    ),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF705A1D)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(7.dp))
+
+                        Text(
+                            text = strings.ui(UiCopyKey.WORD_OF_DAY),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF3B3014)
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = wordOfDay?.saamaka.orEmpty(),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0B5D3B),
+                            maxLines = 1
+                        )
+
+                        Spacer(Modifier.height(2.dp))
+
+                        Text(
+                            text = wordOfDay?.french.orEmpty(),
+                            fontSize = 10.sp,
+                            color = Color(0xFF7A6B46),
+                            maxLines = 1
+                        )
+                    }
                 }
 
-                phraseResult != null -> {
-                    HomePhraseResultBlocks(phraseResult, strings)
-                    if (entries.isNotEmpty()) {
-                        Spacer(Modifier.height(10.dp))
-                        Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
-                        entries.take(5).forEach { entry ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 6.dp)
-                                    .clickable {
-                                        onOpen(
-                                            entry,
-                                            matchingLanguageForEntry(
-                                                entry,
-                                                query,
-                                                searchLanguageFilter.language,
-                                                selectedLanguage
-                                            )
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            onLearnClick()
+                        },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFF4EFE5)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 2.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            Icon(
+                                imageVector = Icons.Default.School,
+                                contentDescription = null,
+                                tint = Color(0xFF0B5D3B),
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            Spacer(Modifier.weight(1f))
+
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFDCEEE2)
+                            ) {
+                                Text(
+                                    text = strings.ui(UiCopyKey.PROGRESSION),
+                                    modifier = Modifier.padding(
+                                        horizontal = 7.dp,
+                                        vertical = 3.dp
+                                    ),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF0B5D3B)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(7.dp))
+
+                        Text(
+                            text = strings.ui(UiCopyKey.LEARN),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF16372A)
+                        )
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = strings.ui(UiCopyKey.LEARNING_ACTIVITIES),
+                            fontSize = 10.sp,
+                            color = Color(0xFF68736C),
+                            maxLines = 1
+                        )
+
+                        Spacer(Modifier.height(3.dp))
+
+                        Text(
+                            text = "${strings.ui(UiCopyKey.CONTINUE_ACTION)} →",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF0B5D3B)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = null,
+                    tint = Color(0xFF0B5D3B),
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = strings.language,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E332F)
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+
+                SearchLanguageFilter.entries
+                    .chunked(2)
+                    .forEach { rowFilters ->
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+
+                            rowFilters.forEach { filter ->
+
+                                val selected =
+                                    searchLanguageFilter == filter
+
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        onSearchLanguageFilterChange(filter)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 32.dp),
+                                    shape = RoundedCornerShape(16.dp),
+
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF0B5D3B),
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0xFFF4EFE5),
+                                        labelColor = Color(0xFF3F4842)
+                                    ),
+
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = selected,
+                                        borderColor = Color(0xFFD2CCC0),
+                                        selectedBorderColor = Color(0xFF0B5D3B)
+                                    ),
+
+                                    label = {
+                                        Text(
+                                            text = when (filter) {
+                                                SearchLanguageFilter.ALL -> strings.ui(UiCopyKey.ALL)
+                                                SearchLanguageFilter.FRENCH -> "FR · Français"
+                                                SearchLanguageFilter.SAAMAKA -> "SM · Saamaka"
+                                                SearchLanguageFilter.ENGLISH -> "EN · English"
+                                                SearchLanguageFilter.DUTCH -> "NL · Nederlands"
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                            fontSize = 11.sp,
+                                            fontWeight =
+                                                if (selected) {
+                                                    FontWeight.Bold
+                                                } else {
+                                                    FontWeight.Medium
+                                                }
                                         )
                                     }
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(entry.french, fontWeight = FontWeight.Bold)
-                                    Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE) })
-                                }
+                                )
+                            }
+
+                            if (rowFilters.size == 1) {
+                                Spacer(
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
-                }
+            }
 
-                exactCompleteMatch != null -> {
-                    val dictionaryEntry = exactCompleteMatch.entry
-                    val exactMatchModifier = if (
-                        dictionaryEntry != null && onOpenExactDictionaryMatch != null
-                    ) {
-                        Modifier.clickable {
-                            onOpenExactDictionaryMatch(
-                                dictionaryEntry,
-                                matchingLanguageForEntry(
-                                    entry = dictionaryEntry,
-                                    query = query,
-                                    filteredLanguage = searchLanguageFilter.language,
-                                    preferredLanguage = selectedLanguage
-                                )
-                            )
-                        }
-                    } else {
-                        Modifier
-                    }
-                    Card(modifier = Modifier.fillMaxWidth().then(exactMatchModifier)) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(
-                                strings.provenanceLabel(exactCompleteMatch.provenance),
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0B5D3B)
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                exactCompleteMatch.translation,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                strings.ui(
-                                    UiCopyKey.RELIABILITY,
-                                    strings.reliabilityLabel(exactCompleteMatch.reliability)
-                                )
-                            )
-                        }
-                    }
-                }
+        }
 
-                searchPresentation.showPhraseCta -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp)
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(strings.ui(UiCopyKey.TRANSLATE_THIS_PHRASE), fontWeight = FontWeight.Bold)
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color(0xFFFFEFC4)
-                                ) {
-                                    Text(
-                                        "Premium",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color(0xFF6D5312)
+        Spacer(Modifier.height(10.dp))
+
+        when {
+
+            query.isBlank() -> {
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = strings.startSearching,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            phraseResult != null -> {
+                HomePhraseResultBlocks(phraseResult, strings)
+                if (entries.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(strings.ui(UiCopyKey.DICTIONARY_RESULTS), fontWeight = FontWeight.Bold)
+                    entries.take(5).forEach { entry ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .clickable {
+                                    onOpen(
+                                        entry,
+                                        matchingLanguageForEntry(
+                                            entry,
+                                            query,
+                                            searchLanguageFilter.language,
+                                            selectedLanguage
+                                        )
                                     )
                                 }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Text(strings.ui(UiCopyKey.NO_COMPLETE_EXPRESSION))
-                            Spacer(Modifier.height(12.dp))
-                            Button(
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = normalizedInputWordCount(query) >= 3,
-                                onClick = onTranslateClick
-                            ) {
-                                Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE))
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(entry.french, fontWeight = FontWeight.Bold)
+                                Text(entry.saamaka.ifBlank { strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE) })
                             }
                         }
                     }
                 }
+            }
 
-                searchPresentation.showNoResult || entries.isEmpty() -> {
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text(
-                            text = status.ifBlank {
-                                strings.noResult
-                            },
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                else -> {
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Text(
-                            text = "${entries.size} ${strings.results}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Text(
-                            text = selectedLanguage.label,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-
-                        items(
-                            entries,
-                            key = { it.id }
-                        ) { entry ->
-
-                            val resultLanguage = matchingLanguageForEntry(
-                                entry = entry,
+            exactCompleteMatch != null -> {
+                val dictionaryEntry = exactCompleteMatch.entry
+                val exactMatchModifier = if (
+                    dictionaryEntry != null && onOpenExactDictionaryMatch != null
+                ) {
+                    Modifier.clickable {
+                        onOpenExactDictionaryMatch(
+                            dictionaryEntry,
+                            matchingLanguageForEntry(
+                                entry = dictionaryEntry,
                                 query = query,
                                 filteredLanguage = searchLanguageFilter.language,
                                 preferredLanguage = selectedLanguage
                             )
-                            val audioAvailable = hasAudio(entry)
-                            val favorite = isFavorite(entry)
-                            val validated = isValidated(entry.id)
-                            val requestedTranslation = when (searchLanguageFilter) {
-                                SearchLanguageFilter.ALL -> if (resultLanguage == AppLanguage.SAAMAKA) {
-                                    entry.french
-                                } else {
-                                    searchTextForLanguage(entry, resultLanguage.code)
-                                }
-                                SearchLanguageFilter.SAAMAKA -> entry.french
-                                SearchLanguageFilter.FRENCH -> entry.french
-                                SearchLanguageFilter.ENGLISH -> entry.english
-                                SearchLanguageFilter.DUTCH -> entry.dutch
-                            }
-                            val selectedTranslation = requestedTranslation.ifBlank {
-                                strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
-                            }
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+                Card(modifier = Modifier.fillMaxWidth().then(exactMatchModifier)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            strings.provenanceLabel(exactCompleteMatch.provenance),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0B5D3B)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            exactCompleteMatch.translation,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            strings.ui(
+                                UiCopyKey.RELIABILITY,
+                                strings.reliabilityLabel(exactCompleteMatch.reliability)
+                            )
+                        )
+                    }
+                }
+            }
 
-                            Card(
+            searchPresentation.showPhraseCta -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(strings.ui(UiCopyKey.TRANSLATE_THIS_PHRASE), fontWeight = FontWeight.Bold)
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFFFEFC4)
+                            ) {
+                                Text(
+                                    "Premium",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF6D5312)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(strings.ui(UiCopyKey.NO_COMPLETE_EXPRESSION))
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = normalizedInputWordCount(query) >= 3,
+                            onClick = onTranslateClick
+                        ) {
+                            Text(strings.ui(UiCopyKey.SEARCH_OR_TRANSLATE))
+                        }
+                    }
+                }
+            }
+
+            searchPresentation.showNoResult || entries.isEmpty() -> {
+
+                Spacer(Modifier.height(8.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Text(
+                        text = status.ifBlank {
+                            strings.noResult
+                        },
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            else -> {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "${entries.size} ${strings.results}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = selectedLanguage.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+
+                    items(
+                        entries,
+                        key = { it.id }
+                    ) { entry ->
+
+                        val resultLanguage = matchingLanguageForEntry(
+                            entry = entry,
+                            query = query,
+                            filteredLanguage = searchLanguageFilter.language,
+                            preferredLanguage = selectedLanguage
+                        )
+                        val audioAvailable = hasAudio(entry)
+                        val favorite = isFavorite(entry)
+                        val validated = isValidated(entry.id)
+                        val requestedTranslation = when (searchLanguageFilter) {
+                            SearchLanguageFilter.ALL -> if (resultLanguage == AppLanguage.SAAMAKA) {
+                                entry.french
+                            } else {
+                                searchTextForLanguage(entry, resultLanguage.code)
+                            }
+                            SearchLanguageFilter.SAAMAKA -> entry.french
+                            SearchLanguageFilter.FRENCH -> entry.french
+                            SearchLanguageFilter.ENGLISH -> entry.english
+                            SearchLanguageFilter.DUTCH -> entry.dutch
+                        }
+                        val selectedTranslation = requestedTranslation.ifBlank {
+                            strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)
+                        }
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag(SEARCH_RESULT_TEST_TAG)
+                                .clickable {
+                                    onOpen(
+                                        entry,
+                                        resultLanguage
+                                    )
+                                },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (darkTheme) Color(0xFF71877A)
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .testTag(SEARCH_RESULT_TEST_TAG)
-                                    .clickable {
-                                        onOpen(
-                                            entry,
-                                            resultLanguage
-                                        )
-                                    },
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor =
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
 
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Column(
+                                    modifier = Modifier.weight(1f)
                                 ) {
 
-                                    Column(
-                                        modifier = Modifier.weight(1f)
-                                    ) {
+                                    Text(
+                                        text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF0A2419),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
 
-                                        Text(
-                                            text = entry.saamaka.ifBlank { strings.ui(UiCopyKey.TO_COMPLETE) },
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF16372A),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                    Spacer(Modifier.height(3.dp))
 
-                                        Spacer(Modifier.height(3.dp))
+                                    Text(
+                                        text = selectedTranslation,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = if (selectedTranslation == strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)) 0.65f else 1f
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
 
-                                        Text(
-                                            text = selectedTranslation,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = if (selectedTranslation == strings.ui(UiCopyKey.TRANSLATION_UNAVAILABLE)) 0.65f else 1f
-                                            ),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                    if (validated) {
 
-                                        if (validated) {
+                                        Spacer(Modifier.height(7.dp))
 
-                                            Spacer(Modifier.height(7.dp))
-
-                                            Surface(
-                                                shape = RoundedCornerShape(50),
-                                                color =
-                                                    MaterialTheme.colorScheme.primaryContainer
-                                            ) {
-                                                Text(
-                                                    text = "✓ ${strings.verified}",
-                                                    modifier = Modifier.padding(
-                                                        horizontal = 9.dp,
-                                                        vertical = 4.dp
-                                                    ),
-                                                    style =
-                                                        MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color =
-                                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                                )
-                                            }
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = "✓ ${strings.verified}",
+                                                modifier = Modifier.padding(
+                                                    horizontal = 9.dp,
+                                                    vertical = 4.dp
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
                                         }
                                     }
+                                }
 
-                                    IconButton(
-                                        onClick = { onPlayAudio(entry) },
-                                        enabled = audioAvailable
-                                    ) {
-                                        Icon(
-                                            Icons.Default.VolumeUp,
-                                            strings.ui(UiCopyKey.LISTEN),
-                                            tint = if (audioAvailable) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
-                                        )
-                                    }
-                                    IconButton(onClick = { onToggleFavorite(entry) }) {
-                                        Icon(
-                                            if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                            strings.ui(UiCopyKey.FAVORITE),
-                                            tint = if (favorite) Color(0xFFC99A2E) else Color(0xFF68736C)
-                                        )
-                                    }
+                                IconButton(
+                                    onClick = { onPlayAudio(entry) },
+                                    enabled = audioAvailable
+                                ) {
+                                    Icon(
+                                        Icons.Default.VolumeUp,
+                                        strings.ui(UiCopyKey.LISTEN),
+                                        tint = if (audioAvailable) Color(0xFF0B5D3B) else Color(0xFFB7B8B3)
+                                    )
+                                }
+                                IconButton(onClick = { onToggleFavorite(entry) }) {
+                                    Icon(
+                                        if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        strings.ui(UiCopyKey.FAVORITE),
+                                        tint = if (favorite) Color(0xFFC99A2E) else Color(0xFF68736C)
+                                    )
                                 }
                             }
                         }
@@ -1184,4 +1183,4 @@ fun SearchScreen(
             }
         }
     }
-
+}
