@@ -23,6 +23,7 @@ Thumbs.db
 # Logs et fichiers temporaires
 *.log
 *.tmp
+*.bak
 
 # APK / App Bundle générés
 *.apk
