@@ -1,0 +1,39 @@
+name: Apply FF tester data
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'tools/apply_ff_2026_09_16.py'
+      - 'tools/data/ff_2026-09-16.json'
+      - '.github/workflows/apply-ff-data.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply tester corrections
+        run: python3 tools/apply_ff_2026_09_16.py
+
+      - name: Show resulting changes
+        run: git status --short
+
+      - name: Commit updated embedded database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/assets/SaamakaDico_v11_25.db app/src/main/java/com/saamaka/dico/testeurs/database/DictionaryDatabase.kt
+          if git diff --cached --quiet; then
+            echo "No database changes to commit"
+          else
+            git commit -m "data(dictionary): integrate ff 2026-09-16 tester corrections"
+            git push origin HEAD:master
+          fi
