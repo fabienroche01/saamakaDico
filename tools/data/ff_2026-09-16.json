@@ -1,0 +1,138 @@
+{
+  "source": "SaamakaDico_ff_2026-09-16_0952.zip",
+  "active_validations": [
+    123,
+    8284
+  ],
+  "corrections": [
+    {
+      "id": 628,
+      "expected_french": "comme morts",
+      "expected_saamaka": "kuma dëdë",
+      "french": "comme mort"
+    },
+    {
+      "id": 4414,
+      "expected_french": "chercher bien autrui",
+      "expected_saamaka": "suku bunu",
+      "french": "chercher du  bien pour autrui"
+    },
+    {
+      "id": 385,
+      "expected_french": "bondée",
+      "expected_saamaka": "pöö",
+      "french": "bonder"
+    },
+    {
+      "id": 8814,
+      "expected_french": "fusil être jeté",
+      "expected_saamaka": "tuwe di goni",
+      "french": "fusil",
+      "saamaka": "tuwe"
+    },
+    {
+      "id": 123,
+      "expected_french": "diable",
+      "expected_saamaka": "didibi",
+      "saamaka": "hogi"
+    },
+    {
+      "id": 91,
+      "expected_french": "apporter bien",
+      "expected_saamaka": "tja bunu",
+      "french": "apporter le bien"
+    },
+    {
+      "id": 11780,
+      "expected_french": "tordu / de travers",
+      "expected_saamaka": "toosá",
+      "french": "de travers"
+    },
+    {
+      "id": 8404,
+      "expected_french": "grand ancêtre nommé Gidigidizaabwongolo",
+      "expected_saamaka": "gaandi tata de kai Gidigidizaabwongolo",
+      "french": "grand ancêtre nommé",
+      "saamaka": "gaandi tata de kai"
+    },
+    {
+      "id": 8275,
+      "expected_french": "annonce de la mort d'Alebidou",
+      "expected_saamaka": "dede buka fu Alebidou",
+      "french": "annonce de la mort",
+      "saamaka": "dede buka fu"
+    },
+    {
+      "id": 8284,
+      "expected_french": "faire la veillée funéraire sans jouer Papa",
+      "expected_saamaka": "bookodidia sondo pee Papa",
+      "french": "faire la veillée funéraire",
+      "saamaka": "bookodidia"
+    }
+  ],
+  "new_entries": [
+    {
+      "local_id": "09977617-f3f0-4f74-82b4-5db9ebbb53d0",
+      "saamaka": "úde no",
+      "french": "bonsoir",
+      "english": "good evening",
+      "category": "Action"
+    }
+  ],
+  "pending_deletions": [
+    {"id":8669,"saamaka":"fusutan dee pisi ka yan sa yei bunu","french":"comprendre les passages mal audibles","reason":"Mot ou traduction incorrecte"},
+    {"id":6904,"saamaka":"Apolion","french":"Apollyon","english":"Apollyon","dutch":"Apollyon","reason":"Mot ou traduction incorrecte"},
+    {"id":7838,"saamaka":"kanda u di doun","french":"chant de Doun","reason":"Mot ou traduction incorrecte"},
+    {"id":2520,"saamaka":"hogi","french":"mal","english":"evil","dutch":"kwaad","reason":"Mot ou traduction incorrecte"},
+    {"id":7060,"saamaka":"Gaan Babilon kai","french":"Babylone est tombée","reason":"Mot ou traduction incorrecte"},
+    {"id":215,"saamaka":"ko","french":"arrivent","english":"arrive","dutch":"aankomen","reason":"Mot ou traduction incorrecte"},
+    {"id":8027,"saamaka":"Akekeeyansi fu tapu","french":"Akekeeyansi d'en haut","reason":"Expression trop longue"},
+    {"id":8026,"saamaka":"Akekeeyansi fu doti","french":"Akekeeyansi d'en bas","reason":"Expression trop longue"},
+    {"id":2711,"saamaka":"hati latja","french":"peur Zacharie","english":"Zacharie's fear","dutch":"Zacharie's angst","reason":"Mot ou traduction incorrecte"},
+    {"id":394,"saamaka":"bunuwan ku hogiwan","french":"bons mauvais","english":"good bad","dutch":"goed slecht","reason":"Mot ou traduction incorrecte"},
+    {"id":1626,"saamaka":"daka","french":"homme","english":"man","dutch":"man","reason":"Mot ou traduction incorrecte"},
+    {"id":8018,"saamaka":"someni sapate haika dee teipi","french":"écouter les bandes plusieurs samedis","reason":"Doublon"},
+    {"id":9483,"saamaka":"sidon ku u someni sapate haika dee teepi","french":"écouter les bandes plusieurs samedis","reason":"Doublon"},
+    {"id":8769,"saamaka":"pikima","french":"répondant du conte","reason":"Doublon"},
+    {"id":7906,"saamaka":"piki di kontu","french":"répondre au conte","reason":"Doublon"},
+    {"id":8590,"saamaka":"tei sembe buta a saafu","french":"prendre des gens comme esclaves","reason":"Doublon"},
+    {"id":8793,"saamaka":"lasi fa dee gaansembe du a fesi","french":"perdre la manière des ancêtres","reason":"Doublon"},
+    {"id":8805,"saamaka":"mama ta bia di toku","french":"mère donner le signal","reason":"Mot ou traduction incorrecte"},
+    {"id":8915,"saamaka":"Papa pee","french":"jouer Papa","reason":"Doublon"},
+    {"id":9141,"saamaka":"di atigo u de kaba","french":"atigo être épuisé","reason":"Mot ou traduction incorrecte"},
+    {"id":201,"saamaka":"möni u kii","french":"argent sang","english":"blood money","dutch":"bloedgeld","reason":"Mot ou traduction incorrecte"},
+    {"id":1066,"saamaka":"Eneasi","french":"Énée","english":"Aeneas","dutch":"Aeneas","reason":"Mot ou traduction incorrecte"},
+    {"id":2353,"saamaka":"pai a Talisi","french":"naissance Tarse","english":"birth Tarsus","dutch":"geboorte Tarsus","reason":"Expression trop longue"},
+    {"id":11667,"saamaka":"kambósa","french":"coépouse","english":"kinship term between women who share the same husband","reason":"Mot ou traduction incorrecte"},
+    {"id":337,"saamaka":"Berea","french":"Bérée","english":"Berea","dutch":"Berea","reason":"Mot ou traduction incorrecte"},
+    {"id":350,"saamaka":"Betifaigi","french":"Bethphagé","english":"Bethphage","dutch":"Bethphage","reason":"Mot ou traduction incorrecte"},
+    {"id":311,"saamaka":"Balanabasi","french":"Barnabas","english":"Barnabas","dutch":"Barnabas","reason":"Mot ou traduction incorrecte"},
+    {"id":307,"saamaka":"Balabasi","french":"Barabbas","english":"Barabbas","dutch":"Barabbas","reason":"Mot ou traduction incorrecte"},
+    {"id":227,"saamaka":"Asosi","french":"Assos","english":"Associations","dutch":"Verenigingen","reason":"Mot ou traduction incorrecte"},
+    {"id":8510,"saamaka":"hangi ta kii","french":"la faim tuer quelqu'un","reason":"Mot ou traduction incorrecte"},
+    {"id":9230,"saamaka":"dombi babunu bebe apenkusu doongo","french":"joueur de babunu boire de l'apenkusu","reason":"Expression trop longue"},
+    {"id":8507,"saamaka":"wata ta ko neen","french":"eau monter vers quelqu'un","reason":"Expression trop longue"},
+    {"id":8895,"saamaka":"Anasi puu Tone a wata","french":"Anasi sortir Tone de l'eau","reason":"Expression trop longue"},
+    {"id":3874,"saamaka":"Tata da goonma","french":"vigneron Père","english":"Father, the winegrower","dutch":"Vader, de wijnbouwer","reason":"Mot ou traduction incorrecte"},
+    {"id":7884,"saamaka":"dee mbeti go kuutu","french":"tenir conseil entre animaux","reason":"Mot ou traduction incorrecte"},
+    {"id":8638,"saamaka":"dee busikau go kuutu","french":"tenir conseil entre animaux","reason":"Mot ou traduction incorrecte"},
+    {"id":2806,"saamaka":"hakisi fisi","french":"poissons demandés","english":"Fish requested","dutch":"Vis gevraagd","reason":"Mot ou traduction incorrecte"},
+    {"id":9209,"saamaka":"fisi de neen te na sipootu","french":"poisson arriver jusqu'aux chevilles","reason":"Mot ou traduction incorrecte"},
+    {"id":9294,"saamaka":"mau kumutu a di hasi sinkii","french":"main quitter le corps du cheval","reason":"Expression trop longue"},
+    {"id":8342,"saamaka":"piki mbeti feni wan obia","french":"petit animal trouver un obia","reason":"Expression trop longue"},
+    {"id":11102,"saamaka":"kököni","french":"lapin","reason":"Doublon"},
+    {"id":6579,"saamaka":"dagu toona go njan di soni a balaki","french":"chien retourne à son vomi","english":"dog returns to its vomit","dutch":"hond keert terug naar zijn braaksel","reason":"Expression trop longue"},
+    {"id":549,"saamaka":"dagu ta lobi","french":"chiens léchaient","english":"dogs licked","dutch":"honden likten","reason":"Mot ou traduction incorrecte"},
+    {"id":8806,"saamaka":"dee dagu dou","french":"chiens arriver","reason":"Mot ou traduction incorrecte"},
+    {"id":8386,"saamaka":"dagu seki pakapakapakapaka","french":"chien se secouer","reason":"Mot ou traduction incorrecte"},
+    {"id":9452,"saamaka":"taitai de ta de","french":"chiens être attachés","reason":"Mot ou traduction incorrecte"},
+    {"id":1159,"saamaka":"aganin, agäin, kakaakú, pakúsi","french":"espèce de poisson","english":"fish species","dutch":"vissoorten","reason":"Doublon"},
+    {"id":8221,"saamaka":"didia gbegede","french":"aube claire","reason":"Mot ou traduction incorrecte"},
+    {"id":11705,"saamaka":"lɛ́un","french":"lion","english":"lion","reason":"Doublon"},
+    {"id":9453,"saamaka":"dee mbeti ko neen","french":"animaux venir vers quelqu'un","reason":"Mot ou traduction incorrecte"},
+    {"id":9398,"saamaka":"mbeti-manu","french":"animal-mari","english":"animal-husband","dutch":"dier-echtgenoot","reason":"Mot ou traduction incorrecte"},
+    {"id":7497,"saamaka":"busikau","french":"animal busikau","reason":"Mot ou traduction incorrecte"},
+    {"id":9054,"saamaka":"di mbeti nango de","french":"animal aller au loin","reason":"Mot ou traduction incorrecte"},
+    {"id":6903,"saamaka":"Abadon","french":"Abaddon","english":"Abaddon","dutch":"Abaddon","reason":"Expression impossible ou incompréhensible"}
+  ]
+}
