@@ -5,7 +5,7 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Saamaka Dico Bêta"
+        android:label="Saamaka Dico"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SaamakaDico">
@@ -19,13 +19,8 @@
         </activity>
         <activity
             android:name="com.saamaka.dico.testeurs.AudioAdminActivity"
-            android:exported="true"
-            android:label="Saamaka Audio Admin">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:label="Saamaka Audio Admin" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
