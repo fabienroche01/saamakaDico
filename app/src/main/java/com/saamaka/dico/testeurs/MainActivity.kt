@@ -375,6 +375,12 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
     }
     val validationStore = remember { ValidationStore(context) }
     val reviewStore = remember { ReviewStore(context) }
+    val contributionSync = remember(context) { TesterContributionSync(context) }
+    var syncInProgress by remember { mutableStateOf(false) }
+    var lastContributionSyncAt by remember {
+        mutableStateOf(contributionSync.lastSyncAtMillis())
+    }
+    var lastContributionSyncMessage by remember { mutableStateOf<String?>(null) }
     val audioStore = remember { AudioStore(context, appStrings) }
     audioStore.updateStrings(appStrings)
 
@@ -4186,6 +4192,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         },
                         onCancelDeletionProposal = { proposal ->
                             deletionProposalStore.cancel(proposal.entryId)
+                            contributionSync.cancelDeletion(proposal.entryId)
                             deletionProposals = deletionProposalStore.all()
                         },
                         onSaveNewEntryProposal = { proposal ->
@@ -4194,6 +4201,7 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                         },
                         onCancelNewEntryProposal = { proposal ->
                             newEntryProposalStore.cancel(proposal.localId)
+                            contributionSync.cancelNewEntry(proposal.localId)
                             audioStore.deleteProposedEntryAudio(proposal.localId, proposal.testerName)
                             newEntryProposals = newEntryProposalStore.all()
                         },
@@ -4208,6 +4216,26 @@ private fun TesterApp(premiumBillingManager: PremiumBillingManager) {
                                 assignedCategory = "Religion"
                             }
                         },
+                        onSyncContributions = {
+                            if (!syncInProgress) {
+                                syncInProgress = true
+                                contributionSync.syncAll(testerName) { result ->
+                                    syncInProgress = false
+                                    lastContributionSyncMessage = result.message
+                                    if (result.success) {
+                                        lastContributionSyncAt = contributionSync.lastSyncAtMillis()
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        result.message,
+                                        if (result.success) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        },
+                        syncInProgress = syncInProgress,
+                        lastContributionSyncAt = lastContributionSyncAt,
+                        lastContributionSyncMessage = lastContributionSyncMessage,
                         onExportCorrections = {
                             val exportHistoryStore = ExportHistoryStore(context)
                             val exportText = exportHistoryStore.pendingExportText() + audioStore.exportAudioSummary()
@@ -4531,6 +4559,10 @@ private fun CorrectionsScreen(
     validatedCount: Int,
     total: Int,
     onTesterNameChange: (String) -> Unit,
+    onSyncContributions: () -> Unit,
+    syncInProgress: Boolean,
+    lastContributionSyncAt: Long,
+    lastContributionSyncMessage: String?,
     onExportCorrections: () -> Unit,
     onClearCorrections: () -> Unit,
     onClearValidations: () -> Unit,
@@ -4569,6 +4601,21 @@ private fun CorrectionsScreen(
         audioStore.countTesterAudioFilesAfter(testerName, lastExportAtMillis)
     }
     val pendingExportActions = pendingValidations + pendingCorrections + pendingDeletions + pendingNewEntries
+    val pendingSyncActions = remember(
+        lastContributionSyncAt,
+        correctionProposals,
+        deletionProposals,
+        newEntryProposals,
+        validatedReviewCount
+    ) {
+        val pendingValidationSync = ReviewStore(correctionsContext).all().count { action ->
+            action.createdAt > lastContributionSyncAt && action.action == ReviewActionType.VALIDATED
+        }
+        pendingValidationSync +
+            correctionProposals.count { it.createdAt > lastContributionSyncAt && it.hasChanges() } +
+            deletionProposals.count { it.createdAt > lastContributionSyncAt } +
+            newEntryProposals.count { it.createdAt > lastContributionSyncAt }
+    }
     val qualityAudit = remember(existingEntries) { auditDictionaryEntries(existingEntries) }
     var showExportPreview by remember { mutableStateOf(false) }
 
@@ -4864,8 +4911,72 @@ private fun CorrectionsScreen(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                enabled = pendingExportActions > 0 || pendingAudioFiles > 0,
+                enabled = !syncInProgress && pendingSyncActions > 0,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0B5D3B)),
+                onClick = onSyncContributions
+            ) {
+                if (syncInProgress) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    when (strings.uiLanguage) {
+                        UiLanguage.ENGLISH -> "Send my contributions"
+                        UiLanguage.DUTCH -> "Mijn bijdragen verzenden"
+                        UiLanguage.SAAMAKA -> "Seni mi wooko"
+                        UiLanguage.FRENCH -> "Envoyer mes corrections"
+                    }
+                )
+            }
+
+            Text(
+                text = when {
+                    syncInProgress -> when (strings.uiLanguage) {
+                        UiLanguage.ENGLISH -> "Sending…"
+                        UiLanguage.DUTCH -> "Verzenden…"
+                        UiLanguage.SAAMAKA -> "A e seni…"
+                        UiLanguage.FRENCH -> "Envoi en cours…"
+                    }
+                    pendingSyncActions > 0 -> when (strings.uiLanguage) {
+                        UiLanguage.ENGLISH -> "${pendingSyncActions} contribution(s) to send"
+                        UiLanguage.DUTCH -> "${pendingSyncActions} bijdrage(n) te verzenden"
+                        UiLanguage.SAAMAKA -> "${pendingSyncActions} wooko fu seni"
+                        UiLanguage.FRENCH -> "${pendingSyncActions} contribution(s) à envoyer"
+                    }
+                    else -> when (strings.uiLanguage) {
+                        UiLanguage.ENGLISH -> "Everything is synchronized"
+                        UiLanguage.DUTCH -> "Alles is gesynchroniseerd"
+                        UiLanguage.SAAMAKA -> "Ala sani seni kaba"
+                        UiLanguage.FRENCH -> "Tout est synchronisé"
+                    }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            lastContributionSyncMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                enabled = pendingExportActions > 0 || pendingAudioFiles > 0,
                 onClick = { showExportPreview = true }
             ) {
                 Icon(
