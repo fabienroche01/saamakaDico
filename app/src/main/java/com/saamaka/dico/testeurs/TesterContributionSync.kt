@@ -186,7 +186,7 @@ class TesterContributionSync(
                         "email" to email,
                         "testerName" to testerName,
                         "lastSyncAt" to Timestamp.now(),
-                        "clientVersion" to BuildConfig.VERSION_NAME
+                        "clientVersion" to "4.0.0"
                     ),
                     SetOptions.merge()
                 ).addOnSuccessListener {
@@ -216,7 +216,7 @@ class TesterContributionSync(
                     ref,
                     data + mapOf(
                         "ownerUid" to uid,
-                        "clientVersion" to BuildConfig.VERSION_NAME
+                        "clientVersion" to "4.0.0"
                     ),
                     SetOptions.merge()
                 )
