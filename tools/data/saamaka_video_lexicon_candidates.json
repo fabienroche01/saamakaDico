@@ -245,6 +245,81 @@
       ],
       "transcription_status": "saamaka_confirmed_media_pending",
       "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_106605623",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/106605623",
+      "title": "La grammaire française en passant par la langue maternelle saamaka",
+      "publisher": "Laurent Asselin",
+      "date": "",
+      "region": "French Guiana",
+      "relevance": "very_high",
+      "evidence": [
+        "Vimeo indexes this resource explicitly under a title identifying Saamaka as the learners' mother tongue; useful for bilingual grammar/lexicon evidence."
+      ],
+      "transcription_status": "pending_media_transcript",
+      "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_ondemand_saamaka_en",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/ondemand/saamaka",
+      "title": "Saamaka (English subtitles)",
+      "publisher": "Karel Doing",
+      "date": "2020-07-30",
+      "region": "Pikin Slee, Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Vimeo states the 49-minute documentary records interviews, reactions, stories, music and everyday village/river sounds with Saamaka participants and English subtitles."
+      ],
+      "transcription_status": "english_subtitles_media_access_required",
+      "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_ondemand_saamaka_nl",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/ondemand/saamaka2",
+      "title": "Saamaka (Nederlands ondertiteld)",
+      "publisher": "Karel Doing",
+      "date": "",
+      "region": "Pikin Slee, Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Dutch-subtitled edition of the Saamaka documentary; potentially useful as a second parallel-language alignment source."
+      ],
+      "transcription_status": "dutch_subtitles_media_access_required",
+      "lexical_candidates": []
+    },
+    {
+      "id": "grn_srm_mp4",
+      "platform": "streaming/download",
+      "url": "https://globalrecordings.net/en/language/srm",
+      "title": "Saramacca [srm] MP4 audiovisual recordings",
+      "publisher": "Global Recordings Network",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "GRN explicitly identifies the language as Saramacca/Saamaka, ISO srm, and exposes an MP4 slideshow package plus links to additional Saramaccan video/audio sources."
+      ],
+      "transcription_status": "saamaka_confirmed_media_available",
+      "lexical_candidates": []
+    },
+    {
+      "id": "joshua_srm_video_index",
+      "platform": "streaming_index",
+      "url": "https://joshuaproject.net/languages/srm",
+      "title": "Saramaccan [srm] video/audio resource index",
+      "publisher": "Joshua Project",
+      "date": "",
+      "region": "Suriname / French Guiana",
+      "relevance": "very_high",
+      "evidence": [
+        "Resource index identifies Jesus Film, LUMO Gospel films, World Christian Videos, Faith Comes By Hearing and audio recordings for Saramaccan."
+      ],
+      "transcription_status": "source_hub_expand_children",
+      "lexical_candidates": []
     }
   ],
   "lexical_candidates": [
@@ -304,6 +379,17 @@
       "Pikin Slee",
       "Upper Suriname River"
     ],
-    "language_guard": "Matawai/Matawari is not assumed interchangeable with Saamaka for lexical extraction; each recording must be language-identified."
+    "language_guard": "Matawai/Matawari is not assumed interchangeable with Saamaka for lexical extraction; each recording must be language-identified.",
+    "platforms": [
+      "YouTube",
+      "Vimeo",
+      "Global Recordings Network",
+      "Scripture Earth",
+      "Faith Comes By Hearing",
+      "Jesus Film Project",
+      "LUMO/Bible Media",
+      "other indexed streaming/audio-video archives"
+    ],
+    "current_priority": "Parallel-subtitled Saamaka material and explicitly ISO-srm-labelled audiovisual corpora before noisy auto-transcription."
   }
 }
