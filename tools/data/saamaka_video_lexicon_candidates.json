@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "generated_for": "SaamakaDico 4.0.1-beta / build 362",
+  "purpose": "Worldwide video-source ledger for extracting Saamaka lexical candidates without modifying the production dictionary automatically.",
+  "policy": {
+    "auto_apply_to_dictionary": false,
+    "minimum_status_for_dictionary": "confirmed",
+    "statuses": [
+      "source_only",
+      "transcript_pending",
+      "candidate",
+      "probable",
+      "confirmed",
+      "rejected"
+    ],
+    "note": "A token heard or auto-transcribed once is never inserted directly into the SQLite dictionary."
+  },
+  "sources": [
+    {
+      "id": "yt_vPI4aZplMEc",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=vPI4aZplMEc",
+      "title": "Saamaka Daka",
+      "publisher": "Starnieuws Suriname",
+      "date": "2019-10-02",
+      "region": "Suriname",
+      "relevance": "high",
+      "evidence": [
+        "Wikimedia Commons identifies the original YouTube video, title, publisher and date; screenshots were released from the video under CC BY."
+      ],
+      "transcription_status": "pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "yt_xqwgaG-gJ1k",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=xqwgaG-gJ1k",
+      "title": "Saamaka Daka / Saamaka cultural event (title to verify from YouTube metadata)",
+      "publisher": "",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "high",
+      "evidence": [
+        "Academic source cites this YouTube video while discussing the launch of Saamaka Daka in 2019."
+      ],
+      "transcription_status": "pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "yt_YaVmYS5wMVA",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=YaVmYS5wMVA",
+      "title": "Maroon cultural event video (exact title to verify)",
+      "publisher": "",
+      "date": "",
+      "region": "French Guiana / Suriname cultural context",
+      "relevance": "medium",
+      "evidence": [
+        "Academic source cites this video as an example of Maroon cultural offerings; Saamaka speech must be verified before lexical extraction."
+      ],
+      "transcription_status": "pending_language_verification",
+      "lexical_candidates": []
+    },
+    {
+      "id": "yt_DqRbfYqq63c",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=DqRbfYqq63c",
+      "title": "Banamba / Maroon dance event video (exact title to verify)",
+      "publisher": "",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "medium",
+      "evidence": [
+        "Academic source cites this video in discussion of Maroon dance contests. It may contain non-Saamaka varieties; speech must be language-identified first."
+      ],
+      "transcription_status": "pending_language_verification",
+      "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_saamaka_442980113",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/ondemand/saamaka/442980113",
+      "title": "Saamaka Marron Museum",
+      "publisher": "Karel Doing",
+      "date": "2020-07-30",
+      "region": "Pikin Slee, Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "49-minute documentary made with Totomboti in Pikin Slee; description states that interviews and reactions from Saamaka participants were recorded, with Berry Vrede as interpreter/intermediary."
+      ],
+      "transcription_status": "pending_media_access",
+      "lexical_candidates": []
+    }
+  ],
+  "lexical_candidates": [],
+  "review_rules": [
+    "Keep exact source URL and timecode for every candidate.",
+    "Do not infer spelling from sound alone when the transcription system is uncertain.",
+    "Separate Saamaka from Sranan Tongo, Ndyuka, Dutch, French and code-switching.",
+    "Compare every candidate against the embedded SQLite dictionary before proposing a new entry.",
+    "Prefer candidates attested in at least two independent sources or supported by a trusted dictionary/grammar.",
+    "Store uncertain forms as candidate/probable, never confirmed."
+  ]
+}
