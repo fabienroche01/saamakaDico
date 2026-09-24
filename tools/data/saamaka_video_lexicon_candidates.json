@@ -90,9 +90,66 @@
       ],
       "transcription_status": "pending_media_access",
       "lexical_candidates": []
+    },
+    {
+      "id": "yt_ODU-g2VA_Mw",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=ODU-g2VA_Mw",
+      "title": "Rastafari in Pikin Slee Suriname",
+      "publisher": "Roland van Reenen TV",
+      "date": "2013-07-12",
+      "region": "Pikin Slee, Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Filmot indexes the YouTube video and exposes English subtitles.",
+        "The video is a portrait of Toya Saaki in Pikin Slee and credits the Saamaka Museum and inhabitants of Pikin Slee.",
+        "The subtitle track explicitly glosses the expression 'Gan Gado' as 'great God'."
+      ],
+      "transcription_status": "english_subtitles_available_original_saamaka_audio_requires_transcription",
+      "lexical_candidates": [
+        "gan_gado"
+      ]
+    },
+    {
+      "id": "yt_Z3S--OTSInQ",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/watch?v=Z3S--OTSInQ",
+      "title": "Neem as an Organic pesticide / Neem als Biologisch bestrijdingsmiddel",
+      "publisher": "Roland van Reenen TV",
+      "date": "2015-11-10",
+      "region": "Saamaka interior, Suriname",
+      "relevance": "high",
+      "evidence": [
+        "Filmot indexes the YouTube video with English subtitles.",
+        "The description/subtitles frame the content as ancient wisdom of the Saamaka tribe and discuss traditional agriculture."
+      ],
+      "transcription_status": "english_subtitles_available_original_saamaka_audio_requires_transcription",
+      "lexical_candidates": []
     }
   ],
-  "lexical_candidates": [],
+  "lexical_candidates": [
+    {
+      "id": "gan_gado",
+      "form": "Gan Gado",
+      "normalized_form": "gan gado",
+      "glosses": {
+        "english": "great God / Almighty God",
+        "french": "Grand Dieu / Dieu tout-puissant"
+      },
+      "status": "probable",
+      "confidence": 0.78,
+      "source_attestations": [
+        {
+          "source_id": "yt_ODU-g2VA_Mw",
+          "evidence_type": "subtitle_gloss",
+          "context_summary": "Speaker explains that they call the Almighty 'Gan Gado'; English subtitle supplies the gloss 'great God'.",
+          "timecode": "unknown"
+        }
+      ],
+      "database_check": "pending_sqlite_exact_lookup",
+      "notes": "Do not promote to confirmed until spelling is checked against a trusted Saamaka lexical source or a second independent attestation."
+    }
+  ],
   "review_rules": [
     "Keep exact source URL and timecode for every candidate.",
     "Do not infer spelling from sound alone when the transcription system is uncertain.",
@@ -100,5 +157,6 @@
     "Compare every candidate against the embedded SQLite dictionary before proposing a new entry.",
     "Prefer candidates attested in at least two independent sources or supported by a trusted dictionary/grammar.",
     "Store uncertain forms as candidate/probable, never confirmed."
-  ]
+  ],
+  "last_updated": "2026-09-24"
 }
