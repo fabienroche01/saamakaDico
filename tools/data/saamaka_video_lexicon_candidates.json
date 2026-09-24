@@ -125,6 +125,66 @@
       ],
       "transcription_status": "english_subtitles_available_original_saamaka_audio_requires_transcription",
       "lexical_candidates": []
+    },
+    {
+      "id": "yt_UJOKG2Zkmks",
+      "platform": "youtube",
+      "url": "https://youtu.be/UJOKG2Zkmks",
+      "title": "Team Bigi Boy's journey to the Upper Suriname River",
+      "publisher": "Local Content Suriname / Barend van Dijk",
+      "date": "2020",
+      "region": "Upper Suriname River, Suriname",
+      "relevance": "high",
+      "evidence": [
+        "Local Content Suriname identifies the YouTube video as a journey to the lands of the Saamaka."
+      ],
+      "transcription_status": "pending_language_verification",
+      "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_144478238",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/144478238",
+      "title": "The enabling power of participatory 3D mapping among the Saramaccan Peoples of Suriname — Saramaccan version",
+      "publisher": "Giacomo Rambaldi",
+      "date": "",
+      "region": "Upper Suriname River, Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "The publisher explicitly identifies this upload as the Saramaccan-language version of the participatory mapping documentary."
+      ],
+      "transcription_status": "saamaka_confirmed_transcript_pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "scriptureearth_srm_jesusfilm",
+      "platform": "video_corpus",
+      "url": "https://www.scriptureearth.org/00eng.php?iso=srm",
+      "title": "The JESUS Film — Saramaccan [srm]",
+      "publisher": "Scripture Earth / Jesus Film",
+      "date": "",
+      "region": "Suriname / French Guiana",
+      "relevance": "very_high",
+      "evidence": [
+        "Scripture Earth explicitly labels the language Saramaccan, self-designation Saamáka, ISO srm."
+      ],
+      "transcription_status": "saamaka_confirmed_parallel_text_candidate",
+      "lexical_candidates": []
+    },
+    {
+      "id": "scriptureearth_srm_bible_video_collection",
+      "platform": "video_corpus",
+      "url": "https://www.scriptureearth.org/00eng.php?iso=srm",
+      "title": "Bible videos in the Saramaccan language of Suriname",
+      "publisher": "Scripture Earth",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Scripture Earth exposes dozens of downloadable Saramaccan-language video segments from Matthew, Mark, Luke, Acts and John."
+      ],
+      "transcription_status": "saamaka_confirmed_parallel_text_candidate",
+      "lexical_candidates": []
     }
   ],
   "lexical_candidates": [
@@ -158,5 +218,20 @@
     "Prefer candidates attested in at least two independent sources or supported by a trusted dictionary/grammar.",
     "Store uncertain forms as candidate/probable, never confirmed."
   ],
-  "last_updated": "2026-09-24"
+  "last_updated": "2026-09-24",
+  "research_progress": {
+    "discovery_note": "Expanded beyond YouTube-only indexing when a source provides explicitly identified Saamaka/Saramaccan video; YouTube candidates remain tracked separately.",
+    "high_value_corpora": [
+      "Scripture Earth srm video collection: dozens of explicitly Saramaccan-language segments",
+      "Participatory 3D mapping documentary: explicitly published Saramaccan version",
+      "Pikin Slee interviews and agriculture videos",
+      "Upper Suriname River travel/cultural videos pending language verification"
+    ],
+    "next_steps": [
+      "Prioritize sources with explicit ISO srm/Saramaccan labeling.",
+      "Obtain transcript or parallel Saamaka text before lexical extraction.",
+      "Deduplicate extracted forms against SQLite and existing candidate ledger.",
+      "Do not report an interim lexical count to the user before 100 sourced usable words/expressions."
+    ]
+  }
 }
