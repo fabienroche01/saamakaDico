@@ -185,6 +185,66 @@
       ],
       "transcription_status": "saamaka_confirmed_parallel_text_candidate",
       "lexical_candidates": []
+    },
+    {
+      "id": "yt_UF-SF2Xde7Q",
+      "platform": "youtube",
+      "url": "https://youtu.be/UF-SF2Xde7Q",
+      "title": "Interview with Mr Lee in Saamaka Tongo",
+      "publisher": "",
+      "date": "2019",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Community post by the interviewer explicitly identifies the interviewee as a Saamaka musician and says the interview is in Saamaka Tongo/Saramaccan."
+      ],
+      "transcription_status": "saamaka_explicitly_identified_transcript_pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "vimeo_90696661",
+      "platform": "vimeo",
+      "url": "https://vimeo.com/90696661",
+      "title": "Life Of The Saamaka Maroons in 1928 / Djoeka re-edit",
+      "publisher": "Karel Doing",
+      "date": "2010 re-edit",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Source describes the 1928 Saamaka film as silent footage re-edited in 2010 and narrated by modern-day Saamaka Maroons."
+      ],
+      "transcription_status": "saamaka_narration_reported_transcript_pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "omniglot_srm_sample_video",
+      "platform": "embedded_video",
+      "url": "https://www.omniglot.com/writing/saramaccan.htm",
+      "title": "Sample video in Saramaccan",
+      "publisher": "Omniglot",
+      "date": "",
+      "region": "Suriname / French Guiana",
+      "relevance": "very_high",
+      "evidence": [
+        "Omniglot labels an embedded sample video explicitly as Saramaccan and supplies sample Saramaccan sentences on the same language page."
+      ],
+      "transcription_status": "saamaka_confirmed_video_id_pending",
+      "lexical_candidates": []
+    },
+    {
+      "id": "grn_srm_video",
+      "platform": "video_corpus",
+      "url": "https://globalrecordings.net/en/language/srm",
+      "title": "Saramacca [srm] audiovisual corpus",
+      "publisher": "Global Recordings Network",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "GRN identifies Saramacca/Saamaka under ISO srm and exposes MP4/3GP slideshow material plus links to Saramaccan video resources."
+      ],
+      "transcription_status": "saamaka_confirmed_media_pending",
+      "lexical_candidates": []
     }
   ],
   "lexical_candidates": [
@@ -232,6 +292,18 @@
       "Obtain transcript or parallel Saamaka text before lexical extraction.",
       "Deduplicate extracted forms against SQLite and existing candidate ledger.",
       "Do not report an interim lexical count to the user before 100 sourced usable words/expressions."
-    ]
+    ],
+    "search_aliases": [
+      "Saamaka",
+      "Saamáka",
+      "Saamaka tongo",
+      "Saramaccan",
+      "Saramaccaans",
+      "Saramaka",
+      "ISO srm",
+      "Pikin Slee",
+      "Upper Suriname River"
+    ],
+    "language_guard": "Matawai/Matawari is not assumed interchangeable with Saamaka for lexical extraction; each recording must be language-identified."
   }
 }
