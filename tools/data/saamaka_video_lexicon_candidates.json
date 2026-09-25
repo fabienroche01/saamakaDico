@@ -320,6 +320,50 @@
       ],
       "transcription_status": "source_hub_expand_children",
       "lexical_candidates": []
+    },
+    {
+      "id": "bibleis_srmbwt_audio",
+      "platform": "audio_streaming",
+      "url": "https://live.bible.is/bible/SRMWBT/MAT/1",
+      "title": "Saramaccan New Testament audio — SRMWBT",
+      "publisher": "Faith Comes By Hearing / Bible.is",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "Global Recordings Network identifies Saramacca as verified ISO srm and links the Saramaccan New Testament on Bible.is.",
+        "The CMU Wilderness language index identifies SRMWBT as Saramaccan (srm) and points to listen.bible.is audio."
+      ],
+      "transcription_status": "saamaka_confirmed_audio_with_parallel_srmbwt_text"
+    },
+    {
+      "id": "ebible_srmbwt_text",
+      "platform": "parallel_text_for_audio",
+      "url": "https://ebible.org/Scriptures/details.php?id=srmNT",
+      "title": "Gadu Buku — Saramaccan New Testament (SRMWBT / srmNT)",
+      "publisher": "Wycliffe Bible Translators, Inc. / eBible.org",
+      "date": "2009",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "eBible identifies the text as Saramaccan, ISO srm, with edition ID SRMWBT/srmNT.",
+        "This edition ID matches the Saramaccan audio edition indexed for Bible.is, enabling text-audio alignment without relying on speech-to-text."
+      ],
+      "transcription_status": "trusted_parallel_text_for_saamaka_audio"
+    },
+    {
+      "id": "dbs_srmbwt_pdf",
+      "platform": "parallel_text_for_audio",
+      "url": "https://bibles.dbs.org/SRMWBT/pdf/SRMWBT.pdf",
+      "title": "Gadu Buku — Saramaccan New Testament PDF (SRMWBT)",
+      "publisher": "Digital Bible Society / Wycliffe Bible Translators, Inc.",
+      "date": "",
+      "region": "Suriname",
+      "relevance": "very_high",
+      "evidence": [
+        "The PDF exposes the Saramaccan orthographic text for SRMWBT, including John 3:16-18, corresponding to the same SRMWBT edition used by the audio corpus."
+      ],
+      "transcription_status": "trusted_parallel_text_for_saamaka_audio"
     }
   ],
   "lexical_candidates": [
@@ -343,6 +387,330 @@
       ],
       "database_check": "pending_sqlite_exact_lookup",
       "notes": "Do not promote to confirmed until spelling is checked against a trusted Saamaka lexical source or a second independent attestation."
+    },
+    {
+      "id": "di_libi_u_teego",
+      "form": "di libi u teego",
+      "normalized_form": "di libi u teego",
+      "glosses": {
+        "english": "eternal life",
+        "french": "vie éternelle"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:16-17; phrase occurs in SRMWBT parallel text and is covered by the matching SRMWBT audio edition.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "kisi_sitaafu",
+      "form": "kisi sitaafu",
+      "normalized_form": "kisi sitaafu",
+      "glosses": {
+        "english": "receive punishment / be condemned",
+        "french": "recevoir une punition / être condamné"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:18; contextual phrase in SRMWBT parallel text aligned to SRMWBT audio.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "kuutu_sembe",
+      "form": "kuutu sëmbë",
+      "normalized_form": "kuutu sëmbë",
+      "glosses": {
+        "english": "judge people / judge someone",
+        "french": "juger des personnes / juger quelqu’un"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:17; contextual phrase in SRMWBT parallel text aligned to SRMWBT audio.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "feni_wan_njunjun_libi",
+      "form": "feni wan njunjun libi",
+      "normalized_form": "feni wan njunjun libi",
+      "glosses": {
+        "english": "receive / find a new life",
+        "french": "recevoir / trouver une vie nouvelle"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:3 and 1 John 3:14; repeated contextual phrase family in SRMWBT text, with matching SRMWBT audio corpus.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "gaan_foombo_wooko",
+      "form": "gaan foombo wooko",
+      "normalized_form": "gaan foombo wooko",
+      "glosses": {
+        "english": "great miracles / extraordinary works",
+        "french": "grands miracles / œuvres extraordinaires"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:2; contextual gloss from the verse describing the remarkable works Jesus performs.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "wan_ndeti_gbolo",
+      "form": "wan ndeti gbolo",
+      "normalized_form": "wan ndeti gbolo",
+      "glosses": {
+        "english": "at night / one night",
+        "french": "pendant la nuit / une nuit"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "John 3:2 narrative context; Nicodemus comes to Jesus at night.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "tja_buka",
+      "form": "tja buka",
+      "normalized_form": "tja buka",
+      "glosses": {
+        "english": "bring / carry a message",
+        "french": "apporter / transmettre un message"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 4:1; contextual phrase for people bringing messages said to come from God.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "wegi_en_luku",
+      "form": "wegi ën luku",
+      "normalized_form": "wegi ën luku",
+      "glosses": {
+        "english": "test / examine to verify",
+        "french": "examiner / éprouver pour vérifier"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 4:1; used for checking where a message comes from.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "ganjansembema",
+      "form": "ganjansëmbëma",
+      "normalized_form": "ganjansëmbëma",
+      "glosses": {
+        "english": "deceivers / people who deceive",
+        "french": "trompeurs / personnes qui trompent"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 4:1,4-5; contextual plural form in SRMWBT text.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "limbolimbo",
+      "form": "limbolimbo",
+      "normalized_form": "limbolimbo",
+      "glosses": {
+        "english": "pure / morally clean",
+        "french": "pur / propre moralement"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 3:3; used of becoming clean/pure as Jesus is pure.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "hogihati",
+      "form": "hogihati",
+      "normalized_form": "hogihati",
+      "glosses": {
+        "english": "evil heart / ill will",
+        "french": "mauvais cœur / malveillance"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 3:12; used in the Cain narrative as the motive for killing his brother.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
+    },
+    {
+      "id": "heepima_u_hii_mundu",
+      "form": "Heepima u hii mundu",
+      "normalized_form": "heepima u hii mundu",
+      "glosses": {
+        "english": "Savior / helper of the whole world",
+        "french": "Sauveur / secours du monde entier"
+      },
+      "status": "probable",
+      "confidence": 0.82,
+      "source_attestations": [
+        {
+          "source_id": "dbs_srmbwt_pdf",
+          "evidence_type": "parallel_text",
+          "context_summary": "1 John 4:14; title applied to Jesus in SRMWBT text.",
+          "timecode": "chapter/verse aligned; exact timecode pending"
+        },
+        {
+          "source_id": "bibleis_srmbwt_audio",
+          "evidence_type": "matching_audio_edition",
+          "context_summary": "Same SRMWBT edition is available as Saramaccan audio; lexical form taken from the trusted parallel text rather than ASR.",
+          "timecode": "pending"
+        }
+      ],
+      "database_check": "repo_text_search_no_hit; exact SQLite lookup still pending",
+      "notes": "Not counted as exploitable/new until exact comparison against the embedded SQLite dictionary is completed."
     }
   ],
   "review_rules": [
@@ -353,7 +721,7 @@
     "Prefer candidates attested in at least two independent sources or supported by a trusted dictionary/grammar.",
     "Store uncertain forms as candidate/probable, never confirmed."
   ],
-  "last_updated": "2026-09-24",
+  "last_updated": "2026-09-25",
   "research_progress": {
     "discovery_note": "Expanded beyond YouTube-only indexing when a source provides explicitly identified Saamaka/Saramaccan video; YouTube candidates remain tracked separately.",
     "high_value_corpora": [
@@ -390,6 +758,9 @@
       "LUMO/Bible Media",
       "other indexed streaming/audio-video archives"
     ],
-    "current_priority": "Parallel-subtitled Saamaka material and explicitly ISO-srm-labelled audiovisual corpora before noisy auto-transcription."
+    "current_priority": "Expand SRMWBT audio/text-aligned candidates, then perform exact SQLite deduplication before promotion to confirmed/exploitable.",
+    "probable_candidate_count": 13,
+    "exploitable_new_count": 0,
+    "exploitable_count_note": "No candidate is counted toward the 100-item notification threshold until exact SQLite comparison and lexical review are complete."
   }
 }
